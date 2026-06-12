@@ -1,0 +1,1 @@
+from campus_dumpster_monitor.detector import Detector

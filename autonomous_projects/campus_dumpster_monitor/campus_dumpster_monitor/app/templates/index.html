@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Dumpster Monitor</title>
+    <style>
+        body {font-family: Arial, sans-serif; margin: 2rem;}
+        .upload {border: 2px dashed #aaa; padding: 2rem; text-align: center;}
+        input[type=file] {margin-top: 1rem;}
+    </style>
+</head>
+<body>
+    <h1>Campus Dumpster Monitor</h1>
+    <div class="upload">
+        <form id="upload-form" method="post" enctype="multipart/form-data" action="/upload">
+            <p>Drag and drop an image or click to select.</p>
+            <input type="file" name="file" accept="image/*" required />
+            <br/>
+            <button type="submit">Upload</button>
+        </form>
+        <pre id="result"></pre>
+    </div>
+    <script>
+        const form = document.getElementById('upload-form');
+        const result = document.getElementById('result');
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const data = new FormData(form);
+            const resp = await fetch('/upload', {method: 'POST', body: data});
+            const json = await resp.json();
+            result.textContent = JSON.stringify(json, null, 2);
+        };
+    </script>
+</body>
+</html>
