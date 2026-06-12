@@ -1,0 +1,1 @@
+FROM python:3.12-slim\n\nWORKDIR /app\n\nCOPY requirements.txt .\nRUN pip install --no-cache-dir -r requirements.txt\n\nCOPY src/ ./src/\nCOPY docs/ ./docs/\n\nEXPOSE 8000\n\nCMD ["uvicorn", "src.api:app", "--host", "0.0.0.0", "--port", "8000"]

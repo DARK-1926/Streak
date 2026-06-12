@@ -1,0 +1,1 @@
+# Email Assistant package initialization
