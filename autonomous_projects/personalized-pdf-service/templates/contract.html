@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <style>
+        body {font-family: Helvetica, Arial, sans-serif; margin: 2cm;}
+        h1 {text-align: center;}
+        .section {margin-top: 1.5em;}
+    </style>
+</head>
+<body>
+    <h1>Service Agreement</h1>
+    <div class="section">
+        <strong>Parties:</strong> {{ name }} (Client) and Acme Corp (Provider)
+    </div>
+    <div class="section">
+        <strong>Jurisdiction:</strong> {{ jurisdiction }}
+    </div>
+    {% if generated_section %}
+    <div class="section">
+        {{ generated_section | safe }}
+    </div>
+    {% endif %}
+    <div class="section">
+        <strong>Effective Date:</strong> {{ effective_date | default('{{ now() }}') }}
+    </div>
+    <div class="section">
+        <p>Signature:</p>
+        _____________________________
+    </div>
+</body>
+</html>

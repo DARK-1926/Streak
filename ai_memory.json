@@ -1,7 +1,8 @@
 {
     "score": -1,
     "successful_patterns": [
-        "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation."
+        "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
+        "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
     ],
     "failed_patterns": [
         {
@@ -11,6 +12,14 @@
         {
             "vision": "Modern content platforms need to deliver documents that adapt to the reader\u2019s context \u2013 e.g., contracts that auto\u2011fill legal clauses based on jurisdiction, marketing brochures that highlight relevant product lines, or academic papers that embed personalized citations. Existing PDF generators are static; they cannot incorporate dynamic, AI\u2011driven content at render time. This project implements an enterprise\u2011grade service that receives a template definition (Jinja2 + front\u2011matter), a user profile, and optional prompts, then uses an LLM to synthesize any missing sections, renders the final HTML, and converts it to a PDF that is cached and audit\u2011tracked. The architecture is fully asynchronous, horizontally scalable, and includes security\u2011focused features (JWT auth, input sanitisation, CSP). It solves a high\u2011impact problem for SaaS, legal tech, and marketing teams by turning a one\u2011size\u2011fits\u2011all PDF into a personalized, data\u2011driven asset.",
             "error": "\n'pytest' is not recognized as an internal or external command,\noperable program or batch file.\n"
+        },
+        {
+            "vision": "Enterprise\u2011grade linting tool that combines static analysis with LLM\u2011powered contextual suggestions for modern front\u2011end codebases. It parses HTML, CSS, and JavaScript, flags security, performance, and accessibility issues, and uses an embedded Claude\u2011style reasoning engine (via OpenAI's gpt\u20114o\u2011mini) to generate actionable remediation text. The tool can be run locally, integrates with CI pipelines, and supports configurable \"thinking depth\" levels (low/medium/high) that control the number of LLM inference passes for each file, enabling teams to balance cost vs. insight.",
+            "error": "Dependency installation failed.\n\nERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'\n"
+        },
+        {
+            "project": "hn_summary",
+            "error": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-9.0.3, pluggy-1.6.0\nrootdir: D:\\Automater\\autonomous_projects\\hn_summary\ncollected 1 item\n\ntests\\test_core.py F                                                     [100%]\n\n================================== FAILURES ===================================\n_____________________________ test_extract_titles _____________________________\n\n    def test_extract_titles():\n        results "
         }
     ],
     "history": [
@@ -50,6 +59,18 @@
             "date": "2026-06-12T23:47:54.359295",
             "project": "personalized-pdf-service",
             "success": false
+        },
+        {
+            "date": "2026-06-13T09:50:19.517318",
+            "project": "ai_frontend_linter",
+            "success": false,
+            "model": "openai/gpt-oss-120b:free"
+        },
+        {
+            "date": "2026-06-13T11:11:34.695046",
+            "project": "hn_summary",
+            "success": true,
+            "attempts": 4
         }
     ]
 }

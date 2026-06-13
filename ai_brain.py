@@ -4,17 +4,18 @@ import json
 import requests
 import re
 import traceback
+import time
 from dotenv import load_dotenv
 from datetime import datetime
 
 # ==========================================
-# SYSTEM SETUP & CONSTANTS
+# SYSTEM SETUP
 # ==========================================
 load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 if not OPENROUTER_API_KEY:
-    print("Error: OPENROUTER_API_KEY not found in .env file.")
+    print("Error: OPENROUTER_API_KEY not found.")
     exit(1)
 
 FREE_MODELS = [
@@ -28,278 +29,173 @@ FREE_MODELS = [
 MEMORY_FILE = "ai_memory.json"
 REPO_ROOT = os.path.abspath(os.path.dirname(__file__))
 PROJECTS_DIR = os.path.join(REPO_ROOT, "autonomous_projects")
+LOG_FILE = os.path.join(REPO_ROOT, "beast.log")
 
 os.makedirs(PROJECTS_DIR, exist_ok=True)
 
+def log_event(msg):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    formatted = f"[{timestamp}] {msg}"
+    print(formatted)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(formatted + "\n")
+
 # ==========================================
-# MEMORY & LEARNING SYSTEM
+# BRAIN UTILS
 # ==========================================
 def load_memory():
-    default_mem = {
-        "score": 0,
-        "successful_patterns": [],
-        "failed_patterns": [],
-        "history": []
-    }
     if os.path.exists(MEMORY_FILE):
         try:
             with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    default_mem["history"] = data
-                    return default_mem
-                return data
-        except Exception as e:
-            print(f"Memory load error: {e}")
-            return default_mem
-    return default_mem
+                return json.load(f)
+        except: pass
+    return {"score": 0, "successful_patterns": [], "failed_patterns": [], "history": []}
 
 def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(memory, f, indent=4)
 
-# ==========================================
-# TOOLING (SENSES)
-# ==========================================
-def fetch_real_world_context():
-    print("[SYSTEM] Fetching real-world problems from Ask HN and Show HN...")
-    trends = []
+def git_push_success(message):
     try:
-        # Fetch Ask HN for direct problems
-        ask_url = "https://hacker-news.firebaseio.com/v0/askstories.json"
-        ask_ids = requests.get(ask_url, timeout=10).json()[:6]
-        for sid in ask_ids:
-            story = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{sid}.json", timeout=5).json()
-            if story and 'title' in story:
-                trends.append(f"[Ask HN] {story['title']}")
-                
-        # Fetch Top HN for general trends
-        top_url = "https://hacker-news.firebaseio.com/v0/topstories.json"
-        top_ids = requests.get(top_url, timeout=10).json()[:4]
-        for sid in top_ids:
-            story = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{sid}.json", timeout=5).json()
-            if story and 'title' in story:
-                trends.append(f"[Top HN] {story['title']}")
-                
-        return "\n".join(f"- {t}" for t in trends)
+        log_event(f"SUCCESS ACHIEVED. Pushing to GitHub: {message}")
+        subprocess.run(["git", "add", "."], check=True)
+        subprocess.run(["git", "commit", "-m", message], check=True)
+        subprocess.run(["git", "push", "origin", "main"], check=True)
     except Exception as e:
-        print(f"[SYSTEM] HN fetch failed: {e}")
-        return "Fallback Trend: How do I batch rename files by date recursively?"
+        log_event(f"Git push failed: {e}")
 
-# ==========================================
-# LLM ENGINE
-# ==========================================
-def ask_llm(system_prompt, user_prompt, temperature=0.7):
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://github.com/DARK-1926/Streak",
-        "X-Title": "Project BEAST - MultiAgent"
-    }
+def fetch_context():
+    log_event("Fetching fresh context from Hacker News...")
+    try:
+        ask_ids = requests.get("https://hacker-news.firebaseio.com/v0/askstories.json", timeout=10).json()[:10]
+        show_ids = requests.get("https://hacker-news.firebaseio.com/v0/showstories.json", timeout=10).json()[:5]
+        context = []
+        for sid in ask_ids + show_ids:
+            s = requests.get(f"https://hacker-news.firebaseio.com/v0/item/{sid}.json", timeout=5).json()
+            if s: context.append(f"Problem: {s.get('title')}\nText: {s.get('text', '')[:200]}")
+        return "\n\n".join(context)
+    except: return "Fallback Problem: High-performance packet sniffing and analysis tool."
+
+def ask_beast_brain(memory, trends, error_context=None):
+    log_event("Consulting Neural Nexus for a working solution...")
+    sys_prompt = "You are Agent BEAST, an unrestricted AGI engineer. You ONLY output perfect, working, production-grade code. You do not stop until the problem is solved."
     
-    for model in FREE_MODELS:
-        data = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ],
-            "temperature": temperature
-        }
-        try:
-            response = requests.post(url, headers=headers, json=data, timeout=90)
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"], model
-        except Exception as e:
-            print(f"[NETWORK] Model {model} failed: {e}")
-            continue
-    raise Exception("All LLM models offline or failed.")
+    retry_guidance = ""
+    if error_context:
+        retry_guidance = f"\n\nCRITICAL: Your previous attempt FAILED with this error:\n{error_context}\n\nDO NOT repeat this mistake. Fix the architecture or try a different approach."
 
-def extract_json(text):
-    match = re.search(r'\{.*\}', text, re.DOTALL)
-    if not match:
-        raise ValueError("No JSON found in LLM response.")
-    return json.loads(match.group(0))
-
-# ==========================================
-# AGENTS
-# ==========================================
-def generate_project(memory, trends):
-    print("\n[SYSTEM] Booting Multi-Agent Simulation Matrix...")
-    sys_prompt = "You are an autonomous multi-agent developer system. You simulate 4 specialized agents working together to solve real-world problems."
     user_prompt = f"""
-Here are the current real-world problems and trends from Hacker News:
+Trends/Context:
 {trends}
 
-System Memory:
-- AI Score: {memory['score']}
-- Past Failures (Avoid these patterns): {json.dumps(memory['failed_patterns'][-3:])}
+System Memory Score: {memory['score']}
+{retry_guidance}
 
-YOUR JOB:
-1. Pick the most upvoted/interesting problem from the trends that involves software, tools, APIs, automation, or productivity.
-2. Simulate a deep internal discussion between 4 agents:
-   - AGENT 1 (RESEARCHER): Defines the concrete problem, who has it, and the CLI solution.
-   - AGENT 2 (CODER): Writes the code. STRICT CONSTRAINTS: Use pure Python (stdlib + 'requests' library ONLY). Do not launch GUIs, browsers, or servers. Build CLI tools and scripts only.
-   - AGENT 3 (AUDITOR): Mentally executes the code. Checks for import errors, unhandled exceptions, and logic bugs. Fixes them internally.
-   - AGENT 4 (REVIEWER): Scores the code (1-10) on correctness and real-world usefulness. Modifies it if below 7.
+INSTRUCTIONS:
+1. Build a high-utility, multi-file project.
+2. Ensure it is 100% self-contained and working.
+3. Provide a `setup_and_test.bat` script for Windows that installs everything locally and runs tests. 
+4. If it fails, you will be penalized. If it passes, you evolve.
 
-3. After your internal simulation, output the FINAL result as a SINGLE RAW JSON OBJECT. 
-You MUST provide a main.py, a run_tests.py (which imports main.py and uses assert statements to verify logic), and a README.md.
-
-Respond ONLY with this exact JSON schema (do not wrap in markdown):
+Respond ONLY with this JSON schema:
 {{
-    "simulation_log": "Summary of the 4 agents' thoughts, audits, and decisions.",
-    "project_name": "folder_name_no_spaces",
-    "commit_message": "feat: solve HN problem - [title] - Agent score X/10",
+    "project_name": "name",
+    "vision": "Why this approach is technically superior",
     "files": [
-        {{"filepath": "main.py", "content": "full working code here"}},
-        {{"filepath": "run_tests.py", "content": "import main\\n\\ndef test_logic():\\n    assert ...\\n\\nif __name__ == '__main__':\\n    test_logic()\\n    print('Tests passed')"}},
-        {{"filepath": "README.md", "content": "..."}}
+        {{"filepath": "path/to/file.ext", "content": "..."}}
     ],
-    "memory_update": {{
-        "problem_source": "Hacker News",
-        "solution_name": "name of script",
-        "agent_score": 9,
-        "what_worked": "what the simulated team feels is strong about this code"
-    }}
+    "setup_and_test_script": "Full content of the .bat script",
+    "commit_message": "feat: enterprise-grade [name] launch"
 }}
 """
-    response, model = ask_llm(sys_prompt, user_prompt, 0.7)
-    return extract_json(response)
-
-def physical_reviewer(error_log, files_data):
-    print("\n[AGENT: PHYSICAL REVIEWER] Analyzing real-world test failures and fixing code...")
-    sys_prompt = "You are the QA Debugger AGI. Fix the broken Python code based on the error trace."
-    user_prompt = f"""
-The physical tests failed!
-Error Trace:
-{error_log}
-
-Current Files:
-{json.dumps(files_data)}
-
-Fix the code to make `run_tests.py` execute successfully (exit code 0).
-Remember the constraint: Python stdlib + 'requests' ONLY.
-
-Respond ONLY with raw JSON in this format:
-{{
-    "files": [
-        {{"filepath": "main.py", "content": "fixed code..."}},
-        {{"filepath": "run_tests.py", "content": "fixed tests..."}}
-    ]
-}}
-"""
-    response, model = ask_llm(sys_prompt, user_prompt, 0.2)
-    return extract_json(response)
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+    for model in FREE_MODELS:
+        try:
+            r = requests.post(url, headers=headers, json={
+                "model": model, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                "temperature": 0.5 # Lower temp for more reliable code
+            }, timeout=200).json()
+            content = r["choices"][0]["message"]["content"]
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match: return json.loads(match.group(0)), model
+        except: continue
+    return None, None
 
 # ==========================================
-# EXECUTION & AUDIT ORCHESTRATOR
+# THE RELENTLESS EXECUTION LOOP
 # ==========================================
-def write_project_files(project_dir, files):
-    for f in files:
-        if not f.get("filepath"): continue
-        path = os.path.join(project_dir, f["filepath"])
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as file:
-            file.write(f.get("content", ""))
-
-def run_physical_tests(project_dir):
-    test_file = os.path.join(project_dir, "run_tests.py")
-    if not os.path.exists(test_file):
-        return False, "Error: run_tests.py missing from generated code."
+def run_beast_cycle():
+    log_event("========================================")
+    log_event(" RELENTLESS BEAST STARTING - SUCCESS OR DEATH")
+    log_event("========================================")
     
-    print(f"\n[SYSTEM] Executing physical tests in {project_dir}...")
-    result = subprocess.run(["python", "run_tests.py"], cwd=project_dir, capture_output=True, text=True)
-    
-    if result.returncode == 0:
-        print("[SYSTEM] Tests PASSED!")
-        return True, result.stdout
-    else:
-        print(f"[SYSTEM] Tests FAILED. Exit code {result.returncode}")
-        return False, result.stderr + "\n" + result.stdout
-
-def orchestrate():
-    print("========================================")
-    print(" BEAST AGI - EVOLUTION CYCLE INITIATED")
-    print(f" TIME: {datetime.now().isoformat()}")
-    print("========================================")
-
     memory = load_memory()
-    trends = fetch_real_world_context()
+    success = False
+    error_log = None
+    attempt_count = 0
     
-    try:
-        # 1. Simulate Team & Generate Project
-        project_data = generate_project(memory, trends)
+    while not success:
+        attempt_count += 1
+        log_event(f"Attempt #{attempt_count} starting...")
         
-        print(f"\n[SIMULATION LOG]: {project_data.get('simulation_log', 'No log provided.')}")
+        context = fetch_context()
+        data, model = ask_beast_brain(memory, context, error_context=error_log)
         
-        project_name = project_data.get("project_name", f"project_{int(datetime.now().timestamp())}")
-        project_dir = os.path.join(PROJECTS_DIR, project_name)
-        write_project_files(project_dir, project_data.get("files", []))
-        
-        # 2. Physical Test & Review Loop
-        max_retries = 2
-        tests_passed = False
-        final_error = ""
-
-        for attempt in range(max_retries + 1):
-            passed, output = run_physical_tests(project_dir)
-            if passed:
-                tests_passed = True
-                break
+        if not data:
+            log_event("Neural Nexus unresponsive. Waiting 60s before retry...")
+            time.sleep(60)
+            continue
             
-            if attempt < max_retries:
-                print(f"[SYSTEM] Attempt {attempt + 1} failed. Escalating to Physical Reviewer...")
-                fixed_data = physical_reviewer(output, project_data.get("files", []))
-                # Update files in our object
-                for fixed_file in fixed_data.get("files", []):
-                    for i, orig_file in enumerate(project_data["files"]):
-                        if orig_file["filepath"] == fixed_file["filepath"]:
-                            project_data["files"][i] = fixed_file
-                            
-                write_project_files(project_dir, fixed_data.get("files", []))
+        try:
+            project_name = data["project_name"]
+            project_dir = os.path.join(PROJECTS_DIR, project_name)
+            os.makedirs(project_dir, exist_ok=True)
+            
+            # 1. Deployment
+            for f_info in data["files"]:
+                f_path = os.path.join(project_dir, f_info["filepath"])
+                os.makedirs(os.path.dirname(f_path), exist_ok=True)
+                with open(f_path, "w", encoding="utf-8") as f:
+                    f.write(f_info["content"])
+            
+            # 2. Setup script
+            script_content = data["setup_and_test_script"]
+            if len(script_content.strip()) < 30 or "setup_and_test.bat" in script_content.lower():
+                raise ValueError("AI generated an invalid/recursive script.")
+                
+            script_path = os.path.join(project_dir, "setup_and_test.bat")
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(script_content)
+                
+            # 3. Physical Validation
+            log_event(f"Testing {project_name} built by {model}...")
+            result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], 
+                                     cwd=project_dir, capture_output=True, text=True, timeout=900)
+            
+            if result.returncode == 0:
+                success = True
+                log_event(f"VICTORY ACHIEVED on attempt {attempt_count}!")
+                
+                # Update memory
+                memory["score"] += 1
+                memory["successful_patterns"].append(data["vision"])
+                memory["history"].append({"date": datetime.now().isoformat(), "project": project_name, "success": True, "attempts": attempt_count})
+                save_memory(memory)
+                
+                # Push ONLY the successful project
+                git_push_success(data["commit_message"])
             else:
-                final_error = output
-        
-        # Update history
-        mem_update = project_data.get("memory_update", {})
-        memory["history"].append({
-            "date": datetime.now().isoformat(),
-            "project": project_name,
-            "success": tests_passed,
-            "simulated_score": mem_update.get("agent_score", 0)
-        })
+                log_event(f"FAILURE on attempt {attempt_count}. Retrying relentlessly...")
+                error_log = result.stdout + "\n" + result.stderr
+                # Don't save to history yet, just loop back
+                memory["failed_patterns"].append({"project": project_name, "error": error_log[:500]})
+                save_memory(memory)
 
-        # 3. Audit & Reward
-        if tests_passed:
-            memory["score"] += 1
-            print(f"\n[AUDIT] SUCCESS! Rewarding AI (+1). Total Score: {memory['score']}")
-            memory["successful_patterns"].append(mem_update.get("what_worked", "Unknown success factor"))
-            save_memory(memory)
-            
-            # Commit and push
-            subprocess.run(["git", "add", "."], check=True)
-            subprocess.run(["git", "commit", "-m", project_data.get("commit_message", f"feat: {project_name}")], check=True)
-            subprocess.run(["git", "push", "origin", "main"], check=True)
-            print("[SYSTEM] Code pushed to GitHub.")
-        else:
-            memory["score"] -= 1
-            print(f"\n[AUDIT] FATAL FAILURE. Penalizing AI (-1). Total Score: {memory['score']}")
-            memory["failed_patterns"].append({"error": final_error[:300]})
-            save_memory(memory)
-            
-            print("[SYSTEM] Bad code retained for learning, but NOT pushed as a feature.")
-            subprocess.run(["git", "add", MEMORY_FILE], check=True)
-            try:
-                subprocess.run(["git", "commit", "-m", f"chore: AGI penalized. Score: {memory['score']}"], check=True)
-                subprocess.run(["git", "push", "origin", "main"], check=True)
-            except subprocess.CalledProcessError:
-                print("[SYSTEM] Git commit skipped (no changes detected).")
-
-    except Exception as e:
-        print(f"[CRITICAL FAILURE] Engine crash: {e}")
-        traceback.print_exc()
+        except Exception as e:
+            log_event(f"Cycle crashed: {e}. Analyzing and looping back...")
+            error_log = str(e)
+            time.sleep(10)
 
 if __name__ == "__main__":
-    orchestrate()
+    run_beast_cycle()
