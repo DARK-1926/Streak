@@ -1,5 +1,5 @@
 {
-    "score": 0,
+    "score": -1,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation."
     ],
@@ -7,6 +7,10 @@
         {
             "vision": "Provide an automated, privacy\u2011preserving system that continuously monitors the university library dumpster to detect hazardous or prohibited waste (e.g., electronic scrap, biohazard material, or illegal dumping) and alerts facilities staff before problems arise. The solution combines a lightweight front\u2011end UI with a robust back\u2011end AI model, addressing the trend of reducing sloppiness in AI\u2011generated interfaces while turning a real\u2011world nuisance (the dumpster) into a data\u2011driven safety asset.",
             "error": "Traceback (most recent call last):\n  File \"D:\\Automater\\autonomous_projects\\campus_dumpster_monitor\\run_tests.py\", line 2, in <module>\n    from campus_dumpster_monitor.detector import Detector\n  File "
+        },
+        {
+            "vision": "Modern content platforms need to deliver documents that adapt to the reader\u2019s context \u2013 e.g., contracts that auto\u2011fill legal clauses based on jurisdiction, marketing brochures that highlight relevant product lines, or academic papers that embed personalized citations. Existing PDF generators are static; they cannot incorporate dynamic, AI\u2011driven content at render time. This project implements an enterprise\u2011grade service that receives a template definition (Jinja2 + front\u2011matter), a user profile, and optional prompts, then uses an LLM to synthesize any missing sections, renders the final HTML, and converts it to a PDF that is cached and audit\u2011tracked. The architecture is fully asynchronous, horizontally scalable, and includes security\u2011focused features (JWT auth, input sanitisation, CSP). It solves a high\u2011impact problem for SaaS, legal tech, and marketing teams by turning a one\u2011size\u2011fits\u2011all PDF into a personalized, data\u2011driven asset.",
+            "error": "\n'pytest' is not recognized as an internal or external command,\noperable program or batch file.\n"
         }
     ],
     "history": [
@@ -41,6 +45,11 @@
             "project": "ai_frontend_linter",
             "success": true,
             "simulated_score": 8
+        },
+        {
+            "date": "2026-06-12T23:47:54.359295",
+            "project": "personalized-pdf-service",
+            "success": false
         }
     ]
 }
