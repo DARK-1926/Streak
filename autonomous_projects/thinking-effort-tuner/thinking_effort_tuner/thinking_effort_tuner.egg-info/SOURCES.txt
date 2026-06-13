@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+tests/test_core.py
+tests/test_main.py
+thinking_effort_tuner/thinking_effort_tuner.egg-info/PKG-INFO
+thinking_effort_tuner/thinking_effort_tuner.egg-info/SOURCES.txt
+thinking_effort_tuner/thinking_effort_tuner.egg-info/dependency_links.txt
+thinking_effort_tuner/thinking_effort_tuner.egg-info/requires.txt
+thinking_effort_tuner/thinking_effort_tuner.egg-info/top_level.txt

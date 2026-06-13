@@ -1,0 +1,1 @@
+[build-system]\nrequires = ["setuptools>=61.0"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "thinking-effort-tuner"\nversion = "0.1.0"\ndescription = "A tuner for thinking efforts"\nauthors = [\n    {name = "Developer"}\n]\ndependencies = []\n\n[tool.setuptools.packages.find]\nwhere = ["."]

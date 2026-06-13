@@ -1,0 +1,1 @@
+class ThinkingEffortTuner:\n    VALID_EFFORTS = ['low', 'medium', 'high', 'xhigh']\n\n    def __init__(self, effort='medium'):\n        if effort not in self.VALID_EFFORTS:\n            raise ValueError(f"Invalid effort: {effort}. Must be one of {self.VALID_EFFORTS}")\n        self.effort = effort

@@ -1,0 +1,45 @@
+Metadata-Version: 2.4
+Name: thinking-effort-tuner
+Version: 0.1.0
+Summary: A tool to tune the thinking effort in language models
+Author-email: AGI Architect <agi@example.com>
+License: MIT
+Project-URL: Homepage, https://github.com/example/thinking-effort-tuner
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Provides-Extra: test
+Requires-Dist: pytest>=6.0; extra == "test"
+
+# Thinking Effort Tuner
+
+A Python package to tune the thinking effort of language models by adjusting parameters like temperature, top_p, and max_tokens.
+
+## Installation
+
+```bash
+pip install thinking-effort-tuner
+```
+
+## Usage
+
+```python
+from thinking_effort_tuner import ThinkingEffortTuner
+
+tuner = ThinkingEffortTuner()
+params = tuner.get_parameters("high")
+print(params)  # {'temperature': 0.7, 'top_p': 0.98, 'max_tokens': 300}
+```
+
+## Configuration
+
+You can customize the effort map:
+
+```python
+tuner.set_effort_map({
+    "low": {"temperature": 0.2, "top_p": 0.8, "max_tokens": 50},
+    # ... 
+})
+```

@@ -1,0 +1,1 @@
+import pytest\nfrom thinking_effort_tuner.core import ThinkingEffortTuner\n\ndef test_tuner_valid_effort():\n    for effort in ThinkingEffortTuner.VALID_EFFORTS:\n        tuner = ThinkingEffortTuner(effort=effort)\n        assert tuner.effort == effort\n\ndef test_tuner_invalid_effort():\n    with pytest.raises(ValueError):\n        ThinkingEffortTuner(effort='invalid')
