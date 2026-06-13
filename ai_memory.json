@@ -1,5 +1,5 @@
 {
-    "score": 0,
+    "score": 1,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -76,6 +76,11 @@
             "date": "2026-06-13T12:00:57.067558",
             "project": "thinking-effort-tuner",
             "model": "nvidia/nemotron-3-super-120b-a12b:free"
+        },
+        {
+            "date": "2026-06-13T23:05:47.016484",
+            "project": "AI Adoption Governance Framework",
+            "model": "poolside/laguna-xs.2:free"
         }
     ]
 }
