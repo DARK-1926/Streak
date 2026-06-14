@@ -1,5 +1,5 @@
 {
-    "score": 3,
+    "score": 4,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -91,6 +91,11 @@
             "date": "2026-06-14T13:39:38.287760",
             "project": "prompt-leak-comment-analyzer",
             "model": "openai/gpt-oss-120b:free"
+        },
+        {
+            "date": "2026-06-14T17:54:40.560024",
+            "project": "ThinkingEffortDemo",
+            "model": "openai/gpt-oss-20b:free"
         }
     ]
 }
