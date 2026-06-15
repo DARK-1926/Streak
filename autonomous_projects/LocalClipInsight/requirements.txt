@@ -1,0 +1,7 @@
+torch
+torchvision
+clip-by-openai
+opencv-python
+faiss-cpu
+pytest
+numpy
