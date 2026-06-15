@@ -236,8 +236,9 @@ def run_beast_cycle():
                     subprocess.run(["git", "commit", "-m", data["commit_message"]], check=True)
                     subprocess.run(["git", "push", "origin", "main"], check=True)
                 else:
-                    log_event(f"FAILURE. Physicist rejected the code. Recycling error log...")
+                    log_event(f"FAILURE. Physicist rejected the code. Recycling error log and rotating model...")
                     error_log = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+                    grid.mark_unhealthy(model) # Instantly drop model and rotate to next best
                     time.sleep(2) # Brief cooldown
 
             except Exception as e:
