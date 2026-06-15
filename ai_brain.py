@@ -60,9 +60,12 @@ def fetch_live_free_models():
         return []
 
 class NeuralGrid:
-    def __init__(self):
+    def __init__(self, memory):
+        self.memory = memory
         self.models = fetch_live_free_models()
         self.unhealthy_models = set()
+        # Sort by persistent rating + random exploration bonus
+        self.models.sort(key=lambda m: self.memory.get("model_ratings", {}).get(m, 0) + random.uniform(0, 0.5), reverse=True)
 
     def get_next_architect(self):
         if not self.models:
@@ -76,6 +79,16 @@ class NeuralGrid:
     def mark_unhealthy(self, model):
         log_event(f"Marking {model} as UNHEALTHY. Rotating...")
         self.unhealthy_models.add(model)
+        
+        # Penalize in persistent memory
+        if "model_ratings" not in self.memory: self.memory["model_ratings"] = {}
+        self.memory["model_ratings"][model] = self.memory["model_ratings"].get(model, 0) - 1
+        save_memory(self.memory)
+
+    def mark_healthy(self, model):
+        if "model_ratings" not in self.memory: self.memory["model_ratings"] = {}
+        self.memory["model_ratings"][model] = self.memory["model_ratings"].get(model, 0) + 1
+        save_memory(self.memory)
 
     def is_depleted(self):
         return len(self.unhealthy_models) >= len(self.models)
@@ -87,9 +100,11 @@ def load_memory():
     if os.path.exists(MEMORY_FILE):
         try:
             with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if "model_ratings" not in data: data["model_ratings"] = {}
+                return data
         except: pass
-    return {"score": 0, "history": []}
+    return {"score": 0, "history": [], "model_ratings": {}}
 
 def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
@@ -121,6 +136,9 @@ Respond ONLY with raw JSON. Strive for perfection."""
 Trends:
 {trends}
 {retry_guidance}
+
+CRITICAL REQUIREMENT: You MUST include a `.gitignore` file in your files array. This .gitignore MUST ignore heavy directories like `.venv`, `node_modules`, `__pycache__`, etc., to keep the project size extremely small. Do NOT push heavy files.
+
 
 Respond ONLY with this JSON schema:
 {{
@@ -168,7 +186,7 @@ def run_beast_cycle():
     error_log = None
     
     while not success:
-        grid = NeuralGrid()
+        grid = NeuralGrid(memory)
         
         if not grid.models:
             log_event("Grid sync failed. Entering Meditation (Sleep 5m)...")
@@ -207,6 +225,7 @@ def run_beast_cycle():
                 
                 if result.returncode == 0:
                     success = True
+                    grid.mark_healthy(model)
                     log_event(f"VICTORY ACHIEVED! Code is working.")
                     memory["score"] += 1
                     memory["history"].append({"date": datetime.now().isoformat(), "project": project_name, "model": model})
