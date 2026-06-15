@@ -123,6 +123,21 @@ def fetch_trends():
         return "\n\n".join(context)
     except: return "Focus: AI-driven autonomous systems."
 
+def generate_mockup(project_name, vision, project_dir):
+    try:
+        log_event(f"Generating UI mockup/wireframe for {project_name}...")
+        os.makedirs(os.path.join(project_dir, "assets"), exist_ok=True)
+        import urllib.parse
+        safe_prompt = urllib.parse.quote(f"A high-quality, modern, sleek user interface screenshot or wireframe mockup for a software app named {project_name}. Description: {vision[:200]}. Dark mode, professional UI/UX design.")
+        url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width=1280&height=720&nologo=true"
+        res = requests.get(url, timeout=45)
+        if res.status_code == 200:
+            with open(os.path.join(project_dir, "assets", "preview.jpg"), "wb") as f:
+                f.write(res.content)
+            log_event("Mockup generated and saved to assets/preview.jpg")
+    except Exception as e:
+        log_event(f"Mockup generation error: {e}")
+
 def ask_grid(model, trends, memory, error_context=None):
     log_event(f"Consulting Architect: {model}...")
     
@@ -150,7 +165,10 @@ LESSONS LEARNED FROM PAST MISTAKES (AVOID THESE):
 {retry_guidance}
 
 CRITICAL REQUIREMENT: You MUST include a `.gitignore` file in your files array. This .gitignore MUST ignore heavy directories like `.venv`, `node_modules`, `__pycache__`, etc., to keep the project size extremely small. Do NOT push heavy files.
-CRITICAL REQUIREMENT: You MUST include a `README.md` file that comprehensively documents the project, including a 'How it Works' section and placeholder markdown images (e.g., `![Architecture Diagram](assets/arch.png)`).
+CRITICAL REQUIREMENT: You MUST include a `README.md` file that comprehensively documents the project. It MUST include:
+1. A 'How it Works' section.
+2. A Mermaid (````mermaid`) flowchart showing the entire user flow or system architecture.
+3. An image link exactly like this: `![App Preview](assets/preview.jpg)`. (The system will automatically generate a real UI mockup and place it there).
 
 Respond ONLY with this JSON schema:
 {{
@@ -227,6 +245,9 @@ def run_beast_cycle():
                     f_path = os.path.join(project_dir, f_info["filepath"])
                     os.makedirs(os.path.dirname(f_path), exist_ok=True)
                     with open(f_path, "w", encoding="utf-8") as f: f.write(f_info["content"])
+                
+                # Automatically generate UI Mockup / Wireframe
+                generate_mockup(project_name, data["vision"], project_dir)
                 
                 # Validation
                 script_path = os.path.join(project_dir, "setup_and_test.bat")
