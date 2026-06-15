@@ -1,5 +1,5 @@
 {
-    "score": 4,
+    "score": 5,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -96,6 +96,17 @@
             "date": "2026-06-14T17:54:40.560024",
             "project": "ThinkingEffortDemo",
             "model": "openai/gpt-oss-20b:free"
+        },
+        {
+            "date": "2026-06-15T11:37:49.522078",
+            "project": "MediaIndexer",
+            "model": "nvidia/nemotron-3-super-120b-a12b:free"
         }
-    ]
+    ],
+    "model_ratings": {
+        "qwen/qwen3-next-80b-a3b-instruct:free": -1,
+        "liquid/lfm-2.5-1.2b-instruct:free": -1,
+        "liquid/lfm-2.5-1.2b-thinking:free": -1,
+        "nvidia/nemotron-3-super-120b-a12b:free": 1
+    }
 }

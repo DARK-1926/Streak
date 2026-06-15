@@ -1,0 +1,1 @@
+Windows .bat script to setup venv and run tests. Exit 0 on success.
