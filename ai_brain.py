@@ -102,9 +102,11 @@ def load_memory():
             with open(MEMORY_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if "model_ratings" not in data: data["model_ratings"] = {}
+                if "past_projects" not in data: data["past_projects"] = []
+                if "lessons_learned" not in data: data["lessons_learned"] = []
                 return data
         except: pass
-    return {"score": 0, "history": [], "model_ratings": {}}
+    return {"score": 0, "history": [], "model_ratings": {}, "past_projects": [], "lessons_learned": []}
 
 def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
@@ -121,7 +123,7 @@ def fetch_trends():
         return "\n\n".join(context)
     except: return "Focus: AI-driven autonomous systems."
 
-def ask_grid(model, trends, error_context=None):
+def ask_grid(model, trends, memory, error_context=None):
     log_event(f"Consulting Architect: {model}...")
     
     sys_prompt = """You are the 'Council of AGI Architects'. You only output verified, working code.
@@ -132,18 +134,29 @@ Respond ONLY with raw JSON. Strive for perfection."""
     if error_context:
         retry_guidance = f"\n\nPREVIOUS ERROR LOG (FIX THIS):\n{error_context}"
 
+    past_projects_text = "\n".join(memory.get("past_projects", [])[-10:])
+    lessons_text = "\n".join(memory.get("lessons_learned", [])[-5:])
+
     user_prompt = f"""
 Trends:
 {trends}
+
+PAST PROJECTS COMPLETED (DO NOT REPEAT THESE):
+{past_projects_text}
+
+LESSONS LEARNED FROM PAST MISTAKES (AVOID THESE):
+{lessons_text}
+
 {retry_guidance}
 
 CRITICAL REQUIREMENT: You MUST include a `.gitignore` file in your files array. This .gitignore MUST ignore heavy directories like `.venv`, `node_modules`, `__pycache__`, etc., to keep the project size extremely small. Do NOT push heavy files.
-
+CRITICAL REQUIREMENT: You MUST include a `README.md` file that comprehensively documents the project, including a 'How it Works' section and placeholder markdown images (e.g., `![Architecture Diagram](assets/arch.png)`).
 
 Respond ONLY with this JSON schema:
 {{
     "project_name": "name",
     "vision": "Why this works",
+    "lessons_learned": "Note down what you learned from the past mistakes or what novel approach you are taking to avoid failing.",
     "files": [ {{"filepath": "...", "content": "..."}} ],
     "setup_and_test_script": "Windows .bat script to setup venv and run tests. Exit 0 on success.",
     "commit_message": "feat: enterprise-grade launch"
@@ -198,7 +211,7 @@ def run_beast_cycle():
             if not model: break
             
             trends = fetch_trends()
-            data = ask_grid(model, trends, error_context=error_log)
+            data = ask_grid(model, trends, memory, error_context=error_log)
             
             if not data:
                 grid.mark_unhealthy(model)
@@ -229,6 +242,13 @@ def run_beast_cycle():
                     log_event(f"VICTORY ACHIEVED! Code is working.")
                     memory["score"] += 1
                     memory["history"].append({"date": datetime.now().isoformat(), "project": project_name, "model": model})
+                    
+                    if "past_projects" not in memory: memory["past_projects"] = []
+                    memory["past_projects"].append(f"{project_name}: {data['vision']}")
+                    
+                    if "lessons_learned" not in memory: memory["lessons_learned"] = []
+                    if data.get("lessons_learned"): memory["lessons_learned"].append(data["lessons_learned"])
+                    
                     save_memory(memory)
                     
                     # Push ONLY successful code
