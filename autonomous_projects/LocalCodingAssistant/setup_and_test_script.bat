@@ -1,0 +1,1 @@
+@echo off\nrem Create virtual environment\npython -m venv .venv\ncall .venv\\Scripts\\activate.bat\nrem Upgrade pip\npython -m pip install --upgrade pip\nrem Install dependencies\npip install -r requirements.txt\nrem Run tests\npytest --quiet\nif %errorlevel% equ 0 (\n    echo \\nAll tests passed.\\n)\n    exit /b 0\n) else (\n    echo \\nTests failed.\\n)\n    exit /b 1\n
