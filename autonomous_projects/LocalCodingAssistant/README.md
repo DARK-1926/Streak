@@ -1,52 +1,82 @@
-# LocalCodingAssistant (LCA)
+# LocalCodingAssistant
+A minimal, privacy‑first coding assistant that runs a quantized LLM locally and exposes autocomplete, documentation lookup, and refactor suggestions through a tiny HTTP API.
 
-## Project description and motivation
-LocalCodingAssistant is a tiny, modular Python CLI that runs a **local** LLM (e.g., llama.cpp) to give instant code completions and explanations.  
-It keeps your code private, works offline, and fits on consumer hardware without any cloud dependencies.
+## Quick Start
 
-## Quick start
 ```bash
-# 1. Install Python 3.10+
-# 2. Create a virtual environment
-python -m venv .venv
-source .venv/bin/activate   # on Windows: .venv\Scripts\activate
+# 1. Install Python (>=3.9) and git
+sudo apt-get update && sudo apt-get install -y python3 python3-venv python3-pip git   # Debian/Ubuntu
+# or use your OS package manager / pyenv
 
-# 3. Install the tiny wrapper (only stdlib is required)
-pip install -e .
+# 2. Clone the repository
+git clone https://github.com/yourname/LocalCodingAssistant.git
+cd LocalCodingAssistant
 
-# 4. Download a small GGML model (e.g., llama-7B-q4_0.ggml)
-wget https://huggingface.co/ggml-org/llama-7b/resolve/main/ggml-model-q4_0.bin -O models/llama.ggml
+# 3. Create and activate a virtual environment
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-# 5. Run the CLI
-lca explain "def foo(): pass"
+# 4. Install dependencies
+pip install -r requirements.txt
+
+# 5. Download a quantized model (example using GGUF format)
+#    Adjust the URL to the model you prefer.
+mkdir -p models
+curl -L -o models/phi-2-q4.gguf https://huggingface.co/quantized/phi-2/resolve/main/phi-2-q4.gguf
+
+# 6. Run the server
+python -m api
+
+# 7. Test with curl
+curl -X POST http://127.0.0.1:8000/v1/completions \
+     -H "Content-Type: application/json" \
+     -d '{"prompt":"def hello_world():", "max_tokens": 64}'
 ```
 
-## Usage examples
-```bash
-# Explain a snippet
-lca explain "def foo(): pass"
-
-# Get a completion
-lca complete "for i in range(10):"
-```
+You should receive a JSON response with the generated completion.
 
 ## How it Works
-The CLI parses user commands and forwards the request to **LLMWrapper**, which builds a prompt and invokes the **llama.cpp** binary via `subprocess`. The binary streams the model’s output back to the wrapper, which prints it to the console.
+The assistant loads a **quantized GGUF** model into memory using `model_loader.py`. The model is wrapped in a lightweight inference class that exposes a `generate` method. `api.py` creates a FastAPI server with three endpoints:
 
-## Architecture overview
-```
-CLI (lca) ──► LLMWrapper (Python) ──► llama.cpp binary
-```
-* **CLI** – `argparse` based entry point (`lca` command).  
-* **LLMWrapper** – thin Python class handling prompt creation, model path configuration, and subprocess I/O.  
-* **llama.cpp** – compiled C++ inference engine that runs the GGML model locally.
+| Endpoint | Purpose |
+|----------|---------|
+| `/v1/completions` | Autocomplete / code generation |
+| `/v1/doclookup`   | Retrieve doc‑strings for a given symbol |
+| `/v1/refactor`    | Simple refactor suggestions (e.g., rename, extract method) |
 
-## Extending the tool
-* **New commands** – add a function in `lca/commands.py` and register it in `lca/__main__.py`.  
-* **Swap model** – place a different GGML file in `models/` and update `LLMWrapper.model_path` via the `--model` flag.
+Requests are forwarded to the model instance, and the results are returned as JSON. The server runs on CPU by default; if a compatible GPU is detected, the underlying `torch` backend will automatically use it.
+
+## Architecture Overview
+
+```
+LocalCodingAssistant/
+│
+├─ model_loader.py   # Loads the quantized model, provides a singleton Model class
+├─ api.py            # FastAPI app, defines HTTP endpoints
+├─ cli.py            # Optional command‑line interface for quick testing
+├─ requirements.txt  # Python dependencies
+└─ README.md
+```
+
+* **model_loader.py** – Handles lazy loading, device selection, and tokenization. Exposes `Model.get_instance()` to retrieve the shared model object.
+* **api.py** – Starts the FastAPI server (`uvicorn api:app`). Each endpoint validates input with Pydantic models and calls `Model.generate`.
+* **cli.py** – Simple REPL for local experimentation without HTTP overhead.
+
+## Extending the Assistant
+
+### Adding New Endpoints
+1. Open `api.py`.
+2. Define a new Pydantic request/response model.
+3. Add a FastAPI route decorator (`@app.post("/v1/your_endpoint")`).
+4. Call the appropriate method on `Model.get_instance()` or implement custom logic.
+5. Update `cli.py` if you want a command‑line shortcut.
+
+### Swapping the Model
+1. Replace the file in `models/` with another quantized GGUF (or any format supported by `torch`/`transformers`).
+2. Edit `model_loader.py`:
+   * Change `MODEL_PATH` constant.
+   * Adjust `torch_dtype` or `device_map` if needed.
+3. Restart the server – the new model will be loaded automatically.
 
 ## License
-MIT © 2024 LocalCodingAssistant contributors.
-
-## Contributing
-Feel free to open issues or submit pull requests. Keep the codebase under eight files and avoid external dependencies.
+MIT License – see the `LICENSE` file for details.

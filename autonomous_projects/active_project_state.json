@@ -1,41 +1,41 @@
 {
     "plan": {
         "project_name": "LocalCodingAssistant",
-        "vision": "A minimal, modular Python CLI tool that runs a local LLM (e.g., llama.cpp) to provide instant code completions and explanations. By keeping the codebase under eight files and using only standard libraries plus a tiny wrapper around the LLM binary, developers can run a privacy\u2011preserving coding assistant on consumer hardware without any cloud calls.",
-        "lessons_learned": "Previous attempts bundled heavy web servers, UI frameworks, and duplicated LLM loading logic, causing high memory usage and slow startup. This design isolates the LLM invocation in a single subprocess wrapper, lazily loads the model only when needed, and uses a tiny config file to avoid hard\u2011coding paths. The CLI is pure Python, making it easy to test and extend while staying within free\u2011tier token limits.",
+        "vision": "A minimal, privacy\u2011first coding assistant that runs a quantized LLM locally on consumer hardware (CPU/GPU). It provides autocomplete, doc\u2011lookup and quick refactor suggestions via a tiny HTTP API, letting developers integrate it into any editor without leaving their machine. By keeping the stack under eight files we stay within free\u2011tier token limits while still delivering a usable, extensible tool.",
+        "lessons_learned": "Previous monolithic attempts bundled model loading, web UI, and data pipelines together, causing slow start\u2011up and tangled dependencies. This project isolates concerns: a dedicated model loader, a thin Flask API, and a simple CLI client. Quantization and lazy loading avoid OOM errors on modest laptops, and the use of environment\u2011based configuration removes hard\u2011coded paths that broke on different OSes. The README and .gitignore are generated automatically to enforce reproducibility and clean repos.",
         "commit_message": "feat: enterprise\u2011grade launch",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Create a .gitignore that excludes virtual environments, node_modules, and Python cache directories. Include the following patterns:\n```\n# Python\n__pycache__/\n*.py[cod]\n*.pyo\n*.pyd\n*.egg-info/\n\n# Virtual environments\nvenv/\n.env/\n\n# Node (in case of future extensions)\nnode_modules/\n\n# OS files\n.DS_Store\nThumbs.db\n```\nMake sure the file ends with a newline."
+                "instructions": "Create a .gitignore that excludes typical Python and Node artifacts: \n```\n# Python\n__pycache__/\n*.py[cod]\n*.pyo\n*.pyd\n*.egg-info/\n*.egg\nvenv/\n.env\n\n# Virtual environments\n.env/\n\n# Node\nnode_modules/\n\n# OS files\n.DS_Store\nThumbs.db\n```\nThe file must be plain text with no surrounding markdown fences."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a concise README that covers:\n1. Project description and motivation.\n2. Quick start guide (install Python, create venv, install requirements, download a small GGML model, run the CLI).\n3. Usage examples (`lca explain \"def foo(): pass\"`, `lca complete \"for i in range(10):\"`).\n4. Architecture overview (CLI -> LLMWrapper -> llama.cpp binary).\n5. Extending the tool (adding new commands, swapping model).\n6. License (MIT) and contribution note.\nUse markdown headings and code fences for commands. Keep the file under 300 words."
+                "instructions": "Write a concise README covering:\n1. Project title and one\u2011sentence description.\n2. Quick start guide (install Python, create venv, pip install -r requirements.txt, download quantized model, run server, test with curl).\n3. Architecture overview (model_loader.py, api.py, cli.py).\n4. How to extend (add new endpoints, swap model).\n5. License (MIT).\nMake sure headings use `#` syntax and code blocks are fenced with triple backticks."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "List only the necessary third\u2011party packages. Use:\n```\nclick>=8.0\npyyaml>=6.0\n```\nNo other dependencies are required."
+                "instructions": "List minimal dependencies:\n```\nflask>=2.0\ntorch>=2.0\ntransformers>=4.40\nsentencepiece\nnumpy\n```\nNo version pinning beyond major versions to keep the file short."
             },
             {
-                "filepath": "config.yaml",
-                "instructions": "Provide a YAML configuration file with default settings:\n```yaml\nmodel_path: \"models/ggml-model-q4_0.bin\"\nmax_tokens: 512\ntemperature: 0.7\nbinary_path: \"./llama.cpp/main\"\n```\nAdd a comment explaining each field. Ensure the file is valid YAML."
+                "filepath": "model_loader.py",
+                "instructions": "Implement a singleton class `ModelLoader` that lazily loads a quantized LLM using `transformers.AutoModelForCausalLM` and `AutoTokenizer`. \n- Accept a `model_name` argument (default to `mistralai/Mistral-7B-Instruct-v0.2-GPTQ`).\n- Use `torch_dtype=torch.float16` and `device_map='auto'` for GPU fallback.\n- Provide a method `generate(prompt: str, max_new_tokens: int = 128) -> str` that returns the model's text output, stripping the prompt.\n- Cache the loaded model/tokenizer as module\u2011level globals to avoid re\u2011loading across requests.\n- Include error handling for missing model files (raise informative `RuntimeError`).\n- Add a `__all__ = [\"ModelLoader\"]` at the end."
             },
             {
-                "filepath": "lca/__init__.py",
-                "instructions": "Make this file empty but include a module docstring: \"Local Coding Assistant package initialization.\""
+                "filepath": "api.py",
+                "instructions": "Create a Flask app exposing two endpoints:\n- `POST /complete` expects JSON `{ \"prompt\": \"...\", \"max_tokens\": 128 }` and returns `{ \"completion\": \"...\" }`.\n- `GET /health` returns `{ \"status\": \"ok\" }`.\nThe route handler should obtain the singleton `ModelLoader` instance, call `generate`, and handle exceptions returning HTTP 500 with a JSON error message.\nAdd `if __name__ == \"__main__\":` block to run the app on host `0.0.0.0` port `5000` with `debug=False`.\nExport the Flask `app` object for external import."
             },
             {
-                "filepath": "lca/cli.py",
-                "instructions": "Implement the command\u2011line interface using click.\n- Define a click group `lca`.\n- Add two commands: `explain` and `complete`.\n- Both commands accept a required `code` argument (string) and optional `--model`, `--max-tokens`, `--temp` overrides.\n- Load configuration from `config.yaml` using yaml.safe_load.\n- Instantiate `LLMWrapper` (from lca/llm.py) with the resolved settings.\n- For `explain`, send a prompt: \"Explain the following code in plain English:\\n\\n{code}\\n\\nExplanation:\".\n- For `complete`, send a prompt: \"Complete the following Python code:\\n\\n{code}\\n\\nCompletion:\".\n- Print the LLM response to stdout.\n- Include proper error handling for missing model files.\n- Add `if __name__ == '__main__':` block calling `lca()`."
+                "filepath": "cli.py",
+                "instructions": "Implement a tiny command\u2011line client using `argparse`:\n- Positional argument `prompt` (the code/question).\n- Optional `--max-tokens` (default 128).\n- Optional `--host` (default http://127.0.0.1:5000).\nThe script sends a POST request to `/complete` using `requests` and prints the returned completion.\nInclude a helpful `--help` description and graceful handling of connection errors (print to stderr and exit with code 1)."
             },
             {
-                "filepath": "lca/llm.py",
-                "instructions": "Create a lightweight wrapper around the llama.cpp binary.\n- Class `LLMWrapper` takes `model_path`, `binary_path`, `max_tokens`, `temperature`.\n- Method `_run` builds a command list:\n  `[binary_path, '-m', model_path, '--prompt', prompt, '--temp', str(temperature), '--n_predict', str(max_tokens)]`.\n- Use `subprocess.run` with `capture_output=True`, `text=True`, and a timeout of 30 seconds.\n- Return `stdout.strip()`.\n- Public method `query(prompt: str) -> str` calls `_run` and returns the result.\n- Raise a custom `LLMError` if the binary exits non\u2011zero or times out.\n- Include a small docstring explaining usage.\n- Ensure the file imports only `subprocess`, `shlex`, and `typing`."
+                "filepath": "run_server.sh",
+                "instructions": "Shell script that sets up a virtual environment and launches the Flask server:\n```bash\n#!/usr/bin/env bash\nset -e\npython3 -m venv venv\nsource venv/bin/activate\npip install -r requirements.txt\n# Ensure the quantized model is cached; user can run `python -c \"from model_loader import ModelLoader\"` to download.\npython -m api\n```\nMake the script executable (`chmod +x`). Include a brief comment header."
             },
             {
-                "filepath": "setup.py",
-                "instructions": "Provide a minimal setuptools script so the package can be installed in editable mode.\n- Use `setuptools.setup` with `name='localcodingassistant'`, `version='0.1.0'`, `packages=['lca']`, `install_requires` reading from `requirements.txt`.\n- Include entry point `console_scripts` mapping `lca=lca.cli:lca`.\n- Add a short description and author placeholder.\n- Keep the script short and PEP\u2011517 compatible."
+                "filepath": "test_api.py",
+                "instructions": "Write a minimal pytest file that:\n- Starts the Flask app in a separate thread using `app.test_client()`.\n- Sends a sample `/complete` request with a short prompt like \"def hello():\".\n- Asserts the response status code is 200 and that the returned JSON contains a non\u2011empty `completion` string.\n- Includes a fixture to teardown the thread after the test.\nOnly import `api.app` and `json`.\nAdd `if __name__ == \"__main__\":` block to allow running the test directly via `python test_api.py`."
             }
         ]
     },
@@ -43,10 +43,10 @@
         ".gitignore",
         "README.md",
         "requirements.txt",
-        "config.yaml",
-        "lca/__init__.py",
-        "lca/cli.py",
-        "lca/llm.py",
-        "setup.py"
+        "model_loader.py",
+        "api.py",
+        "cli.py",
+        "run_server.sh",
+        "test_api.py"
     ]
 }
