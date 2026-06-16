@@ -1,0 +1,11 @@
+# Path to the quantized GGML model file used by llama.cpp
+model_path: "models/ggml-model-q4_0.bin"
+
+# Maximum number of tokens the model may generate for a single request
+max_tokens: 512
+
+# Sampling temperature; higher values increase randomness, lower values make output more deterministic
+temperature: 0.7
+
+# Filesystem path to the compiled llama.cpp binary that will be invoked
+binary_path: "./llama.cpp/main"

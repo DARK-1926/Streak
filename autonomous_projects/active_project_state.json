@@ -1,0 +1,52 @@
+{
+    "plan": {
+        "project_name": "LocalCodingAssistant",
+        "vision": "A minimal, modular Python CLI tool that runs a local LLM (e.g., llama.cpp) to provide instant code completions and explanations. By keeping the codebase under eight files and using only standard libraries plus a tiny wrapper around the LLM binary, developers can run a privacy\u2011preserving coding assistant on consumer hardware without any cloud calls.",
+        "lessons_learned": "Previous attempts bundled heavy web servers, UI frameworks, and duplicated LLM loading logic, causing high memory usage and slow startup. This design isolates the LLM invocation in a single subprocess wrapper, lazily loads the model only when needed, and uses a tiny config file to avoid hard\u2011coding paths. The CLI is pure Python, making it easy to test and extend while staying within free\u2011tier token limits.",
+        "commit_message": "feat: enterprise\u2011grade launch",
+        "files_to_generate": [
+            {
+                "filepath": ".gitignore",
+                "instructions": "Create a .gitignore that excludes virtual environments, node_modules, and Python cache directories. Include the following patterns:\n```\n# Python\n__pycache__/\n*.py[cod]\n*.pyo\n*.pyd\n*.egg-info/\n\n# Virtual environments\nvenv/\n.env/\n\n# Node (in case of future extensions)\nnode_modules/\n\n# OS files\n.DS_Store\nThumbs.db\n```\nMake sure the file ends with a newline."
+            },
+            {
+                "filepath": "README.md",
+                "instructions": "Write a concise README that covers:\n1. Project description and motivation.\n2. Quick start guide (install Python, create venv, install requirements, download a small GGML model, run the CLI).\n3. Usage examples (`lca explain \"def foo(): pass\"`, `lca complete \"for i in range(10):\"`).\n4. Architecture overview (CLI -> LLMWrapper -> llama.cpp binary).\n5. Extending the tool (adding new commands, swapping model).\n6. License (MIT) and contribution note.\nUse markdown headings and code fences for commands. Keep the file under 300 words."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "List only the necessary third\u2011party packages. Use:\n```\nclick>=8.0\npyyaml>=6.0\n```\nNo other dependencies are required."
+            },
+            {
+                "filepath": "config.yaml",
+                "instructions": "Provide a YAML configuration file with default settings:\n```yaml\nmodel_path: \"models/ggml-model-q4_0.bin\"\nmax_tokens: 512\ntemperature: 0.7\nbinary_path: \"./llama.cpp/main\"\n```\nAdd a comment explaining each field. Ensure the file is valid YAML."
+            },
+            {
+                "filepath": "lca/__init__.py",
+                "instructions": "Make this file empty but include a module docstring: \"Local Coding Assistant package initialization.\""
+            },
+            {
+                "filepath": "lca/cli.py",
+                "instructions": "Implement the command\u2011line interface using click.\n- Define a click group `lca`.\n- Add two commands: `explain` and `complete`.\n- Both commands accept a required `code` argument (string) and optional `--model`, `--max-tokens`, `--temp` overrides.\n- Load configuration from `config.yaml` using yaml.safe_load.\n- Instantiate `LLMWrapper` (from lca/llm.py) with the resolved settings.\n- For `explain`, send a prompt: \"Explain the following code in plain English:\\n\\n{code}\\n\\nExplanation:\".\n- For `complete`, send a prompt: \"Complete the following Python code:\\n\\n{code}\\n\\nCompletion:\".\n- Print the LLM response to stdout.\n- Include proper error handling for missing model files.\n- Add `if __name__ == '__main__':` block calling `lca()`."
+            },
+            {
+                "filepath": "lca/llm.py",
+                "instructions": "Create a lightweight wrapper around the llama.cpp binary.\n- Class `LLMWrapper` takes `model_path`, `binary_path`, `max_tokens`, `temperature`.\n- Method `_run` builds a command list:\n  `[binary_path, '-m', model_path, '--prompt', prompt, '--temp', str(temperature), '--n_predict', str(max_tokens)]`.\n- Use `subprocess.run` with `capture_output=True`, `text=True`, and a timeout of 30 seconds.\n- Return `stdout.strip()`.\n- Public method `query(prompt: str) -> str` calls `_run` and returns the result.\n- Raise a custom `LLMError` if the binary exits non\u2011zero or times out.\n- Include a small docstring explaining usage.\n- Ensure the file imports only `subprocess`, `shlex`, and `typing`."
+            },
+            {
+                "filepath": "setup.py",
+                "instructions": "Provide a minimal setuptools script so the package can be installed in editable mode.\n- Use `setuptools.setup` with `name='localcodingassistant'`, `version='0.1.0'`, `packages=['lca']`, `install_requires` reading from `requirements.txt`.\n- Include entry point `console_scripts` mapping `lca=lca.cli:lca`.\n- Add a short description and author placeholder.\n- Keep the script short and PEP\u2011517 compatible."
+            }
+        ]
+    },
+    "files_created": [
+        ".gitignore",
+        "README.md",
+        "requirements.txt",
+        "config.yaml",
+        "lca/__init__.py",
+        "lca/cli.py",
+        "lca/llm.py",
+        "setup.py"
+    ]
+}

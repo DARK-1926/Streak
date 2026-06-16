@@ -1,5 +1,5 @@
 {
-    "score": 8,
+    "score": 9,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -116,6 +116,11 @@
             "date": "2026-06-16T16:39:45.570404",
             "project": "LocalLLM Optimizer",
             "model": "openai/gpt-oss-20b:free"
+        },
+        {
+            "date": "2026-06-16T21:57:39.072388",
+            "project": "LocalCodingAssistant",
+            "model": "openai/gpt-oss-120b:free"
         }
     ],
     "model_ratings": {
@@ -129,8 +134,8 @@
         "cognitivecomputations/dolphin-mistral-24b-venice-edition:free": -2,
         "google/gemma-4-31b-it:free": -2,
         "nousresearch/hermes-3-llama-3.1-405b:free": -2,
-        "nvidia/nemotron-3-nano-30b-a3b:free": 0,
-        "openai/gpt-oss-20b:free": 0,
+        "nvidia/nemotron-3-nano-30b-a3b:free": -1,
+        "openai/gpt-oss-20b:free": -1,
         "poolside/laguna-xs.2:free": -1,
         "nvidia/nemotron-3.5-content-safety:free": -1,
         "nvidia/nemotron-nano-9b-v2:free": -1,
@@ -138,8 +143,8 @@
         "poolside/laguna-m.1:free": -2,
         "meta-llama/llama-3.3-70b-instruct:free": -2,
         "nex-agi/nex-n2-pro:free": -1,
-        "meta-llama/llama-3.2-3b-instruct:free": -1,
-        "openai/gpt-oss-120b:free": -1,
+        "meta-llama/llama-3.2-3b-instruct:free": -2,
+        "openai/gpt-oss-120b:free": 0,
         "nvidia/nemotron-nano-12b-v2-vl:free": -1
     },
     "past_projects": [

@@ -1,16 +1,17 @@
-venv
-node_modules
-__pycache__
-*.pyc
-.env
-__pycache__/**
+# Python
+__pycache__/
+*.py[cod]
 *.pyo
 *.pyd
-build
-dist
-*.log
-*.sqlite3
-*.db
-*.bak
-*.tmp
+*.egg-info/
+
+# Virtual environments
+venv/
+.env/
+
+# Node (in case of future extensions)
+node_modules/
+
+# OS files
 .DS_Store
+Thumbs.db

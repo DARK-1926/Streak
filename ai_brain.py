@@ -34,26 +34,21 @@ def log_event(msg):
         f.write(formatted + "\n")
 
 # ==========================================
-# DYNAMIC NEURAL GRID (REAL-TIME MODELS)
+# DYNAMIC NEURAL GRID
 # ==========================================
 def fetch_live_free_models():
-    """Queries OpenRouter in real-time to find every available free model."""
     log_event("Syncing with OpenRouter Neural Grid...")
     try:
         url = "https://openrouter.ai/api/v1/models"
         response = requests.get(url, timeout=30)
         response.raise_for_status()
         data = response.json()
-        
-        # Filter all models that have ":free" in their ID
         free_models = [m["id"] for m in data.get("data", []) if ":free" in m["id"]]
-        
         if not free_models:
             log_event("WARNING: No free models found in the grid response.")
             return []
-            
         log_event(f"Discovery complete. Found {len(free_models)} free architects online.")
-        random.shuffle(free_models) # Randomize to avoid hitting the same one first every time
+        random.shuffle(free_models)
         return free_models
     except Exception as e:
         log_event(f"Failed to sync with grid: {e}")
@@ -64,23 +59,17 @@ class NeuralGrid:
         self.memory = memory
         self.models = fetch_live_free_models()
         self.unhealthy_models = set()
-        # Sort by persistent rating + random exploration bonus
         self.models.sort(key=lambda m: self.memory.get("model_ratings", {}).get(m, 0) + random.uniform(0, 0.5), reverse=True)
 
     def get_next_architect(self):
-        if not self.models:
-            return None
-            
+        if not self.models: return None
         for model in self.models:
-            if model not in self.unhealthy_models:
-                return model
+            if model not in self.unhealthy_models: return model
         return None
 
     def mark_unhealthy(self, model):
-        log_event(f"Marking {model} as UNHEALTHY. Rotating...")
+        log_event(f"Marking {model} as UNHEALTHY. Rotating to next model...")
         self.unhealthy_models.add(model)
-        
-        # Penalize in persistent memory
         if "model_ratings" not in self.memory: self.memory["model_ratings"] = {}
         self.memory["model_ratings"][model] = self.memory["model_ratings"].get(model, 0) - 1
         save_memory(self.memory)
@@ -123,170 +112,345 @@ def fetch_trends():
         return "\n\n".join(context)
     except: return "Focus: AI-driven autonomous systems."
 
-def generate_mockup(project_name, vision, project_dir):
-    try:
-        log_event(f"Generating UI mockup/wireframe for {project_name}...")
-        os.makedirs(os.path.join(project_dir, "assets"), exist_ok=True)
-        import urllib.parse
-        safe_prompt = urllib.parse.quote(f"A high-quality, modern, sleek user interface screenshot or wireframe mockup for a software app named {project_name}. Description: {vision[:200]}. Dark mode, professional UI/UX design.")
-        url = f"https://image.pollinations.ai/prompt/{safe_prompt}?width=1280&height=720&nologo=true"
-        res = requests.get(url, timeout=45)
-        if res.status_code == 200:
-            with open(os.path.join(project_dir, "assets", "preview.jpg"), "wb") as f:
-                f.write(res.content)
-            log_event("Mockup generated and saved to assets/preview.jpg")
-    except Exception as e:
-        log_event(f"Mockup generation error: {e}")
-
-def ask_grid(model, trends, memory, error_context=None):
-    log_event(f"Consulting Architect: {model}...")
-    
-    sys_prompt = """You are the 'Council of AGI Architects'. You only output verified, working code.
-Simulate a debate between Visionary, Security, and Engineering leads.
-Respond ONLY with raw JSON. Strive for perfection."""
-    
-    retry_guidance = ""
-    if error_context:
-        retry_guidance = f"\n\nPREVIOUS ERROR LOG (FIX THIS):\n{error_context}"
-
-    past_projects_text = "\n".join(memory.get("past_projects", [])[-10:])
-    lessons_text = "\n".join(memory.get("lessons_learned", [])[-5:])
-
-    user_prompt = f"""
-Trends:
-{trends}
-
-PAST PROJECTS COMPLETED (DO NOT REPEAT THESE):
-{past_projects_text}
-
-LESSONS LEARNED FROM PAST MISTAKES (AVOID THESE):
-{lessons_text}
-
-{retry_guidance}
-
-CRITICAL REQUIREMENT: You MUST include a `.gitignore` file in your files array. This .gitignore MUST ignore heavy directories like `.venv`, `node_modules`, `__pycache__`, etc., to keep the project size extremely small. Do NOT push heavy files.
-CRITICAL REQUIREMENT: You MUST include a `README.md` file that comprehensively documents the project. It MUST include:
-1. A 'How it Works' section.
-2. A Mermaid (````mermaid`) flowchart showing the entire user flow or system architecture.
-3. An image link exactly like this: `![App Preview](assets/preview.jpg)`. (The system will automatically generate a real UI mockup and place it there).
-
-Respond ONLY with this JSON schema:
-{{
-    "project_name": "name",
-    "vision": "Why this works",
-    "lessons_learned": "Note down what you learned from the past mistakes or what novel approach you are taking to avoid failing.",
-    "files": [ {{"filepath": "...", "content": "..."}} ],
-    "setup_and_test_script": "Windows .bat script to setup venv and run tests. Exit 0 on success.",
-    "commit_message": "feat: enterprise-grade launch"
-}}
-"""
+# ==========================================
+# MULTI-STAGE API CALLS
+# ==========================================
+def call_openrouter(model, sys_prompt, user_prompt):
+    time.sleep(3.5) # Respect 20 RPM limit
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
-    
     try:
         response = requests.post(url, headers=headers, json={
-            "model": model, "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+            "model": model,
+            "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
             "temperature": 0.4
         }, timeout=180)
-        
         res_data = response.json()
-        
-        # Check for OpenRouter-level error messages hidden in JSON
         if "error" in res_data:
-            log_event(f"Grid Error from {model}: {res_data['error'].get('message', 'Unknown')}")
+            err_msg = res_data['error'].get('message', 'Unknown')
+            log_event(f"OpenRouter Error ({model}): {err_msg}")
+            if "rate limit" in err_msg.lower() or "timeout" in err_msg.lower() or "502" in err_msg:
+                return "RATE_LIMIT_OR_SERVER_ERROR"
             return None
-            
-        content = res_data["choices"][0]["message"]["content"]
-        match = re.search(r'\{.*\}', content, re.DOTALL)
-        if match: return json.loads(match.group(0))
+        return res_data["choices"][0]["message"]["content"]
     except Exception as e:
-        log_event(f"Architect {model} connectivity error: {e}")
-        
+        log_event(f"API Request Failed ({model}): {e}")
+        return "RATE_LIMIT_OR_SERVER_ERROR"
+
+def extract_json(content):
+    match = re.search(r'\{.*\}', content, re.DOTALL)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except: pass
     return None
+
+def strip_markdown(content):
+    if content.startswith("```"):
+        lines = content.splitlines()
+        if len(lines) >= 2 and lines[-1].strip() == "```":
+            return "\n".join(lines[1:-1])
+    return content
+
+def plan_project(model, trends, memory, error_context=None):
+    log_event(f"Stage 1: Planning Project with Architect {model}...")
+    sys_prompt = "You are the Lead AGI Architect. Respond ONLY with valid JSON."
+    retry_guidance = f"\nPREVIOUS RUN FAILED. FIX ERRORS:\n{error_context}" if error_context else ""
+    past_projects = "\n".join(memory.get("past_projects", [])[-10:])
+    user_prompt = f"""
+    Design a new, small, fully functional software application. It MUST be modular and minimal (max 8 files) to respect free-tier LLM token limits.
+    Trends: {trends}
+    Past Projects: {past_projects}
+    {retry_guidance}
+    
+    CRITICAL: 
+    1. Include a .gitignore to ignore venv, node_modules, __pycache__.
+    2. Include a README.md.
+    
+    Respond ONLY with this JSON schema:
+    {{
+        "project_name": "name",
+        "vision": "Why this works and what it does",
+        "lessons_learned": "What novel approach avoids past mistakes",
+        "commit_message": "feat: enterprise-grade launch",
+        "files_to_generate": [
+            {{
+                "filepath": "path/to/file.ext",
+                "instructions": "Extremely detailed prompt on exactly what logic this file must contain."
+            }}
+        ]
+    }}
+    """
+    content = call_openrouter(model, sys_prompt, user_prompt)
+    if content == "RATE_LIMIT_OR_SERVER_ERROR": return "ERROR"
+    if not content: return None
+    return extract_json(content)
+
+def generate_file_chunked(model, project_name, vision, filepath, instructions):
+    log_event(f"Stage 2: Generating File -> {filepath} (Chunked)...")
+    sys_prompt = "You are an Expert Software Engineer. You write clean, robust code."
+    if "gitignore" in filepath.lower():
+        sys_prompt += "\nYou are writing a .gitignore file. Never include venv, node_modules, or cache."
+        instructions += "\nCRITICAL: Ignore .venv, node_modules, __pycache__."
+    elif "readme" in filepath.lower():
+        instructions += "\nCRITICAL: Include a 'How it Works' section."
+        
+    base_prompt = f"""
+    Project: {project_name}
+    Vision: {vision}
+    Task: Write ONLY the exact contents for the file: `{filepath}`.
+    Instructions: {instructions}
+    
+    RULES:
+    1. Write proper, lengthy production code.
+    2. Return ONLY raw file contents. No explanations.
+    3. CRITICAL: When you are COMPLETELY FINISHED writing the entire file, append the exact token `[EOF]` at the very end. Do NOT use `[EOF]` until the entire file is complete.
+    """
+    
+    full_content = ""
+    chunks_completed = 0
+    max_chunks = 8
+    
+    while chunks_completed < max_chunks:
+        if chunks_completed == 0:
+            user_prompt = base_prompt
+        else:
+            last_lines = full_content[-300:]
+            user_prompt = f"""
+            You hit the output limit while generating `{filepath}`.
+            CONTINUE EXACTLY from where you left off. Do NOT repeat code you already wrote. Do NOT apologize.
+            The last part you generated was:
+            ```
+            {last_lines}
+            ```
+            Start typing the exact next characters seamlessly. Remember to output `[EOF]` when fully done.
+            """
+            log_event(f"Requesting Continuation Chunk {chunks_completed+1} for {filepath}...")
+            
+        content = call_openrouter(model, sys_prompt, user_prompt)
+        if content == "RATE_LIMIT_OR_SERVER_ERROR":
+            return "ERROR"
+        if not content:
+            break
+            
+        content = strip_markdown(content)
+        
+        if "[EOF]" in content:
+            full_content += content.replace("[EOF]", "")
+            break
+        else:
+            full_content += content
+            chunks_completed += 1
+            
+    return full_content
+
+def generate_tests(model, project_name, file_list):
+    log_event(f"Stage 3: Generating Integration Script for {project_name}...")
+    sys_prompt = "You are a QA Lead. Respond ONLY with the raw script contents."
+    user_prompt = f"""
+    Project: {project_name}
+    Files created: {', '.join(file_list)}
+    
+    Write a Windows .bat script named 'setup_and_test.bat'.
+    1. Setup venv (Python) or npm install (Node).
+    2. Install dependencies.
+    3. Run tests. If no tests exist, run the main file to see if it parses/starts properly for 5 seconds.
+    4. MUST Exit with code 0 if success, 1 if fail.
+    Output ONLY raw script. No explanations.
+    """
+    content = call_openrouter(model, sys_prompt, user_prompt)
+    if content == "RATE_LIMIT_OR_SERVER_ERROR": return "ERROR"
+    if not content: return None
+    return strip_markdown(content)
+
+def fix_error(model, project_dir, files_created, error_log):
+    log_event(f"Stage 4: Identifying Fixes...")
+    sys_prompt = "You are a Debugger. You fix code and respond ONLY with valid JSON."
+    user_prompt = f"""
+    The test script failed.
+    Files in project: {', '.join(files_created)}
+    Error Log:
+    {error_log}
+    
+    Identify which files need fixing to resolve this syntax/runtime error.
+    Respond ONLY with this JSON schema:
+    {{
+        "files_to_update": [
+            {{
+                "filepath": "path/to/file.ext",
+                "instructions": "Detailed instructions on what lines to change to fix the error."
+            }}
+        ]
+    }}
+    """
+    content = call_openrouter(model, sys_prompt, user_prompt)
+    if content == "RATE_LIMIT_OR_SERVER_ERROR": return "ERROR"
+    if not content: return None
+    return extract_json(content)
 
 # ==========================================
 # THE RELENTLESS EXECUTION LOOP
 # ==========================================
 def run_beast_cycle():
     log_event("========================================")
-    log_event(" AGENT BEAST V4.0: DYNAMIC NEURAL GRID")
+    log_event(" AGENT BEAST V6.0: RESILIENT ARCHITECT")
     log_event("========================================")
     
     memory = load_memory()
-    success = False
-    error_log = None
     
-    while not success:
+    while True: # Outer infinite loop for continuous operation
         grid = NeuralGrid(memory)
-        
         if not grid.models:
-            log_event("Grid sync failed. Entering Meditation (Sleep 5m)...")
+            log_event("Grid sync failed. Sleep 5m...")
             time.sleep(300)
             continue
+            
+        success = False
+        project_state_file = os.path.join(PROJECTS_DIR, "active_project_state.json")
+        
+        # Load active project state if it exists
+        project_state = {}
+        if os.path.exists(project_state_file):
+            try:
+                with open(project_state_file, "r", encoding="utf-8") as f:
+                    project_state = json.load(f)
+                log_event("Found an active project state! Resuming from where we left off...")
+            except: pass
             
         while not grid.is_depleted() and not success:
             model = grid.get_next_architect()
             if not model: break
             
-            trends = fetch_trends()
-            data = ask_grid(model, trends, memory, error_context=error_log)
+            log_event(f"--- Assigning Model: {model} ---")
             
-            if not data:
+            # STAGE 1: PLAN (if not already planned)
+            if not project_state.get("plan"):
+                trends = fetch_trends()
+                plan = plan_project(model, trends, memory)
+                if plan == "ERROR":
+                    grid.mark_unhealthy(model)
+                    continue
+                if not plan or "files_to_generate" not in plan:
+                    log_event(f"Architect {model} failed planning phase.")
+                    grid.mark_unhealthy(model) 
+                    continue
+                    
+                project_state["plan"] = plan
+                project_state["files_created"] = []
+                with open(project_state_file, "w", encoding="utf-8") as f: 
+                    json.dump(project_state, f, indent=4)
+                
+            plan = project_state["plan"]
+            project_name = plan.get("project_name", f"AI_Project_{int(time.time())}")
+            project_dir = os.path.join(PROJECTS_DIR, project_name)
+            os.makedirs(project_dir, exist_ok=True)
+            
+            log_event(f"Working on '{project_name}'...")
+            
+            # STAGE 2: GENERATE FILES
+            generation_failed = False
+            for f_info in plan["files_to_generate"]:
+                filepath = f_info.get("filepath")
+                instructions = f_info.get("instructions", "")
+                if not filepath or filepath in project_state["files_created"]:
+                    continue # Already generated by a previous model
+                    
+                content = generate_file_chunked(model, project_name, plan.get("vision", ""), filepath, instructions)
+                if content == "ERROR":
+                    generation_failed = True
+                    grid.mark_unhealthy(model) # Rate limit hit, switch model
+                    break
+                if not content:
+                    generation_failed = True
+                    grid.mark_unhealthy(model)
+                    break
+                
+                full_path = os.path.join(project_dir, filepath)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(content.strip())
+                
+                project_state["files_created"].append(filepath)
+                with open(project_state_file, "w", encoding="utf-8") as f: 
+                    json.dump(project_state, f, indent=4)
+                log_event(f"Saved {filepath} ({len(content)} bytes).")
+                
+            if generation_failed:
+                log_event(f"Generation interrupted. Model {model} swapped. Progress saved.")
+                continue # Next model will pick up where it left off
+                
+            # STAGE 3: TESTS & FIX LOOP
+            files_created = project_state["files_created"]
+            test_script = generate_tests(model, project_name, files_created)
+            if test_script == "ERROR" or not test_script:
                 grid.mark_unhealthy(model)
                 continue
                 
-            try:
-                project_name = data["project_name"]
-                project_dir = os.path.join(PROJECTS_DIR, project_name)
-                os.makedirs(project_dir, exist_ok=True)
+            script_path = os.path.join(project_dir, "setup_and_test.bat")
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(test_script.strip())
                 
-                # Write files
-                for f_info in data["files"]:
-                    f_path = os.path.join(project_dir, f_info["filepath"])
-                    os.makedirs(os.path.dirname(f_path), exist_ok=True)
-                    with open(f_path, "w", encoding="utf-8") as f: f.write(f_info["content"])
-                
-                # Automatically generate UI Mockup / Wireframe
-                generate_mockup(project_name, data["vision"], project_dir)
-                
-                # Validation
-                script_path = os.path.join(project_dir, "setup_and_test.bat")
-                with open(script_path, "w", encoding="utf-8") as f: f.write(data["setup_and_test_script"])
-                
-                log_event(f"Validating {project_name} built by {model}...")
-                result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], 
-                                         cwd=project_dir, capture_output=True, text=True, timeout=1200)
-                
-                if result.returncode == 0:
-                    success = True
-                    grid.mark_healthy(model)
-                    log_event(f"VICTORY ACHIEVED! Code is working.")
-                    memory["score"] += 1
-                    memory["history"].append({"date": datetime.now().isoformat(), "project": project_name, "model": model})
+            # Fix Loop: Same model fixes syntax errors up to 3 times
+            fix_attempts = 0
+            while fix_attempts < 3:
+                log_event(f"Validating {project_name} (Attempt {fix_attempts+1}/3)...")
+                try:
+                    result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], 
+                                             cwd=project_dir, capture_output=True, text=True, timeout=120)
+                    if result.returncode == 0:
+                        success = True
+                        break # Exits the fix loop successfully
+                    else:
+                        log_event(f"FAILURE. Syntax/Test error. Asking SAME model to fix...")
+                        error_log = f"STDOUT:\n{result.stdout[-1500:]}\nSTDERR:\n{result.stderr[-1500:]}"
+                        
+                        fix_plan = fix_error(model, project_dir, files_created, error_log)
+                        if fix_plan == "ERROR" or not fix_plan or "files_to_update" not in fix_plan:
+                            log_event("Model failed to provide a fix plan. Aborting fix attempt.")
+                            break
+                            
+                        # Apply fixes using chunked generation
+                        for f_info in fix_plan["files_to_update"]:
+                            filepath = f_info.get("filepath")
+                            instructions = f_info.get("instructions", "")
+                            if not filepath: continue
+                            
+                            log_event(f"Applying fix to {filepath}...")
+                            content = generate_file_chunked(model, project_name, "Fixing errors", filepath, instructions)
+                            if content and content != "ERROR":
+                                full_path = os.path.join(project_dir, filepath)
+                                with open(full_path, "w", encoding="utf-8") as f:
+                                    f.write(content.strip())
+                        fix_attempts += 1
+                except subprocess.TimeoutExpired:
+                    log_event("Test script timed out. Likely a hanging process.")
+                    break
                     
-                    if "past_projects" not in memory: memory["past_projects"] = []
-                    memory["past_projects"].append(f"{project_name}: {data['vision']}")
+            if success:
+                grid.mark_healthy(model)
+                log_event(f"VICTORY ACHIEVED! Code is fully working.")
+                memory["score"] += 1
+                memory["history"].append({"date": datetime.now().isoformat(), "project": project_name, "model": model})
+                save_memory(memory)
+                
+                # Push
+                try:
+                    subprocess.run(["git", "add", "."], check=True, cwd=REPO_ROOT)
+                    subprocess.run(["git", "commit", "-m", plan.get("commit_message", "feat: resilient ai launch")], check=True, cwd=REPO_ROOT)
+                    subprocess.run(["git", "push", "origin", "main"], check=True, cwd=REPO_ROOT)
+                    log_event("Code successfully pushed to GitHub.")
+                except Exception as e:
+                    log_event(f"Git push failed: {e}")
                     
-                    if "lessons_learned" not in memory: memory["lessons_learned"] = []
-                    if data.get("lessons_learned"): memory["lessons_learned"].append(data["lessons_learned"])
-                    
-                    save_memory(memory)
-                    
-                    # Push ONLY successful code
-                    subprocess.run(["git", "add", "."], check=True)
-                    subprocess.run(["git", "commit", "-m", data["commit_message"]], check=True)
-                    subprocess.run(["git", "push", "origin", "main"], check=True)
-                else:
-                    log_event(f"FAILURE. Physicist rejected the code. Recycling error log and rotating model...")
-                    error_log = f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
-                    grid.mark_unhealthy(model) # Instantly drop model and rotate to next best
-                    time.sleep(2) # Brief cooldown
-
-            except Exception as e:
-                log_event(f"Architectural Collapse: {e}")
-                error_log = str(e)
+                # Clean up state for next project
+                if os.path.exists(project_state_file):
+                    os.remove(project_state_file)
+                break # Exit the model assignment loop, ready for a new project
+            else:
+                log_event(f"Model {model} failed to fix the project after 3 attempts. Rotating model...")
+                grid.mark_unhealthy(model)
                 time.sleep(2)
-        
+
         if not success:
             log_event("ENTIRE NEURAL GRID CONGESTED. Entering Deep Meditation (Sleep 10m)...")
             time.sleep(600)

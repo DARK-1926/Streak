@@ -1,39 +1,52 @@
-# LocalCodingAssistant
+# LocalCodingAssistant (LCA)
 
-## How it Works
+## Project description and motivation
+LocalCodingAssistant is a tiny, modular Python CLI that runs a **local** LLM (e.g., llama.cpp) to give instant code completions and explanations.  
+It keeps your code private, works offline, and fits on consumer hardware without any cloud dependencies.
 
-The system runs a locally hosted LLM (e.g., Mistral 7B) that assists developers with code completion, debugging, and documentation generation. The workflow includes:
-1. Environment initialization via a virtual environment.
-2. Loading of the LLM and tokenizer.
-3. Real‑time interaction through a lightweight CLI or VS Code extension.
-4. Persistent caching of model weights to avoid repeated downloads.
+## Quick start
+```bash
+# 1. Install Python 3.10+
+# 2. Create a virtual environment
+python -m venv .venv
+source .venv/bin/activate   # on Windows: .venv\Scripts\activate
 
-## Architecture
+# 3. Install the tiny wrapper (only stdlib is required)
+pip install -e .
 
-```mermaid
-flowchart TD
-    A[Developer] -->|Issue Query| B[CLI / VS Code Extension]
-    B -->|Send Prompt| C[Local LLM (Mistral 7B)]
-    C -->|Generate Response| D[Response Sent Back]
-    D -->|Display| A
-    style A fill:#f9f,stroke:#333
-    style B fill:#bbf,stroke:#333
-    style C fill:#bfb,stroke:#333
-    style D fill:#fbb,stroke:#333
+# 4. Download a small GGML model (e.g., llama-7B-q4_0.ggml)
+wget https://huggingface.co/ggml-org/llama-7b/resolve/main/ggml-model-q4_0.bin -O models/llama.ggml
+
+# 5. Run the CLI
+lca explain "def foo(): pass"
 ```
 
-![App Preview](assets/preview.jpg)
+## Usage examples
+```bash
+# Explain a snippet
+lca explain "def foo(): pass"
 
-## Setup
+# Get a completion
+lca complete "for i in range(10):"
+```
 
-Run the provided Windows batch script to create a virtual environment, install dependencies, and execute tests.
+## How it Works
+The CLI parses user commands and forwards the request to **LLMWrapper**, which builds a prompt and invokes the **llama.cpp** binary via `subprocess`. The binary streams the model’s output back to the wrapper, which prints it to the console.
 
-## Testing
+## Architecture overview
+```
+CLI (lca) ──► LLMWrapper (Python) ──► llama.cpp binary
+```
+* **CLI** – `argparse` based entry point (`lca` command).  
+* **LLMWrapper** – thin Python class handling prompt creation, model path configuration, and subprocess I/O.  
+* **llama.cpp** – compiled C++ inference engine that runs the GGML model locally.
 
-The test suite validates model loading, inference speed, and basic code‑completion functionality.
-
----
+## Extending the tool
+* **New commands** – add a function in `lca/commands.py` and register it in `lca/__main__.py`.  
+* **Swap model** – place a different GGML file in `models/` and update `LLMWrapper.model_path` via the `--model` flag.
 
 ## License
+MIT © 2024 LocalCodingAssistant contributors.
 
-MIT
+## Contributing
+Feel free to open issues or submit pull requests. Keep the codebase under eight files and avoid external dependencies.
