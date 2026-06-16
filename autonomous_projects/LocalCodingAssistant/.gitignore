@@ -1,1 +1,16 @@
-venv/\n__pycache__/\n*.pyc\nnode_modules/\n.git/\n*.log\n*.tmp\n.DS_Store\n
+venv
+node_modules
+__pycache__
+*.pyc
+.env
+__pycache__/**
+*.pyo
+*.pyd
+build
+dist
+*.log
+*.sqlite3
+*.db
+*.bak
+*.tmp
+.DS_Store

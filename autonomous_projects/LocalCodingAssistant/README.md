@@ -1,1 +1,39 @@
-# LocalCodingAssistant\n\n## How it Works\n\nThe system runs a local LLM (e.g., Ollama 'codellama') to analyze code snippets, generate suggestions, and automate repetitive tasks without sending data to external services.\n\n```mermaid\nflowchart TD\n    A[User Input / Code Snippet] --> B[Local LLM (Ollama)]\n    B --> C[Contextual Analysis]\n    C --> D[Generate Response / Automation]\n    D --> E[Return to Editor]\n    E --> F[User Review & Accept]\n    F -->|Feedback| A\n```\n\n![App Preview](assets/preview.jpg)\n\n### Setup\n\n1. Install Ollama: https://ollama.com\n2. Pull a coding model: `ollama pull codellama`\n3. Run the provided batch script to create a virtual environment and install dependencies.\n\n### Testing\n\nThe project includes a small test suite to verify functionality.\n\n## Architecture Overview\n\nThe architecture emphasizes privacy, speed, and modularity. All components run locally, ensuring no external API calls. The system can be extended with custom plugins for specific IDEs.\n\n---\n\n## Supported Models\n\n- 'codellama:7b' (default)\n- 'phi3:medium' (lightweight alternative)\n\n## Extensibility\n\nPlugins can be added under the `plugins/` directory and registered in `main.py`.\n\n---\n\n## License\n\nMIT\n
+# LocalCodingAssistant
+
+## How it Works
+
+The system runs a locally hosted LLM (e.g., Mistral 7B) that assists developers with code completion, debugging, and documentation generation. The workflow includes:
+1. Environment initialization via a virtual environment.
+2. Loading of the LLM and tokenizer.
+3. Real‑time interaction through a lightweight CLI or VS Code extension.
+4. Persistent caching of model weights to avoid repeated downloads.
+
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Developer] -->|Issue Query| B[CLI / VS Code Extension]
+    B -->|Send Prompt| C[Local LLM (Mistral 7B)]
+    C -->|Generate Response| D[Response Sent Back]
+    D -->|Display| A
+    style A fill:#f9f,stroke:#333
+    style B fill:#bbf,stroke:#333
+    style C fill:#bfb,stroke:#333
+    style D fill:#fbb,stroke:#333
+```
+
+![App Preview](assets/preview.jpg)
+
+## Setup
+
+Run the provided Windows batch script to create a virtual environment, install dependencies, and execute tests.
+
+## Testing
+
+The test suite validates model loading, inference speed, and basic code‑completion functionality.
+
+---
+
+## License
+
+MIT
