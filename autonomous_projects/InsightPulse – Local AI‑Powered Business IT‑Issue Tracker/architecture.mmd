@@ -1,0 +1,6 @@
+flowchart LR
+    UI[Streamlit UI] -->|calls| DB[SQLite DB] %% UI writes/reads issue data to the local SQLite database
+    UI -->|asks for tags| Tagger[Local LLM Tagger] %% UI requests automatic tagging from the on‑prem LLM
+    Tagger -->|loads| Model[Transformer Model (models/)] %% Tagger loads the transformer model from the models directory
+    DB -->|stores| Issues[Issue Records] %% SQLite persists each issue record with tags, timestamps, etc.
+    UI -->|visualizes| Charts[Plotly Charts] %% UI renders interactive charts from aggregated issue data

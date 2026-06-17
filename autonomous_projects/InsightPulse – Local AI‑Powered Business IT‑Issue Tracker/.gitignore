@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+
+# Virtual environment
+venv/
+.venv/
+.env/
+
+# Node (if any future front‑end tooling)
+node_modules/
+
+# Local model weights (user‑provided)
+models/*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor folders
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+
+# Logs
+*.log
+logs/
+log/
+
+# Test coverage
+coverage/
+*.cover
+*.coverage
+htmlcov/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Distribution packages
+*.whl
+*.tar.gz
+*.zip
+
+# Secrets
+*.key
+*.pem
+*.crt
+*.cer
+
+# Temporary files
+*.tmp
+*.temp
+*~
+# End of file

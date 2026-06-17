@@ -1,41 +1,41 @@
 {
     "plan": {
-        "project_name": "LocalCoder",
-        "vision": "A minimal, modular local coding assistant that runs a lightweight LLM on consumer hardware, enabling developers to write, refactor, and debug code entirely offline while preserving privacy and reducing cloud costs.",
-        "lessons_learned": "By limiting the feature set to core IDE interactions, using a single LLM checkpoint with quantization, and avoiding heavy dependency trees, we sidestep the token\u2011budget blow\u2011ups and runtime latency that plague larger local setups. The architecture is intentionally split into a CLI front\u2011end, a lightweight inference engine, and a simple plugin system so that future features can be added without re\u2011training the model.",
-        "commit_message": "feat: enterprise-grade launch",
+        "project_name": "InsightPulse \u2013 Local AI\u2011Powered Business IT\u2011Issue Tracker",
+        "vision": "A compact, privacy\u2011first web app that lets small\u2011to\u2011medium businesses log, classify, and visualize recent IT incidents using a locally\u2011run LLM for smart tagging and root\u2011cause suggestions. By running entirely on\u2011premise (no paid APIs), it turns noisy support tickets into actionable insights, helping teams spot patterns before they become costly outages.",
+        "lessons_learned": "The project packs all heavy logic into a few dense modules, avoids empty scaffolding, and uses a single virtual\u2011env\u2011friendly requirements file. Heavy assets (LLM weights) are expected to be placed in a user\u2011specified `models/` folder and are ignored via `.gitignore`. Setup scripts are included in the README, and the UI is built with Streamlit to keep the stack lightweight while still delivering a modern experience.",
+        "commit_message": "Add full InsightPulse app: Streamlit UI, local LLM tagging, SQLite storage, and visualization.",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Create a .gitignore that excludes the virtual environment directory (venv), node_modules if any, __pycache__ directories, and any compiled Python files (.pyc). Also ignore .env files and the local model cache folder named 'model_cache/'."
+                "instructions": "Create a .gitignore that excludes typical heavy directories and model files:\n```\n# Python\n__pycache__/\n*.py[cod]\n*.pyo\n*.pyd\n*.sqlite3\n\n# Virtual environment\nvenv/\n.env/\n\n# Node (if any future front\u2011end tooling)\nnode_modules/\n\n# Local model weights (user\u2011provided)\nmodels/*\n\n# OS files\n.DS_Store\nThumbs.db\n```\nEnsure no binary assets are tracked."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a concise README that explains:\n1. Project purpose and key benefits.\n2. Quick start instructions (Python 3.10+, pip install -r requirements.txt, download the model checkpoint via a provided URL, then run `python main.py`).\n3. Basic usage examples (prompt a code snippet, request refactoring, ask for documentation).\n4. How to add custom plugins.\n5. Performance notes (approx 200ms per token on an M1 Max, 1.3B quantized model).\n6. Contribution guidelines and license (MIT)."
+                "instructions": "Write a comprehensive README with sections:\n1. **Project Overview** \u2013 one\u2011paragraph description of InsightPulse.\n2. **Features** \u2013 local LLM tagging, incident CRUD, trend charts, export CSV.\n3. **Prerequisites** \u2013 Python\u202f3.10+, pip, a compatible local LLM (e.g., `mistralai/Mistral-7B-Instruct-v0.2`), and a GPU optional.\n4. **Setup** \u2013 step\u2011by\u2011step:\n   - Clone repo\n   - `python -m venv venv && source venv/bin/activate`\n   - `pip install -r requirements.txt`\n   - Download model into `models/` (provide `transformers` command).\n   - Run `streamlit run app.py`.\n5. **Usage** \u2013 screenshots of UI, how to add incidents, view analytics.\n6. **Architecture Diagram** \u2013 simple Mermaid showing Streamlit \u2194 SQLite \u2194 LLM module.\n7. **Testing** \u2013 run `pytest`.\n8. **License** \u2013 MIT.\nMake sure markdown is clean and includes code blocks for commands."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "List minimal dependencies:\n- transformers==4.41.0\n- torch==2.2.0+cpu (or appropriate for target CPU)\n- sentencepiece==0.2.0\n- typer==0.12.0\n- python-dotenv==1.0.1\n- tqdm==4.66.2\n\nEnsure no heavy GPU\u2011only packages are required."
+                "instructions": "List minimal pinned dependencies:\n```\nstreamlit==1.38.0\nsqlalchemy==2.0.35\npandas==2.2.3\ntransformers==4.44.2\ntorch==2.5.0\nsentencepiece==0.2.0\nscikit-learn==1.5.2\nplotly==5.24.1\npytest==8.3.3\n```\nThese versions are known to work on macOS/Linux with CPU/GPU.\nNo heavy data files are referenced."
             },
             {
-                "filepath": "main.py",
-                "instructions": "Implement a Typer CLI with commands:\n- `ask <prompt>`: sends the prompt to the local LLM and streams the response.\n- `refactor <filepath>`: loads the file, sends a refactor request, and writes back the improved code.\n- `doc <filepath>`: generates docstrings for the file.\nUse a simple streaming generator that yields tokens as they are produced. Load the model from a 'model_cache' folder; if missing, download the 1.3B quantized checkpoint from a provided URL and cache it. Include a '--verbose' flag to print token counts and latency. Handle KeyboardInterrupt gracefully.\n\nAlso implement a basic plugin loader that imports any modules in a 'plugins/' directory and registers them as Typer commands if they expose a `register_command(app)` function."
+                "filepath": "app.py",
+                "instructions": "Implement the full Streamlit front\u2011end:\n- Import `st`, `sqlite3`, `pandas`, `plotly.express`, and the local LLM wrapper (`tagger.py`).\n- On first run, create an SQLite DB `incidents.db` with a table `issues(id INTEGER PRIMARY KEY, title TEXT, description TEXT, tags TEXT, created_at TIMESTAMP)`.\n- Sidebar with navigation: **Log Issue**, **View Log**, **Analytics**.\n- **Log Issue**: form fields for title & description; on submit, call `tagger.generate_tags(text)` to get a comma\u2011separated string, store record with current UTC timestamp.\n- **View Log**: display a searchable, sortable dataframe of all rows; allow CSV export.\n- **Analytics**: load data into pandas, explode tags, show top\u201110 tags bar chart (Plotly) and a time\u2011series line chart of incidents per week.\n- Use `st.session_state` to cache DB connection and LLM model for performance.\n- Add helpful `st.info` messages and error handling.\n- At the bottom, include a collapsible section with the raw model generation prompt for transparency."
             },
             {
-                "filepath": "model.py",
-                "instructions": "Encapsulate model loading and inference:\n- Function `load_model()` that checks for the checkpoint in 'model_cache', downloads if absent, and loads it with `AutoModelForCausalLM.from_pretrained` using `torch_dtype=torch.float16` and `device_map='auto'`.\n- Function `generate(prompt, stream=True, max_new_tokens=256)` that returns a generator yielding tokens.\n- Include simple safety filters: if the prompt contains disallowed words (e.g., \"kill\", \"bomb\"), return a canned refusal.\n- Cache the tokenizer globally to avoid reloading.\n\nAdd a `__all__ = ['load_model', 'generate']` for clean imports."
+                "filepath": "tagger.py",
+                "instructions": "Create a self\u2011contained module that loads a local transformer model once and provides `generate_tags(text: str) -> str`:\n- Use `transformers.AutoModelForCausalLM` and `AutoTokenizer` with `torch_dtype=torch.float16` if CUDA is available, else CPU.\n- Model path is `models/` (user must place the model folder there).\n- Prompt engineering: construct a concise system prompt like:\n  ```\n  You are an expert IT incident analyst. Extract up to five short keyword tags (lowercase, hyphenated if needed) that best describe the root cause and affected component of the following incident description. Return tags as a comma\u2011separated list.\n  ```\n- Tokenize, generate with `max_new_tokens=30`, temperature=0.2, stop on newline.\n- Post\u2011process output: strip, lower, replace spaces with hyphens, ensure commas separate tags.\n- Cache the model and tokenizer in module\u2011level globals for reuse.\n- Include a fallback that returns \"unclassified\" if generation fails.\n- Provide a small `if __name__ == \"__main__\":` demo that reads a sample string and prints tags."
             },
             {
-                "filepath": "utils.py",
-                "instructions": "Provide helper utilities:\n- `read_file(path)` and `write_file(path, content)` for file operations.\n- `measure_latency(func)` decorator that prints execution time.\n- `sanitize_prompt(prompt)` that strips newlines and excessive whitespace.\n- `format_response(response)` that trims trailing spaces and ensures proper code block formatting.\n\nExport these via `__all__`."
+                "filepath": "db.py",
+                "instructions": "Encapsulate all SQLite interactions in a tiny helper:\n- Function `get_connection()` returns a cached connection (use `functools.lru_cache`).\n- `init_db()` creates the `issues` table if not exists.\n- `add_issue(title, description, tags)` inserts a row with `datetime.utcnow()`.\n- `fetch_all()` returns a list of dicts for Streamlit display.\n- `fetch_stats()` returns a pandas DataFrame with exploded tags and a weekly count series for analytics.\n- Ensure proper `conn.commit()` and close handling.\n- Include type hints and docstrings."
             },
             {
-                "filepath": "plugins/__init__.py",
-                "instructions": "Make the plugins package importable. Leave it empty or add a comment that plugins should expose a `register_command(app)` function."
+                "filepath": "tests/test_tagger.py",
+                "instructions": "Write pytest unit tests for the tagger:\n- Mock a tiny transformer model using `unittest.mock` to avoid heavy loading.\n- Test that `generate_tags` returns a string with commas and lower\u2011case tags.\n- Test fallback behavior when the model raises an exception.\n- Include a sanity test that checks the prompt string composition.\n- Ensure tests run quickly (`-q`)."
             },
             {
-                "filepath": "plugins/example_plugin.py",
-                "instructions": "Create a simple plugin that adds a `greet` command:\n- `@app.command(\"greet\")` that takes a name argument and prints \"Hello, <name>!\".\n- Implement `register_command(app)` that registers this command.\n\nThis demonstrates how users can extend the tool."
+                "filepath": "architecture.mmd",
+                "instructions": "Provide a Mermaid diagram (as a `.mmd` file) describing the system:\n```\nflowchart LR\n    UI[Streamlit UI] -->|calls| DB[SQLite DB]\n    UI -->|asks for tags| Tagger[Local LLM Tagger]\n    Tagger -->|loads| Model[Transformer Model (models/)]\n    DB -->|stores| Issues[Issue Records]\n    UI -->|visualizes| Charts[Plotly Charts]\n```\nAdd comments explaining each arrow. This file is referenced in the README."
             }
         ]
     },
@@ -43,10 +43,10 @@
         ".gitignore",
         "README.md",
         "requirements.txt",
-        "main.py",
-        "model.py",
-        "utils.py",
-        "plugins/__init__.py",
-        "plugins/example_plugin.py"
+        "app.py",
+        "tagger.py",
+        "db.py",
+        "tests/test_tagger.py",
+        "architecture.mmd"
     ]
 }
