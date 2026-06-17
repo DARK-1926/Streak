@@ -146,21 +146,40 @@ def extract_json(content):
     return None
 
 def strip_markdown(content):
-    if content.startswith("```"):
-        lines = content.splitlines()
-        if len(lines) >= 2 and lines[-1].strip() == "```":
-            return "\n".join(lines[1:-1])
-    return content
+    """Aggressively strips markdown code blocks like ```python ... ```"""
+    content = content.strip()
+    # Remove leading ```language\n
+    content = re.sub(r'^```[a-zA-Z0-9_+-]*\n', '', content)
+    # Remove trailing \n```
+    content = re.sub(r'\n```$', '', content)
+    # Fallback if there's no newline before trailing ```
+    if content.endswith("```"):
+        content = content[:-3]
+    return content.strip()
 
 def plan_project(model, trends, memory, error_context=None):
     log_event(f"Stage 1: Planning Project with Architect {model}...")
     sys_prompt = "You are the Lead AGI Architect. Respond ONLY with valid JSON."
     retry_guidance = f"\nPREVIOUS RUN FAILED. FIX ERRORS:\n{error_context}" if error_context else ""
     past_projects = "\n".join(memory.get("past_projects", [])[-10:])
+    lessons_learned = "\n".join(memory.get("lessons_learned", [])[-10:])
+    
     user_prompt = f"""
-    Design a new, small, fully functional software application. It MUST be modular and minimal (max 8 files) to respect free-tier LLM token limits.
+    Design a new, innovative, fully functional software application. 
+    CRITICAL SCOPE LIMITS for Free LLMs:
+    - You must deliver highly advanced, sophisticated logic (e.g., complex algorithms, modern UI, AI tools), BUT you must keep the architecture compact (maximum 8 files).
+    - Avoid 'enterprise boilerplate' (do not create empty interfaces, abstract factories, or unnecessary folders). Pack the complexity into dense, robust files.
+    - Do NOT design things requiring paid external APIs or massive datasets.
+    - It MUST be modular but strictly minimal in file count to respect free-tier LLM token limits.
+    
     Trends: {trends}
-    Past Projects: {past_projects}
+    
+    PAST PROJECTS COMPLETED (DO NOT REPEAT THESE):
+    {past_projects}
+    
+    LESSONS LEARNED FROM PAST MISTAKES:
+    {lessons_learned}
+    
     {retry_guidance}
     
     CRITICAL: 
@@ -172,7 +191,7 @@ def plan_project(model, trends, memory, error_context=None):
         "project_name": "name",
         "vision": "Why this works and what it does",
         "lessons_learned": "What novel approach avoids past mistakes",
-        "commit_message": "feat: enterprise-grade launch",
+        "commit_message": "Describe exactly what this project implements in one short sentence.",
         "files_to_generate": [
             {{
                 "filepath": "path/to/file.ext",
@@ -204,7 +223,8 @@ def generate_file_chunked(model, project_name, vision, filepath, instructions):
     RULES:
     1. Write proper, lengthy production code.
     2. Return ONLY raw file contents. No explanations.
-    3. CRITICAL: When you are COMPLETELY FINISHED writing the entire file, append the exact token `[EOF]` at the very end. Do NOT use `[EOF]` until the entire file is complete.
+    3. Do NOT wrap your output in markdown code blocks. Just plain text.
+    4. CRITICAL: When you are COMPLETELY FINISHED writing the entire file, append the exact token `[EOF]` at the very end. Do NOT use `[EOF]` until the entire file is complete.
     """
     
     full_content = ""
@@ -223,7 +243,7 @@ def generate_file_chunked(model, project_name, vision, filepath, instructions):
             ```
             {last_lines}
             ```
-            Start typing the exact next characters seamlessly. Remember to output `[EOF]` when fully done.
+            Start typing the exact next characters seamlessly. Do NOT wrap output in markdown. Remember to output `[EOF]` when fully done.
             """
             log_event(f"Requesting Continuation Chunk {chunks_completed+1} for {filepath}...")
             
@@ -242,7 +262,7 @@ def generate_file_chunked(model, project_name, vision, filepath, instructions):
             full_content += content
             chunks_completed += 1
             
-    return full_content
+    return strip_markdown(full_content)
 
 def generate_tests(model, project_name, file_list):
     log_event(f"Stage 3: Generating Integration Script for {project_name}...")
@@ -256,7 +276,7 @@ def generate_tests(model, project_name, file_list):
     2. Install dependencies.
     3. Run tests. If no tests exist, run the main file to see if it parses/starts properly for 5 seconds.
     4. MUST Exit with code 0 if success, 1 if fail.
-    Output ONLY raw script. No explanations.
+    Output ONLY raw script. Do NOT wrap in markdown code blocks. No explanations.
     """
     content = call_openrouter(model, sys_prompt, user_prompt)
     if content == "RATE_LIMIT_OR_SERVER_ERROR": return "ERROR"
@@ -293,12 +313,12 @@ def fix_error(model, project_dir, files_created, error_log):
 # ==========================================
 def run_beast_cycle():
     log_event("========================================")
-    log_event(" AGENT BEAST V6.0: RESILIENT ARCHITECT")
+    log_event(" AGENT BEAST V6.1: RESILIENT ARCHITECT")
     log_event("========================================")
     
     memory = load_memory()
     
-    while True: # Outer infinite loop for continuous operation
+    while True: # Outer loop
         grid = NeuralGrid(memory)
         if not grid.models:
             log_event("Grid sync failed. Sleep 5m...")
@@ -435,25 +455,42 @@ def run_beast_cycle():
                 
                 # Push
                 try:
+                    # Explicitly enforce global .gitignore against heavy directories
+                    gitignore_path = os.path.join(REPO_ROOT, ".gitignore")
+                    with open(gitignore_path, "a", encoding="utf-8") as f:
+                        f.write("\n.venv/\nvenv/\n__pycache__/\nnode_modules/\n*.log\n")
+                        
+                    # Pre-emptively remove cached instances if they accidentally sneaked in
+                    subprocess.run(["git", "rm", "-r", "--cached", ".venv"], check=False, cwd=REPO_ROOT, capture_output=True)
+                    subprocess.run(["git", "rm", "-r", "--cached", "venv"], check=False, cwd=REPO_ROOT, capture_output=True)
+                    
                     subprocess.run(["git", "add", "."], check=True, cwd=REPO_ROOT)
-                    subprocess.run(["git", "commit", "-m", plan.get("commit_message", "feat: resilient ai launch")], check=True, cwd=REPO_ROOT)
+                    
+                    # Better dynamic commit message
+                    action_desc = plan.get("commit_message", "autonomous module update")
+                    commit_msg = f"feat({project_name}): {action_desc}"
+                    
+                    subprocess.run(["git", "commit", "-m", commit_msg], check=True, cwd=REPO_ROOT)
                     subprocess.run(["git", "push", "origin", "main"], check=True, cwd=REPO_ROOT)
-                    log_event("Code successfully pushed to GitHub.")
+                    log_event(f"Code successfully pushed to GitHub with message: '{commit_msg}'")
                 except Exception as e:
                     log_event(f"Git push failed: {e}")
                     
                 # Clean up state for next project
                 if os.path.exists(project_state_file):
                     os.remove(project_state_file)
-                break # Exit the model assignment loop, ready for a new project
+                    
+                log_event("Project successfully completed. Exiting script as requested.")
+                return # Exits the script completely after one successful project!
+                
             else:
                 log_event(f"Model {model} failed to fix the project after 3 attempts. Rotating model...")
                 grid.mark_unhealthy(model)
                 time.sleep(2)
 
         if not success:
-            log_event("ENTIRE NEURAL GRID CONGESTED. Entering Deep Meditation (Sleep 10m)...")
-            time.sleep(600)
+            log_event("ENTIRE NEURAL GRID CONGESTED. Exiting.")
+            return
 
 if __name__ == "__main__":
     run_beast_cycle()

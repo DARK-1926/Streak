@@ -2,3 +2,9 @@
 __pycache__/
 *.pyc
 run_log.txt
+
+.venv/
+venv/
+__pycache__/
+node_modules/
+*.log
