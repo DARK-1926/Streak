@@ -1,0 +1,190 @@
+/* static/style.css */
+
+/* Reset some default browser styles */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+/* Base styles */
+html {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+    background-color: #f9f9f9;
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+}
+
+/* Container for the main content */
+.container {
+    max-width: 960px;
+    width: 100%;
+    margin: 0 auto;
+    flex: 1;
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #2c3e50;
+}
+
+header p {
+    font-size: 1rem;
+    color: #666;
+}
+
+/* Form styling */
+form {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: 0.75rem 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #2980b9;
+}
+
+/* Buttons */
+button,
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    background-color: #2980b9;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+button:hover,
+.btn:hover {
+    background-color: #1f6391;
+}
+
+button:active,
+.btn:active {
+    transform: scale(0.98);
+}
+
+button:disabled,
+.btn:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+}
+
+/* Preview page */
+.preview {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 2rem;
+}
+
+.preview h2 {
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+    color: #2c3e50;
+}
+
+.preview section {
+    margin-bottom: 1.5rem;
+}
+
+.preview section h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+    color: #34495e;
+}
+
+.preview p,
+.preview ul,
+.preview ol {
+    margin-left: 1rem;
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* Responsive layout */
+@media (max-width: 600px) {
+    header h1 {
+        font-size: 1.75rem;
+    }
+
+    form, .preview {
+        padding: 1rem;
+    }
+
+    button, .btn {
+        width: 100%;
+    }
+}
+
+/* Utility classes */
+.text-center {
+    text-align: center;
+}
+
+.mt-2 { margin-top: 0.5rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mt-4 { margin-top: 1rem; }
+.mb-4 { margin-bottom: 1rem; }
+
+/* Accessibility focus outline */
+:focus-visible {
+    outline: 2px solid #2980b9;
+    outline-offset: 2px;
+}
+
+/* End of stylesheet */

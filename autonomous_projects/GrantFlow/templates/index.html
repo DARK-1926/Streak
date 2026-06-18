@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GrantFlow - SBIR Phase I Preparation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {font-family: Arial, sans-serif; margin: 20px;}
+        .form-group {margin-bottom: 15px;}
+        label {display: block; margin-bottom: 5px;}
+        input[type="text"], textarea, select {width: 100%; padding: 8px; box-sizing: border-box;}
+        .flash {background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 15px; border: 1px solid #f5c6cb; border-radius: 4px;}
+        button {padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;}
+        button:hover {background-color: #0056b3;}
+    </style>
+</head>
+<body>
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h1>SBIR Phase I Grant Preparation</h1>
+    <form method="post" action="/draft">
+        <div class="form-group">
+            <label for="business_name">Business Name</label>
+            <input type="text" id="business_name" name="business_name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="project_title">Project Title</label>
+            <input type="text" id="project_title" name="project_title" required>
+        </div>
+
+        <div class="form-group">
+            <label for="years_in_business">Years in Business</label>
+            <input type="text" id="years_in_business" name="years_in_business" required>
+        </div>
+
+        <div class="form-group">
+            <label for="employee_count">Employee Count</label>
+            <input type="text" id="employee_count" name="employee_count" required>
+        </div>
+
+        <div class="form-group">
+            <label>Prior Federal Contracts</label>
+            <label><input type="radio" name="prior_federal_contracts" value="yes" required> Yes</label>
+            <label><input type="radio" name="prior_federal_contracts" value="no" required> No</label>
+        </div>
+
+        <div class="form-group">
+            <label for="project_summary">Project Summary</label>
+            <textarea id="project_summary" name="project_summary" rows="5" required></textarea>
+        </div>
+
+        <button type="submit">Generate Draft</button>
+    </form>
+</body>
+</html>

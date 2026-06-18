@@ -1,41 +1,41 @@
 {
     "plan": {
-        "project_name": "InsightPulse \u2013 Local AI\u2011Powered Business IT\u2011Issue Tracker",
-        "vision": "A compact, privacy\u2011first web app that lets small\u2011to\u2011medium businesses log, classify, and visualize recent IT incidents using a locally\u2011run LLM for smart tagging and root\u2011cause suggestions. By running entirely on\u2011premise (no paid APIs), it turns noisy support tickets into actionable insights, helping teams spot patterns before they become costly outages.",
-        "lessons_learned": "The project packs all heavy logic into a few dense modules, avoids empty scaffolding, and uses a single virtual\u2011env\u2011friendly requirements file. Heavy assets (LLM weights) are expected to be placed in a user\u2011specified `models/` folder and are ignored via `.gitignore`. Setup scripts are included in the README, and the UI is built with Streamlit to keep the stack lightweight while still delivering a modern experience.",
-        "commit_message": "Add full InsightPulse app: Streamlit UI, local LLM tagging, SQLite storage, and visualization.",
+        "project_name": "GrantFlow",
+        "vision": "A lightweight, fully local web application that guides U.S. small businesses through SBIR Phase\u2011I grant preparation\u2014automatically parses eligibility, generates tailored proposal sections, and tracks deadlines\u2014without any paid APIs or external services.",
+        "lessons_learned": "By bundling all logic into a single Flask app with embedded Jinja templates, SQLite, and a lightweight LLM inference (e.g., TinyLlama) we avoid boilerplate, keep the repo under 8 files, exclude heavy assets via .gitignore, and provide reproducible setup with a simple requirements.txt.",
+        "commit_message": "Add GrantFlow \u2013 a local, zero\u2011API SBIR grant helper with template generation and deadline tracking.",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Create a .gitignore that excludes typical heavy directories and model files:\n```\n# Python\n__pycache__/\n*.py[cod]\n*.pyo\n*.pyd\n*.sqlite3\n\n# Virtual environment\nvenv/\n.env/\n\n# Node (if any future front\u2011end tooling)\nnode_modules/\n\n# Local model weights (user\u2011provided)\nmodels/*\n\n# OS files\n.DS_Store\nThumbs.db\n```\nEnsure no binary assets are tracked."
+                "instructions": "Create a .gitignore that excludes the virtual environment directory (venv/), Python bytecode (__pycache__/), any node_modules/ if present, and the SQLite database file (grantflow.db)."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a comprehensive README with sections:\n1. **Project Overview** \u2013 one\u2011paragraph description of InsightPulse.\n2. **Features** \u2013 local LLM tagging, incident CRUD, trend charts, export CSV.\n3. **Prerequisites** \u2013 Python\u202f3.10+, pip, a compatible local LLM (e.g., `mistralai/Mistral-7B-Instruct-v0.2`), and a GPU optional.\n4. **Setup** \u2013 step\u2011by\u2011step:\n   - Clone repo\n   - `python -m venv venv && source venv/bin/activate`\n   - `pip install -r requirements.txt`\n   - Download model into `models/` (provide `transformers` command).\n   - Run `streamlit run app.py`.\n5. **Usage** \u2013 screenshots of UI, how to add incidents, view analytics.\n6. **Architecture Diagram** \u2013 simple Mermaid showing Streamlit \u2194 SQLite \u2194 LLM module.\n7. **Testing** \u2013 run `pytest`.\n8. **License** \u2013 MIT.\nMake sure markdown is clean and includes code blocks for commands."
+                "instructions": "Write a concise README that explains the purpose of GrantFlow, prerequisites (Python 3.11+, pip), how to set up a virtual environment, install dependencies, run the app (`python app.py`), and basic usage (enter business details, let the local LLM draft sections, review and export the proposal). Include a short FAQ about SBIR eligibility and how the app stays offline."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "List minimal pinned dependencies:\n```\nstreamlit==1.38.0\nsqlalchemy==2.0.35\npandas==2.2.3\ntransformers==4.44.2\ntorch==2.5.0\nsentencepiece==0.2.0\nscikit-learn==1.5.2\nplotly==5.24.1\npytest==8.3.3\n```\nThese versions are known to work on macOS/Linux with CPU/GPU.\nNo heavy data files are referenced."
+                "instructions": "List the exact versions of required packages: Flask==3.0.0, Jinja2==3.1.4, SQLAlchemy==2.0.30, tinyllama==0.1.0 (or a lightweight local LLM wrapper), python-dotenv==1.0.1, and any optional packages needed for date handling (python-dateutil==2.9.0)."
             },
             {
                 "filepath": "app.py",
-                "instructions": "Implement the full Streamlit front\u2011end:\n- Import `st`, `sqlite3`, `pandas`, `plotly.express`, and the local LLM wrapper (`tagger.py`).\n- On first run, create an SQLite DB `incidents.db` with a table `issues(id INTEGER PRIMARY KEY, title TEXT, description TEXT, tags TEXT, created_at TIMESTAMP)`.\n- Sidebar with navigation: **Log Issue**, **View Log**, **Analytics**.\n- **Log Issue**: form fields for title & description; on submit, call `tagger.generate_tags(text)` to get a comma\u2011separated string, store record with current UTC timestamp.\n- **View Log**: display a searchable, sortable dataframe of all rows; allow CSV export.\n- **Analytics**: load data into pandas, explode tags, show top\u201110 tags bar chart (Plotly) and a time\u2011series line chart of incidents per week.\n- Use `st.session_state` to cache DB connection and LLM model for performance.\n- Add helpful `st.info` messages and error handling.\n- At the bottom, include a collapsible section with the raw model generation prompt for transparency."
+                "instructions": "Implement a single Flask application with the following routes:\n- `/` (GET): Render the main form for business info, project summary, and eligibility questions.\n- `/draft` (POST): Accept form data, validate required fields, call `utils.generate_proposal_section()` which uses the local LLM to produce a short proposal paragraph for each section, store the draft in SQLite via `models.DraftProposal`, and render a preview page.\n- `/download` (GET): Serve the finalized proposal as a downloadable PDF (use a lightweight PDF generator like fpdf). \n- `/status` (GET): Show a table of all drafts with their creation dates and a countdown to the next SBIR deadline (hardcoded or user\u2011provided). \nInclude error handling, logging, and a simple CLI command to initialize the database (`python app.py initdb`). Keep the file under 200 lines, using helper functions from utils.py."
             },
             {
-                "filepath": "tagger.py",
-                "instructions": "Create a self\u2011contained module that loads a local transformer model once and provides `generate_tags(text: str) -> str`:\n- Use `transformers.AutoModelForCausalLM` and `AutoTokenizer` with `torch_dtype=torch.float16` if CUDA is available, else CPU.\n- Model path is `models/` (user must place the model folder there).\n- Prompt engineering: construct a concise system prompt like:\n  ```\n  You are an expert IT incident analyst. Extract up to five short keyword tags (lowercase, hyphenated if needed) that best describe the root cause and affected component of the following incident description. Return tags as a comma\u2011separated list.\n  ```\n- Tokenize, generate with `max_new_tokens=30`, temperature=0.2, stop on newline.\n- Post\u2011process output: strip, lower, replace spaces with hyphens, ensure commas separate tags.\n- Cache the model and tokenizer in module\u2011level globals for reuse.\n- Include a fallback that returns \"unclassified\" if generation fails.\n- Provide a small `if __name__ == \"__main__\":` demo that reads a sample string and prints tags."
+                "filepath": "models.py",
+                "instructions": "Define a SQLAlchemy ORM model `DraftProposal` with fields: id (PK), business_name, project_title, eligibility_score (int), proposal_text (Text), created_at (DateTime). Provide a helper function `create_draft()` that inserts a new record and `get_all_drafts()` that returns all records sorted by date. Include a `db_init()` function that creates the SQLite database file `grantflow.db` if it does not exist."
             },
             {
-                "filepath": "db.py",
-                "instructions": "Encapsulate all SQLite interactions in a tiny helper:\n- Function `get_connection()` returns a cached connection (use `functools.lru_cache`).\n- `init_db()` creates the `issues` table if not exists.\n- `add_issue(title, description, tags)` inserts a row with `datetime.utcnow()`.\n- `fetch_all()` returns a list of dicts for Streamlit display.\n- `fetch_stats()` returns a pandas DataFrame with exploded tags and a weekly count series for analytics.\n- Ensure proper `conn.commit()` and close handling.\n- Include type hints and docstrings."
+                "filepath": "utils.py",
+                "instructions": "Implement the following utilities:\n1. `load_local_llm()` \u2013 load a TinyLlama or similar lightweight model from disk (provide a placeholder path and instructions to download the model manually).\n2. `generate_proposal_section(prompt: str) -> str` \u2013 send the prompt to the local LLM, return the generated text, with a retry loop and a timeout.\n3. `calculate_eligibility(data: dict) -> int` \u2013 simple heuristic that scores eligibility based on user inputs (e.g., years in business, employee count, prior federal contracts).\n4. `render_pdf(proposal_text: str, metadata: dict) -> bytes` \u2013 use fpdf to create a PDF containing the proposal and metadata.\n5. `deadline_countdown(target_date: str) -> str` \u2013 return a human\u2011readable string like \"12 days left\".\nAll functions should be pure and include docstrings."
             },
             {
-                "filepath": "tests/test_tagger.py",
-                "instructions": "Write pytest unit tests for the tagger:\n- Mock a tiny transformer model using `unittest.mock` to avoid heavy loading.\n- Test that `generate_tags` returns a string with commas and lower\u2011case tags.\n- Test fallback behavior when the model raises an exception.\n- Include a sanity test that checks the prompt string composition.\n- Ensure tests run quickly (`-q`)."
+                "filepath": "templates/index.html",
+                "instructions": "Create a minimal Bootstrap\u2011free HTML form with fields: Business Name, Project Title, Years in Business, Employee Count, Prior Federal Contracts (yes/no), Project Summary (textarea). Include a submit button that posts to `/draft`. Use Jinja templating to display any flash messages. Keep the CSS minimal and inline or reference static/style.css."
             },
             {
-                "filepath": "architecture.mmd",
-                "instructions": "Provide a Mermaid diagram (as a `.mmd` file) describing the system:\n```\nflowchart LR\n    UI[Streamlit UI] -->|calls| DB[SQLite DB]\n    UI -->|asks for tags| Tagger[Local LLM Tagger]\n    Tagger -->|loads| Model[Transformer Model (models/)]\n    DB -->|stores| Issues[Issue Records]\n    UI -->|visualizes| Charts[Plotly Charts]\n```\nAdd comments explaining each arrow. This file is referenced in the README."
+                "filepath": "static/style.css",
+                "instructions": "Provide a simple, responsive stylesheet that styles the form, buttons, and preview page. Use flexbox for layout, set a max-width, and ensure the app looks decent on mobile. Avoid heavy frameworks."
             }
         ]
     },
@@ -44,9 +44,9 @@
         "README.md",
         "requirements.txt",
         "app.py",
-        "tagger.py",
-        "db.py",
-        "tests/test_tagger.py",
-        "architecture.mmd"
+        "models.py",
+        "utils.py",
+        "templates/index.html",
+        "static/style.css"
     ]
 }
