@@ -1,0 +1,78 @@
+:root {
+  --primary-bg: #ffffff;
+  --primary-text: #333333;
+  --header-bg: #f0f0f0;
+  --header-text: #000000;
+  --table-border: #dddddd;
+  --hover-bg: #e6f7ff;
+  --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background-color: var(--primary-bg);
+  color: var(--primary-text);
+  line-height: 1.6;
+}
+
+header {
+  background-color: var(--header-bg);
+  color: var(--header-text);
+  padding: 1rem 2rem;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  table-layout: fixed;
+}
+
+table th, table td {
+  border: 1px solid var(--table-border);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+table thead {
+  background-color: var(--header-bg);
+}
+
+table tbody tr:hover {
+  background-color: var(--hover-bg);
+}
+
+@media (max-width: 768px) {
+  header h1 {
+    font-size: 1.5rem;
+  }
+  table th, table td {
+    padding: 0.5rem 0.75rem;
+  }
+  table {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  header {
+    padding: 0.75rem 1rem;
+  }
+  table {
+    font-size: 0.8rem;
+  }
+  table th, table td {
+    padding: 0.4rem 0.6rem;
+  }
+}

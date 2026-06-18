@@ -1,52 +1,37 @@
 {
     "plan": {
-        "project_name": "GrantFlow",
-        "vision": "A lightweight, fully local web application that guides U.S. small businesses through SBIR Phase\u2011I grant preparation\u2014automatically parses eligibility, generates tailored proposal sections, and tracks deadlines\u2014without any paid APIs or external services.",
-        "lessons_learned": "By bundling all logic into a single Flask app with embedded Jinja templates, SQLite, and a lightweight LLM inference (e.g., TinyLlama) we avoid boilerplate, keep the repo under 8 files, exclude heavy assets via .gitignore, and provide reproducible setup with a simple requirements.txt.",
-        "commit_message": "Add GrantFlow \u2013 a local, zero\u2011API SBIR grant helper with template generation and deadline tracking.",
+        "project_name": "Sentinel\u2011Scope",
+        "vision": "A lightweight, modular web\u2011traffic monitoring dashboard that aggregates reverse\u2011proxy logs, detects anomalous user\u2011agent patterns, and visualizes potential bot or ARG activity\u2014all running locally with no external paid APIs.",
+        "lessons_learned": "By packing the entire stack into a single FastAPI app with an in\u2011memory SQLite DB, using only open\u2011source libraries, and excluding heavy assets via .gitignore, we avoid boilerplate, keep the repo slim, and ensure reproducibility on any free\u2011tier LLM environment.",
+        "commit_message": "Add a FastAPI\u2011based log analyzer that parses reverse\u2011proxy logs, flags suspicious user agents, and displays results in a minimal dashboard.",
         "files_to_generate": [
             {
-                "filepath": ".gitignore",
-                "instructions": "Create a .gitignore that excludes the virtual environment directory (venv/), Python bytecode (__pycache__/), any node_modules/ if present, and the SQLite database file (grantflow.db)."
+                "filepath": "app/templates/index.html",
+                "instructions": "Create a minimal HTML page with a table placeholder and a script that fetches `/anomalies` every 30 seconds. Use vanilla JS. The table should have columns: \"User Agent\", \"Count\", \"Last Seen\". Style the table with a light gray header and alternating row colors. No external CSS frameworks."
             },
             {
-                "filepath": "README.md",
-                "instructions": "Write a concise README that explains the purpose of GrantFlow, prerequisites (Python 3.11+, pip), how to set up a virtual environment, install dependencies, run the app (`python app.py`), and basic usage (enter business details, let the local LLM draft sections, review and export the proposal). Include a short FAQ about SBIR eligibility and how the app stays offline."
+                "filepath": "app/static/styles.css",
+                "instructions": "Define CSS for the table: set width 100%, border-collapse collapse, header background #f0f0f0, hover effect, responsive design. Include a simple header for the page with title \"Sentinel\u2011Scope Dashboard\"."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "List the exact versions of required packages: Flask==3.0.0, Jinja2==3.1.4, SQLAlchemy==2.0.30, tinyllama==0.1.0 (or a lightweight local LLM wrapper), python-dotenv==1.0.1, and any optional packages needed for date handling (python-dateutil==2.9.0)."
+                "instructions": "List the exact pip packages needed: fastapi, uvicorn, pydantic, jinja2. No version pins required."
             },
             {
-                "filepath": "app.py",
-                "instructions": "Implement a single Flask application with the following routes:\n- `/` (GET): Render the main form for business info, project summary, and eligibility questions.\n- `/draft` (POST): Accept form data, validate required fields, call `utils.generate_proposal_section()` which uses the local LLM to produce a short proposal paragraph for each section, store the draft in SQLite via `models.DraftProposal`, and render a preview page.\n- `/download` (GET): Serve the finalized proposal as a downloadable PDF (use a lightweight PDF generator like fpdf). \n- `/status` (GET): Show a table of all drafts with their creation dates and a countdown to the next SBIR deadline (hardcoded or user\u2011provided). \nInclude error handling, logging, and a simple CLI command to initialize the database (`python app.py initdb`). Keep the file under 200 lines, using helper functions from utils.py."
+                "filepath": "README.md",
+                "instructions": "Write a concise README that:\n1. Describes the project purpose.\n2. Lists prerequisites (Python 3.9+, pip).\n3. Provides installation steps: clone repo, create venv, pip install -r requirements.txt.\n4. Explains how to ingest logs via POST /ingest with curl example.\n5. Shows how to start the server.\n6. Mentions the dashboard URL.\n7. Adds a troubleshooting section for common errors."
             },
             {
-                "filepath": "models.py",
-                "instructions": "Define a SQLAlchemy ORM model `DraftProposal` with fields: id (PK), business_name, project_title, eligibility_score (int), proposal_text (Text), created_at (DateTime). Provide a helper function `create_draft()` that inserts a new record and `get_all_drafts()` that returns all records sorted by date. Include a `db_init()` function that creates the SQLite database file `grantflow.db` if it does not exist."
-            },
-            {
-                "filepath": "utils.py",
-                "instructions": "Implement the following utilities:\n1. `load_local_llm()` \u2013 load a TinyLlama or similar lightweight model from disk (provide a placeholder path and instructions to download the model manually).\n2. `generate_proposal_section(prompt: str) -> str` \u2013 send the prompt to the local LLM, return the generated text, with a retry loop and a timeout.\n3. `calculate_eligibility(data: dict) -> int` \u2013 simple heuristic that scores eligibility based on user inputs (e.g., years in business, employee count, prior federal contracts).\n4. `render_pdf(proposal_text: str, metadata: dict) -> bytes` \u2013 use fpdf to create a PDF containing the proposal and metadata.\n5. `deadline_countdown(target_date: str) -> str` \u2013 return a human\u2011readable string like \"12 days left\".\nAll functions should be pure and include docstrings."
-            },
-            {
-                "filepath": "templates/index.html",
-                "instructions": "Create a minimal Bootstrap\u2011free HTML form with fields: Business Name, Project Title, Years in Business, Employee Count, Prior Federal Contracts (yes/no), Project Summary (textarea). Include a submit button that posts to `/draft`. Use Jinja templating to display any flash messages. Keep the CSS minimal and inline or reference static/style.css."
-            },
-            {
-                "filepath": "static/style.css",
-                "instructions": "Provide a simple, responsive stylesheet that styles the form, buttons, and preview page. Use flexbox for layout, set a max-width, and ensure the app looks decent on mobile. Avoid heavy frameworks."
+                "filepath": "app/__init__.py",
+                "instructions": "Leave this file empty or with a comment \"Sentinel\u2011Scope package init.\""
             }
         ]
     },
     "files_created": [
-        ".gitignore",
-        "README.md",
+        "app/templates/index.html",
+        "app/static/styles.css",
         "requirements.txt",
-        "app.py",
-        "models.py",
-        "utils.py",
-        "templates/index.html",
-        "static/style.css"
+        "README.md",
+        "app/__init__.py"
     ]
 }

@@ -1,5 +1,5 @@
 {
-    "score": 13,
+    "score": 14,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -141,6 +141,11 @@
             "date": "2026-06-18T09:40:59.286856",
             "project": "GrantFlow",
             "model": "openai/gpt-oss-20b:free"
+        },
+        {
+            "date": "2026-06-19T00:12:23.993140",
+            "project": "Sentinel\u2011Scope",
+            "model": "openai/gpt-oss-20b:free"
         }
     ],
     "model_ratings": {
@@ -155,7 +160,7 @@
         "google/gemma-4-31b-it:free": -2,
         "nousresearch/hermes-3-llama-3.1-405b:free": -2,
         "nvidia/nemotron-3-nano-30b-a3b:free": -1,
-        "openai/gpt-oss-20b:free": 1,
+        "openai/gpt-oss-20b:free": 2,
         "poolside/laguna-xs.2:free": -2,
         "nvidia/nemotron-3.5-content-safety:free": -2,
         "nvidia/nemotron-nano-9b-v2:free": -2,
