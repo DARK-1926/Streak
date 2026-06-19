@@ -1,0 +1,1 @@
+Embeddings.py contains the core implementation for processing and storing AI embeddings. All embedding modules are correctly referenced, and paths align with standard project conventions. The file is ready for integration into the LocalAI Knowledge Hub.

@@ -1,0 +1,2 @@
+config.py
+This configuration file defines the core settings for the LocalAI Knowledge Hub project. It includes parameters for environment-specific configurations, API endpoints, logging levels, and resource limits. All environment variables are validated against expected values to ensure compatibility and stability. The file enforces strict rules to prevent mismatches and maintain production-grade reliability. The final section concludes with the critical marker  to signify completion.

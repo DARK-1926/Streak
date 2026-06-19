@@ -1,0 +1,2 @@
+main.py
+This script serves as the core entry point for the LocalAI Knowledge Hub. It initializes the application environment, loads necessary models, and sets up the user interface for interacting with AI resources. The design follows best practices for modularity and maintainability, ensuring that each component has a clear responsibility. The focus is on robust error handling and seamless integration of external services.

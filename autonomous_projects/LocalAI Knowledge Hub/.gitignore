@@ -1,0 +1,4 @@
+Project: LocalAI Knowledge Hub
+Vision: Fixing errors
+Task: Write ONLY the exact contents for the file: .gitignore
+CRITICAL: Ignore .venv, node_modules, __pycache__
