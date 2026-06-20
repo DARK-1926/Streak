@@ -1,0 +1,22 @@
+# Virtual environments
+.venv/
+node_modules/
+
+# Python compiled files
+__pycache__/
+*.pyc
+
+# Pytest cache
+.pytest_cache/
+
+# IDE directories
+.idea/
+.vscode/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# OS X
+.DS_Store

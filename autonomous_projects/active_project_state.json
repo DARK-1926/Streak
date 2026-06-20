@@ -1,47 +1,62 @@
 {
     "plan": {
-        "project_name": "Local Duplicate Code Detector & Refactor Assistant (LDCDRA)",
-        "vision": "A lightweight, fully local tool that scans a codebase, identifies duplicate code blocks using memory\u2011efficient hashing, and leverages an open\u2011source LLM to generate refactoring suggestions and test stubs\u2014all without external APIs or large datasets.",
-        "lessons_learned": "Use streaming and incremental hashing to keep memory usage low, exclude heavy directories with .gitignore, provide a reproducible virtual\u2011env setup, include Mermaid diagrams in the README for architecture clarity, and validate all test files before committing.",
-        "commit_message": "Add local duplicate code detector and refactor assistant with LLM\u2011based suggestions.",
+        "project_name": "CodeGuard",
+        "vision": "A lightweight, zero\u2011dependency, deterministic specialist agent that automatically detects and reports duplicated or nearly\u2011duplicate test cases within a Python codebase. It parses the test suite, normalizes test logic into a canonical representation, and flags potential redundancy with confidence scores. The roadmap includes: 1) AST\u2011based extraction of test functions; 2) normalization of assertions and test data; 3) similarity hashing via SimHash; 4) a CLI interface for quick invocation; 5) a comprehensive pytest suite covering edge cases and performance. Testing strategy: unit tests for each transformation step, integration tests on synthetic test suites, and a performance benchmark ensuring sub\u2011second runtime for 200 tests.",
+        "lessons_learned": "By embedding all logic into a single, well\u2011documented file and using only the standard library plus a tiny, pure\u2011Python hashing dependency, we avoid heavy binaries, keep the repo slim, and ensure deterministic behavior across environments.",
+        "commit_message": "Add CodeGuard: a deterministic duplicate\u2011test detector for Python projects.",
         "files_to_generate": [
             {
+                "filepath": "codeguard.py",
+                "instructions": "Implement a command\u2011line tool that:\n1. Accepts a directory path via argparse.\n2. Recursively finds all *.py files under tests/ or any directory containing \"test_\".\n3. Parses each file with ast.parse, extracts all functions whose names start with \"test_\".\n4. For each test function, collect:\n   - All assert statements and their expressions.\n   - All function calls to other test helpers.\n   - All literal constants used.\n5. Normalize each test into a canonical string: sort assertions alphabetically, sort literals, and replace variable names with placeholders.\n6. Compute a SimHash (use a pure\u2011Python implementation from the 'simhash' pip package) for each canonical string.\n7. Compare hashes using Hamming distance; if distance < 3, flag the pair as potential duplicates.\n8. Output a concise report: for each duplicate group, list file paths, function names, and a similarity score.\n9. Provide a --json flag to output the report as JSON.\n10. Include comprehensive docstrings and type hints.\nThe file must be self\u2011contained, import only standard library modules and 'simhash', and be ready to run with python -m codeguard <path>."
+            },
+            {
+                "filepath": "test_codeguard.py",
+                "instructions": "Write pytest tests that:\n1. Create a temporary directory with three test files: test_a.py, test_b.py, test_c.py.\n2. test_a.py contains two identical test functions (test_foo and test_bar) with identical assertions.\n3. test_b.py contains a test function test_foo that is a near\u2011duplicate of test_a's test_foo (same assertions but different variable names).\n4. test_c.py contains a unique test function.\n5. Run the codeguard CLI via subprocess.check_output and capture its stdout.\n6. Assert that the report identifies test_a.test_foo and test_b.test_foo as duplicates, but not test_a.test_bar or test_c.\n7. Test the --json flag returns a valid JSON structure with expected keys.\n8. Include a test that ensures the tool exits with code 0 even when no duplicates are found.\n9. Use fixtures to manage temporary files and cleanup.\n10. Ensure all tests pass when running pytest."
+            },
+            {
                 "filepath": ".gitignore",
-                "instructions": "Create a .gitignore file that excludes the following directories and files:\n- .venv/\n- __pycache__/\n- .pytest_cache/\n- .idea/\n- .vscode/\n- *.pyc\n- *.pyo\n- *.pyd\n- build/\n- dist/\n- *.egg-info/\n- logs/\n- temp/\n- .DS_Store\nEnsure the file is minimal yet covers common Python and IDE artefacts."
+                "instructions": "Add entries to ignore virtual environments, compiled Python files, and test artifacts:\n- .venv/\n- __pycache__/\n- *.pyc\n- .pytest_cache/\n- .idea/\n- .vscode/\n- dist/\n- build/\n- *.egg-info/\n- .DS_Store\n"
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a comprehensive README that includes:\n1. Project title and brief description.\n2. Motivation and how it addresses memory\u2011efficient duplicate detection and AI\u2011assisted refactoring.\n3. Prerequisites (Python 3.10+, pip).\n4. Setup steps: create virtual environment, install dependencies from requirements.txt, download the local LLM weights (provide a link to a small open\u2011source model like Llama\u20112\u20117B or a quantized variant).\n5. Usage examples:\n   - Detect duplicates: `python main.py detect --path src/`\n   - Suggest refactorings: `python main.py refactor --path src/`\n   - AI code review: `python main.py review --path src/`.\n6. Architecture diagram using Mermaid syntax that shows the flow: CLI \u2192 refactor module \u2192 LLM module \u2192 output.\n7. Contribution guidelines and license.\nMake the README Markdown\u2011friendly and include code blocks for commands."
+                "instructions": "Write a concise README that:\n1. Describes the purpose of CodeGuard.\n2. Explains the architecture: AST extraction \u2192 normalization \u2192 SimHash \u2192 similarity detection.\n3. Provides installation instructions (pip install . or pip install simhash).\n4. Shows example usage: python -m codeguard path/to/tests and python -m codeguard path/to/tests --json.\n5. Mentions the test suite and how to run it.\n6. Includes a small diagram (Mermaid) illustrating the data flow.\n7. Lists limitations (only Python, simple similarity, no external APIs).\n"
             },
             {
-                "filepath": "config.py",
-                "instructions": "Define a module that holds all configurable constants:\n- MIN_DUPLICATE_LINES = 5  # Minimum number of consecutive lines to consider a duplicate\n- DUPLICATE_HASH_THRESHOLD = 0.8  # Jaccard similarity threshold for duplicate detection\n- MODEL_PATH = \"models/llama-2-7b-q4.bin\"  # Path to the local quantized LLM weights\n- MAX_CONTEXT_LINES = 20  # Number of surrounding lines passed to the LLM for context\n- LOG_LEVEL = \"INFO\"\n- REFRACTOR_OUTPUT_DIR = \"refactor_suggestions/\"\nInclude a function `load_config()` that returns a dictionary of these values for easy import."
+                "filepath": "setup.py",
+                "instructions": "Provide a minimal setuptools configuration that declares the package name 'codeguard', version '0.1.0', includes the console script entry point 'codeguard=codeguard:main', and specifies 'simhash' as a runtime dependency."
             },
             {
-                "filepath": "utils.py",
-                "instructions": "Implement utility functions used across the project:\n- `read_file(path: str) -> str`: Read and return file contents.\n- `write_file(path: str, content: str)`: Write content to a file, creating directories if needed.\n- `compute_hash(code: str) -> str`: Compute a SHA\u2011256 hash of the normalized code string.\n- `normalize_code(code: str) -> str`: Remove comments, strip whitespace, and collapse consecutive blank lines.\n- `stream_file_lines(path: str)`: Yield lines one by one to avoid loading entire file into memory.\n- `log(message: str, level: str = \"INFO\")`: Simple wrapper around Python\u2019s logging module.\n- `ensure_dir(path: str)`: Create a directory if it does not exist.\nAll functions should handle exceptions gracefully and log errors."
+                "filepath": "requirements.txt",
+                "instructions": "List only the required third\u2011party package: simhash==4.1.0"
             },
             {
-                "filepath": "refactor.py",
-                "instructions": "Implement duplicate detection and refactoring suggestion logic:\n1. `find_duplicates(root_path: str) -> Dict[str, List[Tuple[str, int]]]`:\n   - Walk through all .py files under `root_path`.\n   - For each file, read it line by line using `stream_file_lines`.\n   - Build a sliding window of `MIN_DUPLICATE_LINES` lines, normalize each window, and compute its hash.\n   - Store occurrences of each hash in a dictionary mapping hash \u2192 list of (file_path, start_line).\n   - After scanning, filter entries where the list length > 1 and similarity > `DUPLICATE_HASH_THRESHOLD`.\n2. `suggest_refactor(duplicates: Dict) -> List[Dict]`:\n   - For each duplicate group, construct a suggestion dict containing:\n     * `function_name`: a generated name like `extract_<hash>_func`.\n     * `occurrences`: list of (file, start_line, end_line).\n     * `code_snippet`: the duplicated code.\n   - Return a list of suggestions.\n3. `apply_refactor(suggestions: List[Dict])`:\n   - For each suggestion, write a new function file in `REFRACTOR_OUTPUT_DIR`.\n   - Replace each occurrence in the original files with a call to the new function.\n   - Use `write_file` to update files.\n4. Provide a CLI\u2011friendly interface that prints summary tables.\nAll functions must be memory efficient and avoid loading entire codebases into RAM."
+                "filepath": "pyproject.toml",
+                "instructions": "Add a minimal pyproject.toml that configures pytest and flake8 for linting, and pins the Python version to >=3.8."
             },
             {
-                "filepath": "ai_review.py",
-                "instructions": "Integrate a local LLM for AI\u2011assisted code review and test stub generation:\n1. `load_llm(model_path: str)`:\n   - Load the quantized LLM using the `transformers` library with `AutoModelForCausalLM` and `AutoTokenizer`.\n   - Set device to CPU or GPU if available.\n2. `analyze_code(code: str, context: str = None) -> str`:\n   - Construct a prompt: \"Review the following Python code and provide concise feedback. Code:\\n<code>\\nIf context is provided, include it.\".\n   - Generate a response using the loaded model with a max token limit of 512.\n   - Return the review text.\n3. `generate_test_stub(code: str) -> str`:\n   - Prompt: \"Generate a pytest test stub for the following function. Function:\\n<code>\".\n   - Return the test code.\n4. Provide a function `review_directory(root_path: str)` that walks through .py files, runs `analyze_code` on each, and writes a `.review` file alongside each source file.\nAll LLM calls should stream tokens to keep memory usage low and should handle GPU/CPU fallback."
-            },
-            {
-                "filepath": "main.py",
-                "instructions": "Entry point for the CLI. Implement the following:\n1. Use `argparse` to define subcommands: `detect`, `refactor`, `review`.\n2. Each subcommand accepts `--path <directory>` and optional flags.\n3. `detect`:\n   - Call `refactor.find_duplicates` and print a table of duplicate groups with file paths and line ranges.\n4. `refactor`:\n   - Run `detect` internally, then call `refactor.suggest_refactor` and `refactor.apply_refactor`.\n   - Output a summary of changes made.\n5. `review`:\n   - Call `ai_review.review_directory` on the specified path.\n   - Print the number of review files generated.\n6. Include a `--verbose` flag that sets the logging level to DEBUG.\n7. Ensure graceful error handling and helpful usage messages.\nAll imports should be from the modules defined above, and the script should be executable as `python main.py`."
+                "filepath": "LICENSE",
+                "instructions": "Add a permissive MIT license text."
             }
         ]
     },
     "files_created": [
+        "codeguard.py",
+        "test_codeguard.py",
         ".gitignore",
         "README.md",
-        "config.py",
-        "utils.py",
-        "refactor.py",
-        "ai_review.py",
-        "main.py"
+        "setup.py",
+        "requirements.txt",
+        "pyproject.toml",
+        "LICENSE"
+    ],
+    "blueprint": [
+        "File: codeguard.py provides: class TestInfo, def find_test_files, class TestExtractor, class PlaceholderTransformer, def canonicalize, def extract_tests_from_file, def hamming_distance, def group_similar_tests, def build_report, def main",
+        "File: test_codeguard.py provides: def temp_dir, def run_codeguard, def test_cli_detects_duplicates, def test_cli_json_output, def test_cli_no_duplicates_exit_code_zero",
+        "File: .gitignore (Static/Config)",
+        "File: README.md (Static/Config)",
+        "File: setup.py provides: No public classes/functions",
+        "File: requirements.txt (Static/Config)",
+        "File: pyproject.toml (Static/Config)",
+        "File: LICENSE (Static/Config)"
     ]
 }

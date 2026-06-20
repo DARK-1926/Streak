@@ -1,5 +1,5 @@
 {
-    "score": 16,
+    "score": 17,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -156,6 +156,11 @@
             "date": "2026-06-20T11:44:32.119667",
             "project": "Local Duplicate Code Detector & Refactor Assistant (LDCDRA)",
             "model": "openai/gpt-oss-20b:free"
+        },
+        {
+            "date": "2026-06-20T16:19:06.438388",
+            "project": "CodeGuard",
+            "model": "nvidia/nemotron-3-nano-30b-a3b:free"
         }
     ],
     "model_ratings": {
@@ -169,8 +174,8 @@
         "cognitivecomputations/dolphin-mistral-24b-venice-edition:free": -3,
         "google/gemma-4-31b-it:free": -3,
         "nousresearch/hermes-3-llama-3.1-405b:free": -3,
-        "nvidia/nemotron-3-nano-30b-a3b:free": -2,
-        "openai/gpt-oss-20b:free": 1,
+        "nvidia/nemotron-3-nano-30b-a3b:free": -1,
+        "openai/gpt-oss-20b:free": 0,
         "poolside/laguna-xs.2:free": -2,
         "nvidia/nemotron-3.5-content-safety:free": -3,
         "nvidia/nemotron-nano-9b-v2:free": -3,
@@ -181,7 +186,7 @@
         "meta-llama/llama-3.2-3b-instruct:free": -3,
         "openai/gpt-oss-120b:free": -2,
         "nvidia/nemotron-nano-12b-v2-vl:free": -3,
-        "cohere/north-mini-code:free": -1
+        "cohere/north-mini-code:free": -2
     },
     "past_projects": [
         "VideoMoments Indexer: Democratizing personal video indexing with local LLMs, enabling users to search and retrieve meaningful moments from massive video archives without cloud dependencies, leveraging the surge in local LLM adoption on consumer hardware.",
