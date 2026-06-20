@@ -1,5 +1,5 @@
 {
-    "score": 15,
+    "score": 16,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -151,6 +151,11 @@
             "date": "2026-06-19T10:00:35.311703",
             "project": "LocalAI Knowledge Hub",
             "model": "poolside/laguna-xs.2:free"
+        },
+        {
+            "date": "2026-06-20T11:44:32.119667",
+            "project": "Local Duplicate Code Detector & Refactor Assistant (LDCDRA)",
+            "model": "openai/gpt-oss-20b:free"
         }
     ],
     "model_ratings": {
@@ -166,7 +171,7 @@
         "nousresearch/hermes-3-llama-3.1-405b:free": -3,
         "nvidia/nemotron-3-nano-30b-a3b:free": -2,
         "openai/gpt-oss-20b:free": 1,
-        "poolside/laguna-xs.2:free": -1,
+        "poolside/laguna-xs.2:free": -2,
         "nvidia/nemotron-3.5-content-safety:free": -3,
         "nvidia/nemotron-nano-9b-v2:free": -3,
         "google/gemma-4-26b-a4b-it:free": -3,
