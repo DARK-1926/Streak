@@ -1,5 +1,5 @@
 {
-    "score": 17,
+    "score": 18,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -161,6 +161,11 @@
             "date": "2026-06-20T16:19:06.438388",
             "project": "CodeGuard",
             "model": "nvidia/nemotron-3-nano-30b-a3b:free"
+        },
+        {
+            "date": "2026-06-21T12:49:59.780086",
+            "project": "Quantum Memory Optimizer",
+            "model": "openai/gpt-oss-120b:free"
         }
     ],
     "model_ratings": {
@@ -191,11 +196,39 @@
     "past_projects": [
         "VideoMoments Indexer: Democratizing personal video indexing with local LLMs, enabling users to search and retrieve meaningful moments from massive video archives without cloud dependencies, leveraging the surge in local LLM adoption on consumer hardware.",
         "LocalCodingAssistant: Democratizing AI-powered coding by running state-of-the-art local LLMs on consumer hardware, eliminating reliance on cloud APIs and enabling privacy-preserving, low-latency development workflows.",
-        "LocalLLM Optimizer: Empower developers to run state\u2011of\u2011the\u2011art local LLMs on consumer hardware, eliminating cloud dependencies while preserving privacy and achieving low latency."
+        "LocalLLM Optimizer: Empower developers to run state\u2011of\u2011the\u2011art local LLMs on consumer hardware, eliminating cloud dependencies while preserving privacy and achieving low latency.",
+        "Quantum Memory Optimizer"
     ],
     "lessons_learned": [
         "Avoid uploading large binary assets; use .gitignore to exclude heavy directories; provide clear setup scripts; integrate Mermaid diagrams for clarity; ensure reproducible environment with venv and pytest.",
         "Avoid uploading large binary assets; use .gitignore to exclude heavy directories like .venv and node_modules; provide clear setup scripts; integrate Mermaid diagrams for architecture clarity; ensure reproducible environments with venv and pytest; validate network connectivity for package installs.",
-        "1. Exclude heavy directories with .gitignore to keep repo lightweight.\n2. Provide clear, reproducible setup scripts.\n3. Validate test files for syntax errors before committing.\n4. Use virtual environments and pinned dependencies for consistency."
-    ]
+        "1. Exclude heavy directories with .gitignore to keep repo lightweight.\n2. Provide clear, reproducible setup scripts.\n3. Validate test files for syntax errors before committing.\n4. Use virtual environments and pinned dependencies for consistency.",
+        "Uses memory-mapped files for pattern analysis and prioritizes algorithmic efficiency over OOP overhead, avoiding common pitfalls of verbose enterprise patterns and ensuring test coverage for critical path operations."
+    ],
+    "planner_ratings": {
+        "cohere/north-mini-code-20260617:free": {
+            "plans_created": 1,
+            "critique_survivals": 0,
+            "test_stages_reached": 0
+        },
+        "nvidia/nemotron-nano-12b-v2-vl:free": {
+            "plans_created": 1,
+            "critique_survivals": 1,
+            "test_stages_reached": 1
+        }
+    },
+    "coder_ratings": {
+        "liquid/lfm-2.5-1.2b-thinking-20260120:free": {
+            "files_generated": 8,
+            "lint_passes": 4,
+            "fix_attempts": 0,
+            "fix_successes": 0
+        },
+        "openai/gpt-oss-120b:free": {
+            "files_generated": 0,
+            "lint_passes": 0,
+            "fix_attempts": 1,
+            "fix_successes": 1
+        }
+    }
 }

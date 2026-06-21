@@ -46,7 +46,7 @@ def log_event(msg):
         f.write(formatted + "\n")
 
 # ==========================================
-# QUOTA & LIMITS (Points 1 & 4)
+# QUOTA & LIMITS
 # ==========================================
 def load_quota():
     today = datetime.now().strftime("%Y-%m-%d")
@@ -67,17 +67,16 @@ def increment_quota():
     quota = load_quota()
     quota["count"] += 1
     save_quota(quota)
-    if quota["count"] >= 1000: # Assume max credit ceiling, adjust if free tier
-        log_event("DAILY QUOTA EXHAUSTED (1000 requests). Exiting.")
+    if quota["count"] >= 50: # Free tier limit
+        log_event("DAILY QUOTA EXHAUSTED (50 requests). Exiting.")
         exit(1)
 
 # ==========================================
-# DYNAMIC NEURAL GRID (Points 5 & 15)
+# DYNAMIC NEURAL GRID
 # ==========================================
 def fetch_live_free_models():
-    # Cache check (Point 5)
     if os.path.exists(MODELS_CACHE_FILE):
-        if time.time() - os.path.getmtime(MODELS_CACHE_FILE) < 3600: # 1 hour cache
+        if time.time() - os.path.getmtime(MODELS_CACHE_FILE) < 3600: 
             try:
                 with open(MODELS_CACHE_FILE, "r") as f:
                     return json.load(f)
@@ -109,35 +108,77 @@ class NeuralGrid:
         self.models = fetch_live_free_models()
         self.unhealthy_models = set()
         
+    def _init_metrics(self, model, role):
+        target_dict = f"{role}_ratings" if role else "model_ratings"
+        if target_dict not in self.memory: self.memory[target_dict] = {}
+        if model not in self.memory[target_dict]:
+            if role == "coder":
+                self.memory[target_dict][model] = {"files_generated": 0, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0}
+            else:
+                self.memory[target_dict][model] = {"plans_created": 0, "critique_survivals": 0, "test_stages_reached": 0}
+
     def get_planner_model(self):
-        # Sort by ratings, favor reasoning
         available = [m for m in self.models if m not in self.unhealthy_models]
         if not available: return None
-        available.sort(key=lambda m: self.memory.get("model_ratings", {}).get(m, 0) + random.uniform(0, 0.5), reverse=True)
+        def score(m):
+            metrics = self.memory.get("planner_ratings", {}).get(m, {"plans_created": 0, "critique_survivals": 0, "test_stages_reached": 0})
+            if isinstance(metrics, int): metrics = {"plans_created": metrics, "critique_survivals": 0, "test_stages_reached": 0}
+            plans = max(metrics.get("plans_created", 1), 1)
+            return (metrics.get("critique_survivals", 0) / plans) + (metrics.get("test_stages_reached", 0) / plans) + random.uniform(0, 0.2)
+        available.sort(key=score, reverse=True)
         return available[0]
         
     def get_coder_model(self):
-        # Sort by ratings, could be a separate metric in future
         available = [m for m in self.models if m not in self.unhealthy_models]
         if not available: return None
-        available.sort(key=lambda m: self.memory.get("model_ratings", {}).get(m, 0) + random.uniform(0, 0.5), reverse=True)
+        def score(m):
+            metrics = self.memory.get("coder_ratings", {}).get(m, {"files_generated": 0, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0})
+            if isinstance(metrics, int): metrics = {"files_generated": metrics, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0}
+            files = max(metrics.get("files_generated", 1), 1)
+            fixes = max(metrics.get("fix_attempts", 1), 1)
+            lint_rate = metrics.get("lint_passes", 0) / files
+            fix_rate = metrics.get("fix_successes", 0) / fixes
+            return (lint_rate * 0.4) + (fix_rate * 0.6) + random.uniform(0, 0.2)
+        available.sort(key=score, reverse=True)
         return available[0]
+        
+    def get_fallback_models(self, role="coder"):
+        available = [m for m in self.models if m not in self.unhealthy_models]
+        if not available: return []
+        def score(m):
+            if role == "planner":
+                metrics = self.memory.get("planner_ratings", {}).get(m, {"plans_created": 0, "critique_survivals": 0, "test_stages_reached": 0})
+                if isinstance(metrics, int): metrics = {"plans_created": metrics, "critique_survivals": 0, "test_stages_reached": 0}
+                plans = max(metrics.get("plans_created", 1), 1)
+                return (metrics.get("critique_survivals", 0) / plans) + (metrics.get("test_stages_reached", 0) / plans) + random.uniform(0, 0.2)
+            else:
+                metrics = self.memory.get("coder_ratings", {}).get(m, {"files_generated": 0, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0})
+                if isinstance(metrics, int): metrics = {"files_generated": metrics, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0}
+                files = max(metrics.get("files_generated", 1), 1)
+                fixes = max(metrics.get("fix_attempts", 1), 1)
+                lint_rate = metrics.get("lint_passes", 0) / files
+                fix_rate = metrics.get("fix_successes", 0) / fixes
+                return (lint_rate * 0.4) + (fix_rate * 0.6) + random.uniform(0, 0.2)
+        available.sort(key=score, reverse=True)
+        return available[1:3] if len(available) > 1 else []
 
-    def mark_unhealthy(self, model, reason="error"):
+    def record_metric(self, model, role, metric, value=1):
+        self._init_metrics(model, role)
+        target_dict = f"{role}_ratings" if role else "model_ratings"
+        if isinstance(self.memory[target_dict][model], int):
+            if role == "coder":
+                self.memory[target_dict][model] = {"files_generated": self.memory[target_dict][model], "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0}
+            else:
+                self.memory[target_dict][model] = {"plans_created": self.memory[target_dict][model], "critique_survivals": 0, "test_stages_reached": 0}
+        self.memory[target_dict][model][metric] = self.memory[target_dict][model].get(metric, 0) + value
+        save_memory(self.memory)
+
+    def mark_unhealthy(self, model, reason="error", role=None):
         if reason == "QUOTA_EXHAUSTED":
-            log_event(f"Account Quota reached. Halting.")
+            log_event("Account Quota reached. Halting.")
             exit(1)
-            
         log_event(f"Marking {model} as UNHEALTHY ({reason}). Rotating to next model...")
         self.unhealthy_models.add(model)
-        if "model_ratings" not in self.memory: self.memory["model_ratings"] = {}
-        self.memory["model_ratings"][model] = self.memory["model_ratings"].get(model, 0) - 1
-        save_memory(self.memory)
-
-    def mark_healthy(self, model):
-        if "model_ratings" not in self.memory: self.memory["model_ratings"] = {}
-        self.memory["model_ratings"][model] = self.memory["model_ratings"].get(model, 0) + 1
-        save_memory(self.memory)
 
     def is_depleted(self):
         return len(self.unhealthy_models) >= len(self.models)
@@ -151,11 +192,20 @@ def load_memory():
             with open(MEMORY_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if "model_ratings" not in data: data["model_ratings"] = {}
+                if "planner_ratings" not in data: data["planner_ratings"] = {}
+                if "coder_ratings" not in data: data["coder_ratings"] = {}
+                
+                # Migrate old integers to dicts
+                for k, v in data["planner_ratings"].items():
+                    if isinstance(v, int): data["planner_ratings"][k] = {"plans_created": v, "critique_survivals": 0, "test_stages_reached": 0}
+                for k, v in data["coder_ratings"].items():
+                    if isinstance(v, int): data["coder_ratings"][k] = {"files_generated": v, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0}
+
                 if "past_projects" not in data: data["past_projects"] = []
                 if "lessons_learned" not in data: data["lessons_learned"] = []
                 return data
-        except: pass
-    return {"score": 0, "history": [], "model_ratings": {}, "past_projects": [], "lessons_learned": []}
+        except Exception: pass
+    return {"score": 0, "history": [], "model_ratings": {}, "planner_ratings": {}, "coder_ratings": {}, "past_projects": [], "lessons_learned": []}
 
 def save_memory(memory):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
@@ -164,7 +214,7 @@ def save_memory(memory):
 def fetch_hn_story(sid):
     try:
         return requests.get(f"https://hacker-news.firebaseio.com/v0/item/{sid}.json", timeout=5).json()
-    except:
+    except Exception:
         return None
 
 def fetch_trends():
@@ -177,7 +227,7 @@ def fetch_trends():
             for s in stories:
                 if s: context.append(f"Trend: {s.get('title')}\nDetails: {s.get('text', '')[:300]}")
         return "\n\n".join(context)
-    except: return "Focus: AI-driven autonomous systems."
+    except Exception: return "Focus: AI-driven autonomous systems."
 
 # ==========================================
 # MULTI-STAGE API CALLS
@@ -197,55 +247,60 @@ def enforce_rate_limit():
             
     _request_timestamps.append(time.time())
 
-def call_openrouter(model, sys_prompt, user_prompt, max_retries=3, temperature=0.4):
+def call_openrouter(models_list, sys_prompt, user_prompt, temperature=0.4, max_tokens=8000):
+    """
+    Leverages OpenRouter's native `models` array for fallback failover, 
+    and plugins for response-healing and context-compression.
+    """
     url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
     
-    for attempt in range(max_retries):
+    for attempt in range(2):
         enforce_rate_limit()
-        increment_quota() # Track daily quota
+        if attempt == 0: increment_quota() 
+        
         try:
             response = requests.post(url, headers=headers, json={
-                "model": model,
+                "models": models_list,
                 "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
                 "temperature": temperature,
-                "max_tokens": 8000 # Point 2
+                "max_tokens": max_tokens,
+                "plugins": [{"id": "response-healing"}, {"id": "context-compression"}]
             }, timeout=180)
             res_data = response.json()
             
-            # Point 7: Log token usage
+            actual_model = res_data.get("model", models_list[0])
+            
             usage = res_data.get("usage", {})
             total_tokens = usage.get("total_tokens", 0)
-            log_event(f"API Call ({model}) used {total_tokens} tokens.")
+            log_event(f"API Call ({actual_model}) used {total_tokens} tokens.")
             
             if "error" in res_data:
                 err_msg = res_data['error'].get('message', 'Unknown')
                 err_code = res_data['error'].get('code', response.status_code)
-                log_event(f"OpenRouter Error ({model}): {err_msg} (Code: {err_code})")
+                log_event(f"OpenRouter Error: {err_msg} (Code: {err_code})")
                 
                 if response.status_code == 429:
                     if "limit reached" in err_msg.lower() or "credits" in err_msg.lower():
-                        return "QUOTA_EXHAUSTED" # Point 4
-                    wait_time = (2 ** attempt) + random.uniform(0, 1)
-                    log_event(f"Transient 429. Exponential backoff: waiting {wait_time:.2f}s...")
-                    time.sleep(wait_time)
+                        return "QUOTA_EXHAUSTED", actual_model
+                
+                if attempt == 0:
+                    log_event("Transient error across all models. Retrying array once in 5s...")
+                    time.sleep(5)
                     continue
-                elif response.status_code >= 500:
-                    wait_time = (2 ** attempt) + random.uniform(0, 1)
-                    log_event(f"Server error. Exponential backoff: waiting {wait_time:.2f}s...")
-                    time.sleep(wait_time)
-                    continue
-                return "SERVER_ERROR"
-            return res_data["choices"][0]["message"]["content"]
-        except Exception as e:
-            log_event(f"API Request Failed ({model}): {e}")
-            wait_time = (2 ** attempt) + random.uniform(0, 1)
-            log_event(f"Network error. Exponential backoff: waiting {wait_time:.2f}s before retry {attempt + 1}/{max_retries}...")
-            time.sleep(wait_time)
+                return "SERVER_ERROR", actual_model
             
-    return "SERVER_ERROR"
+            return res_data["choices"][0]["message"]["content"], actual_model
+        except Exception as e:
+            log_event(f"API Request Failed: {e}")
+            if attempt == 0:
+                log_event("Network error. Retrying array once in 5s...")
+                time.sleep(5)
+                continue
+            return "SERVER_ERROR", models_list[0]
 
 def extract_json(content, required_keys=None):
+    if not content: return None
     match = re.search(r'\{.*\}', content, re.DOTALL)
     if match:
         try:
@@ -256,7 +311,7 @@ def extract_json(content, required_keys=None):
                         log_event(f"JSON Validation Error: Missing key '{k}'")
                         return None
             return data
-        except: pass
+        except Exception: pass
     return None
 
 def strip_markdown(content):
@@ -280,14 +335,47 @@ def extract_signatures(filepath, content):
                 signatures.append(f"class {node.name}")
         sig_str = ", ".join(signatures) if signatures else "No public classes/functions"
         return f"File: {filepath} provides: {sig_str}"
-    except:
+    except Exception:
         return f"File: {filepath} (Syntax error or unparseable)"
+        
+def apply_search_replace(file_content, search_block, replace_block):
+    """Fuzzy Line-Window Matcher for robust string replacement"""
+    search_block = search_block.replace('\r\n', '\n')
+    replace_block = replace_block.replace('\r\n', '\n')
+    file_content_norm = file_content.replace('\r\n', '\n')
+    
+    # Exact Match
+    if search_block in file_content_norm:
+        return file_content_norm.replace(search_block, replace_block)
+        
+    # Fuzzy Line Window Match
+    search_lines = [line.strip() for line in search_block.split('\n') if line.strip()]
+    if not search_lines:
+        return "ERROR_SEARCH_NOT_FOUND"
+        
+    file_lines = file_content_norm.split('\n')
+    file_lines_stripped = [line.strip() for line in file_lines]
+    
+    search_len = len(search_lines)
+    file_len = len(file_lines_stripped)
+    
+    for i in range(file_len - search_len + 1):
+        match = True
+        for j in range(search_len):
+            if file_lines_stripped[i+j] != search_lines[j]:
+                match = False
+                break
+        if match:
+            new_lines = file_lines[:i] + replace_block.split('\n') + file_lines[i+search_len:]
+            return '\n'.join(new_lines)
+            
+    return "ERROR_SEARCH_NOT_FOUND"
 
 # ==========================================
 # STAGES
 # ==========================================
-def plan_project(model, trends, memory, error_context=None):
-    log_event(f"Stage 1: Planning Project with Architect {model}...")
+def plan_project(models, trends, memory, error_context=None):
+    log_event(f"Stage 1: Planning Project with Architect {models[0]}...")
     sys_prompt = "You are the Lead AGI Architect. Respond ONLY with valid JSON."
     retry_guidance = f"\nPREVIOUS RUN FAILED. FIX ERRORS:\n{error_context}" if error_context else ""
     past_projects = "\n".join(memory.get("past_projects", [])[-10:])
@@ -298,7 +386,7 @@ def plan_project(model, trends, memory, error_context=None):
     Design a new, innovative, fully functional software application. 
     
     PROBLEM SELECTION (Agentic Gaps):
-    Do not build generic CRUD apps. Build "Specialist Agents" or solve specific developer/agentic gaps (e.g., automated test case generators, RAG-based code analyzers, specialized linters).
+    Do not build generic CRUD apps. Build "Specialist Agents" or solve specific developer/agentic gaps.
     
     CRITICAL SCOPE LIMITS for Free LLMs:
     - You must keep the architecture extremely compact (maximum 8 files).
@@ -308,8 +396,9 @@ def plan_project(model, trends, memory, error_context=None):
     SPEC-DRIVEN DEVELOPMENT & DETERMINISTIC VALIDATION:
     1. Your plan must include explicit `interface_contracts` declaring function signatures for cross-file dependencies.
     2. Your plan must include a strict unit test suite (`test_main.py` or similar). The code MUST pass its own tests.
-    3. Include a `.gitignore` to ignore venv, node_modules, __pycache__, .env.
+    3. Include a `.gitignore` to ignore venv, __pycache__, .env.
     4. Include a `README.md` explaining the architecture.
+    5. CRITICAL: Only Python projects are supported. Do NOT create Node.js/JavaScript projects.
     
     Trends: {trends}
     
@@ -336,13 +425,29 @@ def plan_project(model, trends, memory, error_context=None):
         ]
     }}
     """
-    content = call_openrouter(model, sys_prompt, user_prompt, temperature=0.8) # High temp for planning
-    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return content
-    if not content: return None
-    return extract_json(content, required_keys=["project_name", "files_to_generate", "lessons_learned", "interface_contracts"])
+    content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.8) 
+    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return content, actual_model
+    if not content: return None, actual_model
+    return extract_json(content, required_keys=["project_name", "files_to_generate", "lessons_learned", "interface_contracts"]), actual_model
 
-def critique_plan(model, plan):
-    log_event(f"Stage 1b: Critiquing Plan...")
+def validate_plan(plan):
+    if not plan: return False
+    files = plan.get("files_to_generate", [])
+    if not files or len(files) > 8: 
+        log_event("Plan Validation Failed: File count must be between 1 and 8.")
+        return False
+    has_test = any("test" in f.get("filepath", "").lower() for f in files)
+    if not has_test:
+        log_event("Plan Validation Failed: No test file detected.")
+        return False
+    contracts = plan.get("interface_contracts", "")
+    if not contracts or len(str(contracts)) < 10:
+        log_event("Plan Validation Failed: Missing or empty interface_contracts.")
+        return False
+    return True
+
+def critique_plan(models, plan):
+    log_event("Stage 1b: Critiquing Plan...")
     sys_prompt = "You are an Architecture Critic. You review JSON plans and improve them. Output JSON."
     user_prompt = f"""
     Review this proposed project plan:
@@ -355,20 +460,18 @@ def critique_plan(model, plan):
     
     Respond ONLY with the completely fixed, valid JSON plan using the exact same schema.
     """
-    content = call_openrouter(model, sys_prompt, user_prompt, temperature=0.2)
-    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return plan # fallback to original plan
+    content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.2)
+    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return plan, actual_model 
     critique = extract_json(content, required_keys=["files_to_generate"])
-    return critique if critique else plan
+    return (critique if critique else plan), actual_model
 
 def check_dependencies(file_list, project_dir):
     log_event("Sanity checking dependencies...")
-    # Very lightweight check. Look for requirements.txt
     req_path = os.path.join(project_dir, "requirements.txt")
     if os.path.exists(req_path):
         with open(req_path, "r") as f:
             pkgs = [line.split("==")[0].strip() for line in f if line.strip() and not line.startswith("#")]
         for pkg in pkgs:
-            # Simple check
             if not pkg: continue
             try:
                 res = requests.get(f"https://pypi.org/pypi/{pkg}/json", timeout=3)
@@ -378,8 +481,15 @@ def check_dependencies(file_list, project_dir):
             except: pass
     return True
 
-def generate_file_chunked(model, project_name, vision, filepath, instructions, project_blueprint=""):
+def generate_file_chunked(models, project_name, vision, filepath, instructions, project_blueprint=""):
     log_event(f"Stage 2: Generating File -> {filepath} (Chunked)...")
+    
+    # Anti-Context-Rot Framing (Points 4 & 6)
+    blueprint_lines = project_blueprint.split("\n")
+    if len(blueprint_lines) > 5:
+        blueprint_lines = blueprint_lines[-5:] # Cap blueprint
+    project_blueprint = "\n".join(blueprint_lines)
+    
     sys_prompt = "You are an Expert Software Engineer operating under the GSD framework. You write clean, robust code."
     if "gitignore" in filepath.lower():
         sys_prompt += "\nYou are writing a .gitignore file. Never include venv, node_modules, or cache."
@@ -387,23 +497,29 @@ def generate_file_chunked(model, project_name, vision, filepath, instructions, p
     elif "readme" in filepath.lower():
         instructions += "\nCRITICAL: Include a 'How it Works' section."
         
-    blueprint_section = f"\n    ROLLING BLUEPRINT (Context of previously generated files):\n    {project_blueprint}\n" if project_blueprint else ""
-        
-    base_prompt = f"""
-    Project: {project_name}
-    Vision: {vision}
-    {blueprint_section}
-    Task: Write ONLY the exact contents for the file: `{filepath}`.
-    Instructions: {instructions}
+    blueprint_section = f"\n    ROLLING BLUEPRINT:\n    {project_blueprint}\n" if project_blueprint else ""
     
-    STYLE GUIDE:
-    {STYLE_GUIDE}
-    
-    RULES:
-    1. Write proper, lengthy production code. Ensure it integrates correctly with the Rolling Blueprint.
-    2. Return ONLY raw file contents. No explanations.
-    3. Do NOT wrap your output in markdown code blocks. Just plain text.
-    4. CRITICAL: When you are COMPLETELY FINISHED writing the entire file, append the exact token `[EOF]` at the very end. Do NOT use `[EOF]` until the entire file is complete.
+    top_directive = f"""
+CRITICAL DIRECTIVE: 
+Task: Write ONLY the exact contents for the file: `{filepath}`.
+CRITICAL RULE: When you are COMPLETELY FINISHED writing the entire file, append the exact token `[EOF]` at the very end. Do NOT use `[EOF]` until the entire file is complete.
+"""
+
+    base_prompt = f"""{top_directive}
+Project: {project_name}
+Vision: {vision}
+{blueprint_section}
+Instructions: {instructions}
+
+STYLE GUIDE:
+{STYLE_GUIDE}
+
+RULES:
+1. Write proper, lengthy production code. Ensure it integrates correctly with the Rolling Blueprint.
+2. Return ONLY raw file contents. No explanations.
+3. Do NOT wrap your output in markdown code blocks. Just plain text.
+
+{top_directive}
     """
     
     full_content = ""
@@ -426,9 +542,9 @@ def generate_file_chunked(model, project_name, vision, filepath, instructions, p
             """
             log_event(f"Requesting Continuation Chunk {chunks_completed+1} for {filepath}...")
             
-        content = call_openrouter(model, sys_prompt, user_prompt, temperature=0.1) # Point 20: low temp for coding
+        content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.1) 
         if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]:
-            return content
+            return content, actual_model
         if not content:
             break
             
@@ -436,16 +552,15 @@ def generate_file_chunked(model, project_name, vision, filepath, instructions, p
         
         if "[EOF]" in content:
             full_content += content.replace("[EOF]", "")
-            return strip_markdown(full_content)
+            return strip_markdown(full_content), actual_model
         else:
             full_content += content
             chunks_completed += 1
             
-    # Point 13: Treat missing EOF at max_chunks as failure
     log_event(f"Failed to generate full file {filepath} within {max_chunks} chunks.")
-    return "ERROR_TRUNCATED"
+    return "ERROR_TRUNCATED", models[0]
 
-def generate_tests(model, project_name, file_list):
+def generate_tests(models, project_name, file_list):
     log_event(f"Stage 3: Generating Integration Script for {project_name}...")
     sys_prompt = "You are a QA Lead. Respond ONLY with the raw script contents."
     user_prompt = f"""
@@ -453,27 +568,26 @@ def generate_tests(model, project_name, file_list):
     Files created: {', '.join(file_list)}
     
     Write a Windows .bat script named 'setup_and_test.bat'.
-    1. Setup venv (Python) or npm install (Node).
-    2. Install dependencies.
-    3. Run rigorous unit tests (pytest for Python) to verify REAL coverage.
+    1. Setup a Python venv.
+    2. Install dependencies. MUST `pip install pytest pytest-json-report`.
+    3. Run rigorous unit tests. MUST run with `pytest --json-report --json-report-file=report.json`.
     4. MUST Exit with code 0 if success, 1 if fail.
     Output ONLY raw script. Do NOT wrap in markdown code blocks. No explanations.
     """
-    content = call_openrouter(model, sys_prompt, user_prompt, temperature=0.1)
-    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return "ERROR"
-    if not content: return None
-    return strip_markdown(content)
+    content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.1)
+    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return "ERROR", actual_model
+    if not content: return None, actual_model
+    return strip_markdown(content), actual_model
 
-def fix_error(model, project_dir, files_created, error_log):
-    log_event(f"Stage 4: Identifying Fixes (Reflect & Critique)...")
+def fix_error(models, project_dir, files_to_check, error_log):
+    log_event("Stage 4: Identifying Fixes (Agentless Localization)...")
     
-    # Point 8: Read actual file contents
     file_contents = {}
-    for fname in files_created:
+    for fname in files_to_check:
         full_path = os.path.join(project_dir, fname)
         if os.path.exists(full_path) and os.path.isfile(full_path):
             with open(full_path, "r", encoding="utf-8") as f:
-                file_contents[fname] = f.read()[:3000] # Cap size per file
+                file_contents[fname] = f.read()[:5000] # Cap size per file
                 
     files_str = "\n".join([f"--- {k} ---\n{v}\n" for k, v in file_contents.items()])
                 
@@ -483,32 +597,36 @@ def fix_error(model, project_dir, files_created, error_log):
     Error Log:
     {error_log}
     
-    CURRENT SOURCE CODE:
+    CURRENT SOURCE CODE OF SUSPECTED FILES:
     {files_str}
     
-    Reflect on the error log and the source code. Perform a Root Cause Analysis before proposing a fix.
+    Perform a Root Cause Analysis. Then, provide exact search/replace blocks for the broken files.
+    The `search_block` MUST EXACTLY match the existing code lines, character for character, so a python string replacement can apply it.
+    Keep the search_block as small as possible (1-10 lines) to ensure a match.
+    
     Respond ONLY with this JSON schema:
     {{
-        "root_cause_analysis": "Write a 2-sentence explanation of EXACTLY why the code failed according to the test logs.",
+        "root_cause_analysis": "Write a 2-sentence explanation of EXACTLY why the code failed.",
         "files_to_update": [
             {{
                 "filepath": "path/to/file.ext",
-                "instructions": "Detailed instructions on what exact lines to change to fix the error."
+                "search_block": "exact lines to replace",
+                "replace_block": "new lines to insert"
             }}
         ]
     }}
     """
-    content = call_openrouter(model, sys_prompt, user_prompt, temperature=0.2)
-    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return "ERROR"
-    if not content: return None
-    return extract_json(content, required_keys=["root_cause_analysis", "files_to_update"])
+    content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.2)
+    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return "ERROR", actual_model
+    if not content: return None, actual_model
+    return extract_json(content, required_keys=["root_cause_analysis", "files_to_update"]), actual_model
 
 # ==========================================
 # THE RELENTLESS EXECUTION LOOP
 # ==========================================
 def run_beast_cycle():
     log_event("========================================")
-    log_event(" AGENT BEAST V6.1: RESILIENT ARCHITECT")
+    log_event(" AGENT BEAST V6.5: SOTA SCAFFOLD")
     log_event("========================================")
     
     memory = load_memory()
@@ -532,30 +650,46 @@ def run_beast_cycle():
             except: pass
             
         while not grid.is_depleted() and not success:
-            # Specialization (Point 15)
             planner_model = grid.get_planner_model()
             coder_model = grid.get_coder_model()
             if not planner_model or not coder_model: break
             
+            planner_fallback = [planner_model] + grid.get_fallback_models("planner")
+            coder_fallback = [coder_model] + grid.get_fallback_models("coder")
+            
+            actual_coder = coder_model
+            actual_planner = planner_model
             # STAGE 1: PLAN
             if not project_state.get("plan"):
                 log_event(f"--- Assigning Planner Model: {planner_model} ---")
                 trends = fetch_trends()
-                plan = plan_project(planner_model, trends, memory)
+                plan, actual_planner = plan_project(planner_fallback, trends, memory)
                 
                 if plan == "QUOTA_EXHAUSTED":
                     log_event("Quota exhausted during planning.")
                     exit(1)
                 if plan == "SERVER_ERROR":
-                    grid.mark_unhealthy(planner_model, "SERVER_ERROR")
+                    grid.mark_unhealthy(actual_planner, "SERVER_ERROR", "planner")
                     continue
                 if not plan or "files_to_generate" not in plan:
-                    log_event(f"Architect {planner_model} failed planning phase.")
-                    grid.mark_unhealthy(planner_model, "BAD_PLAN") 
+                    log_event(f"Architect {actual_planner} failed planning phase.")
+                    grid.mark_unhealthy(actual_planner, "BAD_PLAN", "planner") 
                     continue
                     
                 # Plan Critique
-                plan = critique_plan(planner_model, plan)
+                if not validate_plan(plan):
+                    log_event("Architecture rejected by programmatic validation.")
+                    grid.mark_unhealthy(actual_planner, "INVALID_PLAN", "planner")
+                    project_state["plan"] = None
+                    continue
+
+                grid.record_metric(actual_planner, "planner", "plans_created")
+                
+                # Plan Critique
+                plan_copy = json.dumps(plan)
+                plan, actual_critic = critique_plan(planner_fallback, plan)
+                if json.dumps(plan) == plan_copy:
+                    grid.record_metric(actual_planner, "planner", "critique_survivals")
                     
                 project_state["plan"] = plan
                 project_state["files_created"] = []
@@ -579,19 +713,18 @@ def run_beast_cycle():
                     continue 
                     
                 blueprint_context = "\n".join(project_state.get("blueprint", []))
-                content = generate_file_chunked(coder_model, project_name, plan.get("vision", ""), filepath, instructions, blueprint_context)
+                content, actual_coder = generate_file_chunked(coder_fallback, project_name, plan.get("vision", ""), filepath, instructions, blueprint_context)
                 
                 if content == "QUOTA_EXHAUSTED":
                     log_event("Quota exhausted during coding.")
                     exit(1)
                 if content in ["SERVER_ERROR", "ERROR_TRUNCATED"] or not content:
                     generation_failed = True
-                    grid.mark_unhealthy(coder_model, "GENERATION_FAIL")
+                    grid.mark_unhealthy(actual_coder, "GENERATION_FAIL", "coder")
                     break
                 
-                # Path security (Point 10)
                 full_path = os.path.abspath(os.path.join(project_dir, filepath))
-                if not full_path.startswith(os.path.abspath(project_dir)):
+                if os.path.commonpath([full_path, os.path.abspath(project_dir)]) != os.path.abspath(project_dir):
                     log_event(f"Security: skipping path outside project dir: {full_path}")
                     continue
                 if os.path.isdir(full_path):
@@ -601,18 +734,20 @@ def run_beast_cycle():
                 with open(full_path, "w", encoding="utf-8") as f:
                     f.write(content.strip())
                     
-                # Local Linting (Point 3)
+                # Local Linting
                 if filepath.endswith(".py"):
                     try:
                         lint_res = subprocess.run(["python", "-m", "py_compile", full_path], capture_output=True, text=True)
-                        if lint_res.returncode != 0:
-                            log_event(f"Local Lint Failed for {filepath}. Triggering internal fast-fix.")
-                            # We could do a fast-fix here, but for now we mark generation failed to force a new attempt
+                        if lint_res.returncode == 0:
+                            grid.record_metric(actual_coder, "coder", "lint_passes")
+                        else:
+                            log_event(f"Local Lint Failed for {filepath}. Marking coder unhealthy and rotating...")
                             generation_failed = True
-                            grid.mark_unhealthy(coder_model, "LINT_FAIL")
+                            grid.mark_unhealthy(actual_coder, "LINT_FAIL", "coder")
                             break
-                    except: pass
+                    except Exception: pass
                 
+                grid.record_metric(actual_coder, "coder", "files_generated")
                 project_state["files_created"].append(filepath)
                 if "blueprint" not in project_state:
                     project_state["blueprint"] = []
@@ -628,15 +763,17 @@ def run_beast_cycle():
             # Stage 2b: Dependency Check
             if not check_dependencies(project_state["files_created"], project_dir):
                 log_event("Hallucinated dependencies found. Swapping model.")
-                grid.mark_unhealthy(coder_model, "HALLUCINATED_DEPS")
+                grid.mark_unhealthy(actual_coder, "HALLUCINATED_DEPS", "coder")
                 continue
                 
             # STAGE 3: TESTS & FIX LOOP
+            grid.record_metric(actual_planner, "planner", "test_stages_reached")
+            
             files_created = project_state["files_created"]
-            test_script = generate_tests(coder_model, project_name, files_created)
+            test_script, actual_tester = generate_tests(coder_fallback, project_name, files_created)
             if test_script == "QUOTA_EXHAUSTED": exit(1)
             if test_script == "SERVER_ERROR" or not test_script:
-                grid.mark_unhealthy(coder_model, "TEST_GEN_FAIL")
+                grid.mark_unhealthy(actual_tester, "TEST_GEN_FAIL", "coder")
                 continue
                 
             script_path = os.path.join(project_dir, "setup_and_test.bat")
@@ -650,63 +787,123 @@ def run_beast_cycle():
                     result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], 
                                              cwd=project_dir, capture_output=True, text=True, timeout=120)
                     
-                    # Point 12: Real evidence
                     output_combined = result.stdout + result.stderr
-                    has_evidence = "passed" in output_combined.lower() or "ok" in output_combined.lower() or "success" in output_combined.lower()
                     
-                    if result.returncode == 0 and has_evidence:
-                        success = True
+                    report_path = os.path.join(project_dir, "report.json")
+                    if os.path.exists(report_path):
+                        try:
+                            import json as pyjson
+                            with open(report_path, "r", encoding="utf-8") as f:
+                                report_data = pyjson.load(f)
+                                summary = report_data.get("summary", {})
+                                passed = summary.get("passed", 0)
+                                failed = summary.get("failed", 0)
+                                errors = summary.get("error", 0)
+                                if passed > 0 and failed == 0 and errors == 0:
+                                    success = True
+                        except Exception: pass
+                    
+                    if success:
                         break 
                     else:
-                        log_event(f"FAILURE. Syntax/Test error. Asking SAME model to fix...")
+                        log_event("FAILURE. Syntax/Test error. Asking SAME model to patch...")
                         error_log = f"STDOUT:\n{result.stdout[-1500:]}\nSTDERR:\n{result.stderr[-1500:]}"
-                        if result.returncode == 0 and not has_evidence:
-                            error_log += "\nScript exited 0 but no 'passed' or 'ok' evidence was found in the output. Did the tests actually run?"
+                        if not os.path.exists(report_path):
+                            error_log += "\nCRITICAL: `report.json` was NOT generated. Did pytest actually run?"
                         
-                        fix_plan = fix_error(coder_model, project_dir, files_created, error_log)
+                        # Agentless Localization
+                        crashing_files = set()
+                        for fname in files_created:
+                            if fname in error_log:
+                                crashing_files.add(fname)
+                        if not crashing_files:
+                            crashing_files = set(files_created)
+                            
+                        fix_plan, actual_fixer = fix_error(coder_fallback, project_dir, list(crashing_files), error_log)
                         if fix_plan == "QUOTA_EXHAUSTED": exit(1)
                         if fix_plan == "SERVER_ERROR" or not fix_plan or "files_to_update" not in fix_plan:
-                            log_event("Model failed to provide a fix plan. Aborting fix attempt.")
-                            break
+                            log_event("Model failed to provide a valid fix plan.")
+                            fix_attempts += 1
+                            grid.mark_unhealthy(actual_fixer, "BAD_FIX_PLAN", "coder")
+                            continue
                             
-                        blueprint_context = "\n".join(project_state.get("blueprint", []))
                         for f_info in fix_plan["files_to_update"]:
                             filepath = f_info.get("filepath")
-                            instructions = f_info.get("instructions", "")
-                            if not filepath: continue
+                            search_block = f_info.get("search_block", "")
+                            replace_block = f_info.get("replace_block", "")
+                            if not filepath or not search_block: continue
                             
-                            log_event(f"Applying fix to {filepath}...")
-                            content = generate_file_chunked(coder_model, project_name, "Fixing errors", filepath, instructions, blueprint_context)
-                            if content and content not in ["SERVER_ERROR", "ERROR_TRUNCATED", "QUOTA_EXHAUSTED"]:
-                                full_path = os.path.abspath(os.path.join(project_dir, filepath))
-                                if not full_path.startswith(os.path.abspath(project_dir)): continue
-                                if os.path.isdir(full_path): continue
-                                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                            full_path = os.path.abspath(os.path.join(project_dir, filepath))
+                            if os.path.commonpath([full_path, os.path.abspath(project_dir)]) != os.path.abspath(project_dir): continue
+                            if not os.path.exists(full_path): continue
+                            
+                            log_event(f"Applying SEARCH/REPLACE patch to {filepath}...")
+                            with open(full_path, "r", encoding="utf-8") as f:
+                                original_code = f.read()
+                                
+                            patched_code = apply_search_replace(original_code, search_block, replace_block)
+                            if patched_code == "ERROR_SEARCH_NOT_FOUND":
+                                log_event(f"Failed to match search_block in {filepath}.")
+                            else:
                                 with open(full_path, "w", encoding="utf-8") as f:
-                                    f.write(content.strip())
+                                    f.write(patched_code)
+                                    
                         fix_attempts += 1
+                        grid.record_metric(actual_fixer, "coder", "fix_attempts")
                 except subprocess.TimeoutExpired:
                     log_event("Test script timed out. Likely a hanging process.")
                     break
                     
-            if success:
-                grid.mark_healthy(coder_model)
-                log_event(f"VICTORY ACHIEVED! Code is fully working.")
-                memory["score"] += 1
-                memory["history"].append({"date": datetime.now().isoformat(), "project": project_name, "model": coder_model})
+            if not success and fix_attempts >= 3:
+                # Sunk Cost Protocol
+                log_event("Sunk Cost Protocol Engaged: 3 attempts failed. Sequential full rewrite on crashing files.")
+                for failing_file in crashing_files:
+                    failing_instructions = ""
+                    for fi in plan.get("files_to_generate", []):
+                        if fi.get("filepath") == failing_file:
+                            failing_instructions = fi.get("instructions", "")
+                            break
+                            
+                    if failing_instructions:
+                        blueprint_context = "\n".join(project_state.get("blueprint", [])[-5:])
+                        log_event(f"Regenerating {failing_file} entirely...")
+                        new_content, actual_sunk_coder = generate_file_chunked(coder_fallback, project_name, "Fixing errors by full rewrite", failing_file, failing_instructions + " THE PREVIOUS IMPLEMENTATION FAILED ENTIRELY. REWRITE IT DIFFERENTLY.", blueprint_context)
+                        if new_content and new_content not in ["SERVER_ERROR", "ERROR_TRUNCATED", "QUOTA_EXHAUSTED"]:
+                            full_path = os.path.abspath(os.path.join(project_dir, failing_file))
+                            if os.path.commonpath([full_path, os.path.abspath(project_dir)]) == os.path.abspath(project_dir):
+                                with open(full_path, "w", encoding="utf-8") as f:
+                                    f.write(new_content.strip())
                 
-                # Point 14: Fix memory loop
+                # Final check
+                try:
+                    result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], cwd=project_dir, capture_output=True, text=True, timeout=120)
+                    report_path = os.path.join(project_dir, "report.json")
+                    if os.path.exists(report_path):
+                        import json as pyjson
+                        with open(report_path, "r", encoding="utf-8") as f:
+                            report_data = pyjson.load(f)
+                            summary = report_data.get("summary", {})
+                            if summary.get("passed", 0) > 0 and summary.get("failed", 0) == 0 and summary.get("error", 0) == 0:
+                                success = True
+                                log_event("Sunk Cost Protocol SUCCEEDED.")
+                except Exception: pass
+                
+            if success:
+                grid.record_metric(actual_coder, "coder", "fix_successes")
+                    
+                log_event("VICTORY ACHIEVED! Code is fully working.")
+                memory["score"] += 1
+                memory["history"].append({"date": datetime.now().isoformat(), "project": project_name, "model": actual_coder})
+                
                 if plan.get("lessons_learned"):
                     memory["lessons_learned"].append(plan.get("lessons_learned"))
-                    memory["lessons_learned"] = memory["lessons_learned"][-20:] # cap size
+                    memory["lessons_learned"] = memory["lessons_learned"][-20:]
                 memory["past_projects"].append(project_name)
                 memory["past_projects"] = memory["past_projects"][-20:]
                 
                 save_memory(memory)
                 
-                # Push
                 try:
-                    # Point 10: confirm .env in gitignore
                     gitignore_path = os.path.join(REPO_ROOT, ".gitignore")
                     with open(gitignore_path, "a", encoding="utf-8") as f:
                         f.write("\n.venv/\nvenv/\n__pycache__/\nnode_modules/\n*.log\n.env\n")
@@ -719,14 +916,13 @@ def run_beast_cycle():
                     
                     action_desc = plan.get("commit_message", "autonomous module update")
                     commit_msg = f"feat({project_name}): {action_desc}"
+                    commit_msg = commit_msg.encode('ascii', 'ignore').decode('ascii')
                     
                     subprocess.run(["git", "commit", "-m", commit_msg], check=True, cwd=REPO_ROOT)
                     
-                    # Point 11: Git Pull Rebase dynamic branch
                     branch_res = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], check=True, cwd=REPO_ROOT, capture_output=True, text=True)
                     branch_name = branch_res.stdout.strip() or "main"
                     subprocess.run(["git", "pull", "origin", branch_name, "--rebase"], check=True, cwd=REPO_ROOT)
-                    
                     subprocess.run(["git", "push", "origin", branch_name], check=True, cwd=REPO_ROOT)
                     log_event(f"Code successfully pushed to GitHub '{branch_name}' with message: '{commit_msg}'")
                 except Exception as e:
@@ -739,8 +935,8 @@ def run_beast_cycle():
                 return 
                 
             else:
-                log_event(f"Model {coder_model} failed to fix the project after 3 attempts. Rotating model...")
-                grid.mark_unhealthy(coder_model, "FIX_LOOP_FAIL")
+                log_event(f"Model {actual_coder} failed to fix the project after Sunk Cost. Rotating model...")
+                grid.mark_unhealthy(actual_coder, "FIX_LOOP_FAIL", "coder")
                 time.sleep(2)
 
         if not success:
