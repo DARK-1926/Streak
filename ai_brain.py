@@ -16,6 +16,7 @@ from datetime import datetime
 # ==========================================
 load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+QWEN_API_KEY = os.getenv("QWEN_API_KEY")
 
 if not OPENROUTER_API_KEY:
     print("Error: OPENROUTER_API_KEY not found.")
@@ -75,11 +76,18 @@ def increment_quota():
 # DYNAMIC NEURAL GRID
 # ==========================================
 def fetch_live_free_models():
+    def inject_qwen(models):
+        qwen_models = ["qwen-max", "qwen-plus", "qwen3-coder-plus", "qwen3-coder-flash"]
+        for qm in reversed(qwen_models):
+            if qm not in models:
+                models.insert(0, qm)
+        return models
+
     if os.path.exists(MODELS_CACHE_FILE):
         if time.time() - os.path.getmtime(MODELS_CACHE_FILE) < 3600: 
             try:
                 with open(MODELS_CACHE_FILE, "r") as f:
-                    return json.load(f)
+                    return inject_qwen(json.load(f))
             except: pass
             
     log_event("Syncing with OpenRouter Neural Grid...")
@@ -91,16 +99,16 @@ def fetch_live_free_models():
         free_models = [m["id"] for m in data.get("data", []) if ":free" in m["id"]]
         if not free_models:
             log_event("WARNING: No free models found in the grid response.")
-            return []
+            return inject_qwen([])
         log_event(f"Discovery complete. Found {len(free_models)} free architects online.")
         
         with open(MODELS_CACHE_FILE, "w") as f:
             json.dump(free_models, f)
             
-        return free_models
+        return inject_qwen(free_models)
     except Exception as e:
         log_event(f"Failed to sync with grid: {e}")
-        return []
+        return inject_qwen([])
 
 class NeuralGrid:
     def __init__(self, memory):
@@ -121,6 +129,7 @@ class NeuralGrid:
         available = [m for m in self.models if m not in self.unhealthy_models]
         if not available: return None
         def score(m):
+            if m.startswith("qwen"): return 1000.0
             metrics = self.memory.get("planner_ratings", {}).get(m, {"plans_created": 0, "critique_survivals": 0, "test_stages_reached": 0})
             if isinstance(metrics, int): metrics = {"plans_created": metrics, "critique_survivals": 0, "test_stages_reached": 0}
             plans = max(metrics.get("plans_created", 1), 1)
@@ -132,6 +141,7 @@ class NeuralGrid:
         available = [m for m in self.models if m not in self.unhealthy_models]
         if not available: return None
         def score(m):
+            if m.startswith("qwen"): return 1000.0
             metrics = self.memory.get("coder_ratings", {}).get(m, {"files_generated": 0, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0})
             if isinstance(metrics, int): metrics = {"files_generated": metrics, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0}
             files = max(metrics.get("files_generated", 1), 1)
@@ -252,24 +262,38 @@ def call_openrouter(models_list, sys_prompt, user_prompt, temperature=0.4, max_t
     Leverages OpenRouter's native `models` array for fallback failover, 
     and plugins for response-healing and context-compression.
     """
-    url = "https://openrouter.ai/api/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
-    
     for attempt in range(2):
         enforce_rate_limit()
         if attempt == 0: increment_quota() 
         
-        try:
-            response = requests.post(url, headers=headers, json={
+        target_model = models_list[0]
+        is_qwen = target_model.startswith("qwen")
+        
+        if is_qwen and QWEN_API_KEY:
+            url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {QWEN_API_KEY}", "Content-Type": "application/json"}
+            payload = {
+                "model": target_model,
+                "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                "temperature": temperature,
+                "max_tokens": max_tokens
+            }
+        else:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+            payload = {
                 "models": models_list,
                 "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
                 "temperature": temperature,
                 "max_tokens": max_tokens,
                 "plugins": [{"id": "response-healing"}, {"id": "context-compression"}]
-            }, timeout=180)
+            }
+            
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=180)
             res_data = response.json()
             
-            actual_model = res_data.get("model", models_list[0])
+            actual_model = res_data.get("model", target_model)
             
             usage = res_data.get("usage", {})
             total_tokens = usage.get("total_tokens", 0)
@@ -278,10 +302,13 @@ def call_openrouter(models_list, sys_prompt, user_prompt, temperature=0.4, max_t
             if "error" in res_data:
                 err_msg = res_data['error'].get('message', 'Unknown')
                 err_code = res_data['error'].get('code', response.status_code)
-                log_event(f"OpenRouter Error: {err_msg} (Code: {err_code})")
+                log_event(f"API Error: {err_msg} (Code: {err_code})")
                 
                 if response.status_code == 429:
-                    if "limit reached" in err_msg.lower() or "credits" in err_msg.lower():
+                    if is_qwen:
+                        log_event("Qwen Rate Limit. Marking model UNHEALTHY to fallback to OpenRouter.")
+                        return "SERVER_ERROR", actual_model
+                    elif "limit reached" in err_msg.lower() or "credits" in err_msg.lower() or "free-models-per-day" in err_msg.lower():
                         return "QUOTA_EXHAUSTED", actual_model
                 
                 if attempt == 0:
@@ -340,8 +367,9 @@ def extract_signatures(filepath, content):
         
 def apply_search_replace(file_content, search_block, replace_block):
     """Fuzzy Line-Window Matcher for robust string replacement"""
-    search_block = search_block.replace('\r\n', '\n')
-    replace_block = replace_block.replace('\r\n', '\n')
+    import difflib
+    search_block = strip_markdown(search_block).replace('\r\n', '\n')
+    replace_block = strip_markdown(replace_block).replace('\r\n', '\n')
     file_content_norm = file_content.replace('\r\n', '\n')
     
     # Exact Match
@@ -369,6 +397,20 @@ def apply_search_replace(file_content, search_block, replace_block):
             new_lines = file_lines[:i] + replace_block.split('\n') + file_lines[i+search_len:]
             return '\n'.join(new_lines)
             
+    # difflib fallback
+    best_ratio = 0
+    best_idx = -1
+    for i in range(file_len - search_len + 1):
+        block = file_lines_stripped[i:i+search_len]
+        ratio = difflib.SequenceMatcher(None, block, search_lines).ratio()
+        if ratio > best_ratio:
+            best_ratio = ratio
+            best_idx = i
+            
+    if best_ratio > 0.8:
+        new_lines = file_lines[:best_idx] + replace_block.split('\n') + file_lines[best_idx+search_len:]
+        return '\n'.join(new_lines)
+            
     return "ERROR_SEARCH_NOT_FOUND"
 
 # ==========================================
@@ -395,10 +437,12 @@ def plan_project(models, trends, memory, error_context=None):
     
     SPEC-DRIVEN DEVELOPMENT & DETERMINISTIC VALIDATION:
     1. Your plan must include explicit `interface_contracts` declaring function signatures for cross-file dependencies.
-    2. Your plan must include a strict unit test suite (`test_main.py` or similar). The code MUST pass its own tests.
+    2. Your plan must include a strict unit test suite (`test_main.py` or similar). The tests MUST import and use the actual generated modules. Do NOT create mock or stub classes for the core logic. The code MUST pass its own tests.
     3. Include a `.gitignore` to ignore venv, __pycache__, .env.
     4. Include a `README.md` explaining the architecture.
     5. CRITICAL: Only Python projects are supported. Do NOT create Node.js/JavaScript projects.
+    6. CRITICAL: MUST be cross-platform. Do NOT use `curses` or other Unix-only libraries.
+    7. CRITICAL: Do NOT use heavy ML libraries like `tensorflow`, `torch`, `transformers`, or `numpy`. Stick to standard library or lightweight packages.
     
     Trends: {trends}
     
@@ -484,18 +528,19 @@ def check_dependencies(file_list, project_dir):
 def generate_file_chunked(models, project_name, vision, filepath, instructions, project_blueprint=""):
     log_event(f"Stage 2: Generating File -> {filepath} (Chunked)...")
     
-    # Anti-Context-Rot Framing (Points 4 & 6)
-    blueprint_lines = project_blueprint.split("\n")
-    if len(blueprint_lines) > 5:
-        blueprint_lines = blueprint_lines[-5:] # Cap blueprint
-    project_blueprint = "\n".join(blueprint_lines)
+    # Keep blueprint at a reasonable size but DON'T destroy memory context
+    # The memory injection adds full file contents — we need those for cross-file consistency
+    if len(project_blueprint) > 12000:
+        project_blueprint = project_blueprint[-12000:]  # Keep last 12k chars
     
     sys_prompt = "You are an Expert Software Engineer operating under the GSD framework. You write clean, robust code."
     if "gitignore" in filepath.lower():
-        sys_prompt += "\nYou are writing a .gitignore file. Never include venv, node_modules, or cache."
-        instructions += "\nCRITICAL: Ignore .venv, node_modules, __pycache__, .env."
+        sys_prompt += "\nYou are writing a .gitignore file. Output ONLY a short, standard Python .gitignore (max 20 lines)."
+        instructions = "Write a minimal Python .gitignore: .venv/, venv/, __pycache__/, *.pyc, .env, node_modules/, *.egg-info/, dist/, build/. Nothing else. Max 20 lines."
     elif "readme" in filepath.lower():
         instructions += "\nCRITICAL: Include a 'How it Works' section."
+    elif "test" in filepath.lower():
+        instructions += "\nCRITICAL: Your tests MUST import the actual classes and functions from the generated modules. Use the EXACT same parameter names and class signatures as shown in the previously generated files. Do NOT declare stub classes or mocks for the code you are testing."
         
     blueprint_section = f"\n    ROLLING BLUEPRINT:\n    {project_blueprint}\n" if project_blueprint else ""
     
@@ -560,24 +605,55 @@ RULES:
     log_event(f"Failed to generate full file {filepath} within {max_chunks} chunks.")
     return "ERROR_TRUNCATED", models[0]
 
-def generate_tests(models, project_name, file_list):
+def generate_tests(models, project_name, file_list, project_dir):
     log_event(f"Stage 3: Generating Integration Script for {project_name}...")
-    sys_prompt = "You are a QA Lead. Respond ONLY with the raw script contents."
-    user_prompt = f"""
-    Project: {project_name}
-    Files created: {', '.join(file_list)}
     
-    Write a Windows .bat script named 'setup_and_test.bat'.
-    1. Setup a Python venv.
-    2. Install dependencies. MUST `pip install pytest pytest-json-report`.
-    3. Run rigorous unit tests. MUST run with `pytest --json-report --json-report-file=report.json`.
-    4. MUST Exit with code 0 if success, 1 if fail.
-    Output ONLY raw script. Do NOT wrap in markdown code blocks. No explanations.
-    """
-    content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.1)
-    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return "ERROR", actual_model
-    if not content: return None, actual_model
-    return strip_markdown(content), actual_model
+    # Check if requirements.txt exists and read it
+    req_path = os.path.join(project_dir, "requirements.txt")
+    req_content = ""
+    if os.path.exists(req_path):
+        with open(req_path, "r", encoding="utf-8") as f:
+            req_content = f.read().strip()
+    
+    req_install = ""
+    if req_content:
+        req_install = "pip install -r requirements.txt"
+    
+    # Instead of asking the AI to generate a bat script (which wastes tokens and
+    # often produces broken scripts), use a hardcoded reliable template.
+    bat_script = f"""@echo off
+setlocal
+
+cd /d "%~dp0"
+
+if exist .venv (
+    echo Activating existing venv...
+    call .venv\\Scripts\\activate.bat
+) else (
+    echo Creating venv...
+    python -m venv .venv
+    call .venv\\Scripts\\activate.bat
+)
+
+python -m pip install --quiet --upgrade pip
+if "%req_install%" NEQ "" (
+    %req_install%
+    if %ERRORLEVEL% NEQ 0 (
+        echo PIP INSTALL FAILED
+        exit /b %ERRORLEVEL%
+    )
+)
+python -m pip install --quiet pytest pytest-json-report
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+
+echo Running tests...
+python -m pytest --json-report --json-report-file=report.json -v
+set EXITCODE=%ERRORLEVEL%
+
+exit /b %EXITCODE%
+"""
+    log_event("Using hardcoded reliable test script template (0 tokens used).")
+    return bat_script.strip(), "hardcoded-template"
 
 def fix_error(models, project_dir, files_to_check, error_log):
     log_event("Stage 4: Identifying Fixes (Agentless Localization)...")
@@ -617,7 +693,7 @@ def fix_error(models, project_dir, files_to_check, error_log):
     }}
     """
     content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.2)
-    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return "ERROR", actual_model
+    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return content, actual_model
     if not content: return None, actual_model
     return extract_json(content, required_keys=["root_cause_analysis", "files_to_update"]), actual_model
 
@@ -711,10 +787,23 @@ def run_beast_cycle():
                 instructions = f_info.get("instructions", "")
                 if not filepath or filepath in project_state["files_created"]:
                     continue 
-                    
-                blueprint_context = "\n".join(project_state.get("blueprint", []))
-                content, actual_coder = generate_file_chunked(coder_fallback, project_name, plan.get("vision", ""), filepath, instructions, blueprint_context)
+                # Short-Term Memory Injection
+                memory_blocks = []
+                for created_file in project_state.get("files_created", []):
+                    created_path = os.path.join(project_dir, created_file)
+                    if os.path.exists(created_path):
+                        with open(created_path, "r", encoding="utf-8") as f:
+                            c = f.read()
+                            if len(c) > 2000: c = c[:2000] + "\n...[truncated to save tokens]"
+                            memory_blocks.append(f"--- {created_file} ---\n{c}\n")
                 
+                context_memory_str = "PREVIOUSLY GENERATED FILES IN THIS PROJECT:\n" + "\n".join(memory_blocks) if memory_blocks else ""
+                
+                blueprint_context = "\n".join(project_state.get("blueprint", []))
+                if context_memory_str:
+                    blueprint_context += "\n\n" + context_memory_str
+                    
+                content, actual_coder = generate_file_chunked(coder_fallback, project_name, plan.get("vision", ""), filepath, instructions, blueprint_context)
                 if content == "QUOTA_EXHAUSTED":
                     log_event("Quota exhausted during coding.")
                     exit(1)
@@ -770,10 +859,16 @@ def run_beast_cycle():
             grid.record_metric(actual_planner, "planner", "test_stages_reached")
             
             files_created = project_state["files_created"]
-            test_script, actual_tester = generate_tests(coder_fallback, project_name, files_created)
+            test_script, actual_tester = generate_tests(coder_fallback, project_name, files_created, project_dir)
             if test_script == "QUOTA_EXHAUSTED": exit(1)
             if test_script == "SERVER_ERROR" or not test_script:
                 grid.mark_unhealthy(actual_tester, "TEST_GEN_FAIL", "coder")
+                continue
+            
+            # Sanity check: bat script must look real (not an error string)
+            if len(test_script.strip()) < 30 or "echo" not in test_script.lower():
+                log_event(f"WARNING: Generated test script looks invalid ({len(test_script)} bytes). Skipping.")
+                grid.mark_unhealthy(actual_tester, "BAD_TEST_SCRIPT", "coder")
                 continue
                 
             script_path = os.path.join(project_dir, "setup_and_test.bat")
@@ -806,6 +901,11 @@ def run_beast_cycle():
                     if success:
                         break 
                     else:
+                        if fix_attempts >= 2:
+                            log_event("FAILURE. Maximum fix attempts reached. Proceeding to Sunk Cost Protocol...")
+                            fix_attempts += 1
+                            break
+                            
                         log_event("FAILURE. Syntax/Test error. Asking SAME model to patch...")
                         error_log = f"STDOUT:\n{result.stdout[-1500:]}\nSTDERR:\n{result.stderr[-1500:]}"
                         if not os.path.exists(report_path):
@@ -856,7 +956,8 @@ def run_beast_cycle():
                     
             if not success and fix_attempts >= 3:
                 # Sunk Cost Protocol
-                log_event("Sunk Cost Protocol Engaged: 3 attempts failed. Sequential full rewrite on crashing files.")
+                log_event("Sunk Cost Protocol Disabled. Keeping files and rotating model for further patching...")
+                """
                 for failing_file in crashing_files:
                     failing_instructions = ""
                     for fi in plan.get("files_to_generate", []):
@@ -873,6 +974,7 @@ def run_beast_cycle():
                             if os.path.commonpath([full_path, os.path.abspath(project_dir)]) == os.path.abspath(project_dir):
                                 with open(full_path, "w", encoding="utf-8") as f:
                                     f.write(new_content.strip())
+                """
                 
                 # Final check
                 try:
