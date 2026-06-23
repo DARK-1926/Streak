@@ -417,6 +417,7 @@ def apply_search_replace(file_content, search_block, replace_block):
 # STAGES
 # ==========================================
 def plan_project(models, trends, memory, error_context=None):
+    import sys
     log_event(f"Stage 1: Planning Project with Architect {models[0]}...")
     sys_prompt = "You are the Lead AGI Architect. Respond ONLY with valid JSON."
     retry_guidance = f"\nPREVIOUS RUN FAILED. FIX ERRORS:\n{error_context}" if error_context else ""
@@ -441,8 +442,9 @@ def plan_project(models, trends, memory, error_context=None):
     3. Include a `.gitignore` to ignore venv, __pycache__, .env.
     4. Include a `README.md` explaining the architecture.
     5. CRITICAL: Only Python projects are supported. Do NOT create Node.js/JavaScript projects.
-    6. CRITICAL: MUST be cross-platform. Do NOT use `curses` or other Unix-only libraries.
+    6. CRITICAL: MUST be cross-platform. Target OS: {sys.platform}. Do NOT use `curses` or other OS-specific libraries not available on this platform.
     7. CRITICAL: Do NOT use heavy ML libraries like `tensorflow`, `torch`, `transformers`, or `numpy`. Stick to standard library or lightweight packages.
+    8. CRITICAL TDD REQUIREMENT: Design Pure Functions and use Dependency Injection wherever possible. Decouple core logic from side-effects (e.g., file I/O, network requests, os.path.exists) so the code can be easily unit tested without complex mocks.
     
     Trends: {trends}
     
@@ -676,19 +678,13 @@ def fix_error(models, project_dir, files_to_check, error_log):
     CURRENT SOURCE CODE OF SUSPECTED FILES:
     {files_str}
     
-    Perform a Root Cause Analysis. Then, provide exact search/replace blocks for the broken files.
-    The `search_block` MUST EXACTLY match the existing code lines, character for character, so a python string replacement can apply it.
-    Keep the search_block as small as possible (1-10 lines) to ensure a match.
+    Perform a Root Cause Analysis. Then, specify which files need to be entirely rewritten to fix the issue.
     
     Respond ONLY with this JSON schema:
     {{
         "root_cause_analysis": "Write a 2-sentence explanation of EXACTLY why the code failed.",
         "files_to_update": [
-            {{
-                "filepath": "path/to/file.ext",
-                "search_block": "exact lines to replace",
-                "replace_block": "new lines to insert"
-            }}
+            "path/to/file.ext"
         ]
     }}
     """
@@ -788,16 +784,31 @@ def run_beast_cycle():
                 if not filepath or filepath in project_state["files_created"]:
                     continue 
                 # Short-Term Memory Injection
+                is_test_file = "test" in filepath.lower()
                 memory_blocks = []
+                total_context_len = 0
+                fallback_to_blueprint = False
+                
                 for created_file in project_state.get("files_created", []):
                     created_path = os.path.join(project_dir, created_file)
                     if os.path.exists(created_path):
                         with open(created_path, "r", encoding="utf-8") as f:
                             c = f.read()
-                            if len(c) > 2000: c = c[:2000] + "\n...[truncated to save tokens]"
-                            memory_blocks.append(f"--- {created_file} ---\n{c}\n")
+                            if is_test_file:
+                                total_context_len += len(c)
+                                if total_context_len > 12000:
+                                    fallback_to_blueprint = True
+                                    break
+                                memory_blocks.append(f"--- {created_file} ---\n{c}\n")
+                            else:
+                                if len(c) > 2000: c = c[:2000] + "\n...[truncated to save tokens]"
+                                memory_blocks.append(f"--- {created_file} ---\n{c}\n")
                 
-                context_memory_str = "PREVIOUSLY GENERATED FILES IN THIS PROJECT:\n" + "\n".join(memory_blocks) if memory_blocks else ""
+                if is_test_file and fallback_to_blueprint:
+                    log_event("Full source exceeded 12k chars. Falling back to interface blueprint for test context.")
+                    context_memory_str = "" # Fallback to blueprint only
+                else:
+                    context_memory_str = "PREVIOUSLY GENERATED FILES IN THIS PROJECT:\n" + "\n".join(memory_blocks) if memory_blocks else ""
                 
                 blueprint_context = "\n".join(project_state.get("blueprint", []))
                 if context_memory_str:
@@ -830,10 +841,28 @@ def run_beast_cycle():
                         if lint_res.returncode == 0:
                             grid.record_metric(actual_coder, "coder", "lint_passes")
                         else:
-                            log_event(f"Local Lint Failed for {filepath}. Marking coder unhealthy and rotating...")
-                            generation_failed = True
-                            grid.mark_unhealthy(actual_coder, "LINT_FAIL", "coder")
-                            break
+                            log_event(f"Local Lint Failed for {filepath}. Attempting inline retry...")
+                            error_msg = lint_res.stderr if lint_res.stderr else lint_res.stdout
+                            retry_instructions = instructions + f"\n\nCRITICAL FIX REQUIRED: Your previous attempt had a syntax error. Fix it and output the entire file again.\nError:\n{error_msg}"
+                            content, actual_coder = generate_file_chunked(coder_fallback, project_name, plan.get("vision", ""), filepath, retry_instructions, blueprint_context)
+                            
+                            if content and content not in ["SERVER_ERROR", "ERROR_TRUNCATED", "QUOTA_EXHAUSTED"]:
+                                with open(full_path, "w", encoding="utf-8") as f:
+                                    f.write(content.strip())
+                                lint_res_2 = subprocess.run(["python", "-m", "py_compile", full_path], capture_output=True, text=True)
+                                if lint_res_2.returncode == 0:
+                                    log_event(f"Inline retry successful for {filepath}.")
+                                    grid.record_metric(actual_coder, "coder", "lint_passes")
+                                else:
+                                    log_event(f"Inline retry failed. Marking coder unhealthy and rotating...")
+                                    generation_failed = True
+                                    grid.mark_unhealthy(actual_coder, "LINT_FAIL", "coder")
+                                    break
+                            else:
+                                log_event(f"Inline retry generation failed. Marking coder unhealthy and rotating...")
+                                generation_failed = True
+                                grid.mark_unhealthy(actual_coder, "LINT_FAIL", "coder")
+                                break
                     except Exception: pass
                 
                 grid.record_metric(actual_coder, "coder", "files_generated")
@@ -927,26 +956,26 @@ def run_beast_cycle():
                             grid.mark_unhealthy(actual_fixer, "BAD_FIX_PLAN", "coder")
                             continue
                             
-                        for f_info in fix_plan["files_to_update"]:
-                            filepath = f_info.get("filepath")
-                            search_block = f_info.get("search_block", "")
-                            replace_block = f_info.get("replace_block", "")
-                            if not filepath or not search_block: continue
+                        for filepath in fix_plan.get("files_to_update", []):
+                            if not filepath: continue
                             
                             full_path = os.path.abspath(os.path.join(project_dir, filepath))
                             if os.path.commonpath([full_path, os.path.abspath(project_dir)]) != os.path.abspath(project_dir): continue
                             if not os.path.exists(full_path): continue
                             
-                            log_event(f"Applying SEARCH/REPLACE patch to {filepath}...")
-                            with open(full_path, "r", encoding="utf-8") as f:
-                                original_code = f.read()
-                                
-                            patched_code = apply_search_replace(original_code, search_block, replace_block)
-                            if patched_code == "ERROR_SEARCH_NOT_FOUND":
-                                log_event(f"Failed to match search_block in {filepath}.")
-                            else:
+                            log_event(f"Applying FULL REWRITE patch to {filepath}...")
+                            
+                            fix_instructions = f"The test suite failed with the following error:\n{error_log}\n\nRoot Cause Analysis: {fix_plan.get('root_cause_analysis')}\n\nCRITICAL FIX REQUIRED: Rewrite the entire file `{filepath}` from scratch to fix these errors. Do not truncate the file. Output the exact, full, completed file content."
+                            
+                            blueprint_context = "\n".join(project_state.get("blueprint", []))
+                            patched_code, actual_coder = generate_file_chunked(coder_fallback, project_name, plan.get("vision", ""), filepath, fix_instructions, blueprint_context)
+                            
+                            if patched_code and patched_code not in ["SERVER_ERROR", "ERROR_TRUNCATED", "QUOTA_EXHAUSTED"]:
                                 with open(full_path, "w", encoding="utf-8") as f:
-                                    f.write(patched_code)
+                                    f.write(patched_code.strip())
+                                log_event(f"Successfully applied FULL REWRITE patch to {filepath}.")
+                            else:
+                                log_event(f"Failed to generate rewrite for {filepath}.")
                                     
                         fix_attempts += 1
                         grid.record_metric(actual_fixer, "coder", "fix_attempts")
