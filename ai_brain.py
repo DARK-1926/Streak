@@ -665,7 +665,9 @@ def fix_error(models, project_dir, files_to_check, error_log):
         full_path = os.path.join(project_dir, fname)
         if os.path.exists(full_path) and os.path.isfile(full_path):
             with open(full_path, "r", encoding="utf-8") as f:
-                file_contents[fname] = f.read()[:5000] # Cap size per file
+                lines = f.read().splitlines()
+                numbered_lines = [f"{i+1}: {line}" for i, line in enumerate(lines)]
+                file_contents[fname] = "\n".join(numbered_lines)[:15000] # Cap size per file
                 
     files_str = "\n".join([f"--- {k} ---\n{v}\n" for k, v in file_contents.items()])
                 
@@ -678,13 +680,21 @@ def fix_error(models, project_dir, files_to_check, error_log):
     CURRENT SOURCE CODE OF SUSPECTED FILES:
     {files_str}
     
-    Perform a Root Cause Analysis. Then, specify which files need to be entirely rewritten to fix the issue.
+    Perform a Root Cause Analysis. 
+    CRITICAL: Do NOT blindly trust the test suite. If the test asserts something factually incorrect, specify that the TEST FILE needs fixing instead of breaking the implementation logic to match a bad test.
+    
+    Then, specify EXACTLY which lines to replace to fix the code. Use line numbers corresponding to the source code provided above. You MUST provide the complete drop-in replacement lines. Do NOT rewrite the entire file.
     
     Respond ONLY with this JSON schema:
     {{
         "root_cause_analysis": "Write a 2-sentence explanation of EXACTLY why the code failed.",
         "files_to_update": [
-            "path/to/file.ext"
+            {{
+                "filepath": "path/to/file.ext",
+                "start_line": 40,
+                "end_line": 45,
+                "replacement_code": "    exact replacement code here\\n    matching indentation\\n"
+            }}
         ]
     }}
     """
@@ -905,8 +915,8 @@ def run_beast_cycle():
                 f.write(test_script.strip())
                 
             fix_attempts = 0
-            while fix_attempts < 3:
-                log_event(f"Validating {project_name} (Attempt {fix_attempts+1}/3)...")
+            while fix_attempts < 8:
+                log_event(f"Validating {project_name} (Attempt {fix_attempts+1}/8)...")
                 try:
                     result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], 
                                              cwd=project_dir, capture_output=True, text=True, timeout=120)
@@ -930,7 +940,7 @@ def run_beast_cycle():
                     if success:
                         break 
                     else:
-                        if fix_attempts >= 2:
+                        if fix_attempts >= 7:
                             log_event("FAILURE. Maximum fix attempts reached. Proceeding to Sunk Cost Protocol...")
                             fix_attempts += 1
                             break
@@ -956,26 +966,35 @@ def run_beast_cycle():
                             grid.mark_unhealthy(actual_fixer, "BAD_FIX_PLAN", "coder")
                             continue
                             
-                        for filepath in fix_plan.get("files_to_update", []):
-                            if not filepath: continue
+                        for f_info in fix_plan.get("files_to_update", []):
+                            filepath = f_info.get("filepath")
+                            start_line = f_info.get("start_line")
+                            end_line = f_info.get("end_line")
+                            replacement_code = f_info.get("replacement_code")
+                            if not filepath or not start_line or not end_line or replacement_code is None: continue
                             
                             full_path = os.path.abspath(os.path.join(project_dir, filepath))
                             if os.path.commonpath([full_path, os.path.abspath(project_dir)]) != os.path.abspath(project_dir): continue
                             if not os.path.exists(full_path): continue
                             
-                            log_event(f"Applying FULL REWRITE patch to {filepath}...")
+                            log_event(f"Applying LINE NUMBER patch to {filepath} ({start_line} to {end_line})...")
                             
-                            fix_instructions = f"The test suite failed with the following error:\n{error_log}\n\nRoot Cause Analysis: {fix_plan.get('root_cause_analysis')}\n\nCRITICAL FIX REQUIRED: Rewrite the entire file `{filepath}` from scratch to fix these errors. Do not truncate the file. Output the exact, full, completed file content."
-                            
-                            blueprint_context = "\n".join(project_state.get("blueprint", []))
-                            patched_code, actual_coder = generate_file_chunked(coder_fallback, project_name, plan.get("vision", ""), filepath, fix_instructions, blueprint_context)
-                            
-                            if patched_code and patched_code not in ["SERVER_ERROR", "ERROR_TRUNCATED", "QUOTA_EXHAUSTED"]:
+                            with open(full_path, "r", encoding="utf-8") as f:
+                                lines = f.read().splitlines()
+                                
+                            try:
+                                s_idx = int(start_line) - 1
+                                e_idx = int(end_line)
+                                if s_idx < 0: s_idx = 0
+                                
+                                new_lines = replacement_code.splitlines()
+                                patched_lines = lines[:s_idx] + new_lines + lines[e_idx:]
+                                
                                 with open(full_path, "w", encoding="utf-8") as f:
-                                    f.write(patched_code.strip())
-                                log_event(f"Successfully applied FULL REWRITE patch to {filepath}.")
-                            else:
-                                log_event(f"Failed to generate rewrite for {filepath}.")
+                                    f.write("\n".join(patched_lines) + "\n")
+                                log_event(f"Successfully patched {filepath}.")
+                            except Exception as e:
+                                log_event(f"Failed to apply patch to {filepath}: {e}")
                                     
                         fix_attempts += 1
                         grid.record_metric(actual_fixer, "coder", "fix_attempts")
@@ -983,7 +1002,7 @@ def run_beast_cycle():
                     log_event("Test script timed out. Likely a hanging process.")
                     break
                     
-            if not success and fix_attempts >= 3:
+            if not success and fix_attempts >= 8:
                 # Sunk Cost Protocol
                 log_event("Sunk Cost Protocol Disabled. Keeping files and rotating model for further patching...")
                 """
