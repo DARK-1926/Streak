@@ -1,65 +1,75 @@
 {
     "plan": {
-        "project_name": "CodeTutor",
-        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The project aims to create a local, interactive, and self-contained learning environment for developers to learn new programming concepts and languages using an LLM-driven tutor. The tutor will provide interactive lessons, code examples, and exercises, all while running on the user's local machine. Atomic milestones include: 1) Setting up the LLM and core logic, 2) Creating the interactive lesson system, 3) Implementing the exercise and feedback loop, 4) Finalizing the testing and documentation. The Testing Strategy will involve unit tests for the core logic and integration tests for the interactive components.",
+        "project_name": "PromptDecorator",
+        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The project aims to create a middleware that allows users to transform structured data (JSON) into markdown and decorate it at prompt-time, without building their own infrastructure. This will be achieved by creating a compact, efficient, and cross-platform Python application with a focus on pure functions and dependency injection for easy testing.",
         "interface_contracts": {
-            "core_logic.py": [
-                "def load_lesson(lesson_id: str) -> dict: ...",
-                "def process_input(user_input: str) -> dict: ...",
-                "def generate_feedback(code: str) -> str: ..."
-            ],
-            "lesson_manager.py": [
-                "def get_next_lesson(current_lesson: dict) -> dict: ...",
-                "def save_progress(lesson: dict) -> None: ..."
-            ],
-            "exercise_runner.py": [
-                "def run_code(code: str) -> str: ...",
-                "def check_solution(user_code: str, expected_output: str) -> bool: ..."
-            ]
+            "prompt_decorator.py": {
+                "transform_json_to_markdown(data: dict) -> str": "Takes a JSON object and transforms it into a markdown string.",
+                "decorate_prompt(prompt: str, decorations: dict) -> str": "Decorates the given prompt with additional information from the decorations dictionary."
+            },
+            "data_loader.py": {
+                "load_json_data(file_path: str) -> dict": "Loads JSON data from the specified file path and returns it as a dictionary."
+            },
+            "test_main.py": {
+                "test_transform_json_to_markdown() -> None": "Tests the `transform_json_to_markdown` function with various inputs.",
+                "test_decorate_prompt() -> None": "Tests the `decorate_prompt` function with various inputs."
+            }
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "commit_message": "Implement a local, interactive, and self-contained LLM-driven coding tutor.",
+        "commit_message": "Implement a middleware that transforms and decorates structured data (JSON) into markdown for prompt-time use.",
         "files_to_generate": [
             {
-                "filepath": "core_logic.py",
-                "instructions": "Contains the core logic for loading lessons, processing user input, and generating feedback. Use dependency injection for LLM and other external dependencies."
+                "filepath": "prompt_decorator.py",
+                "instructions": "This file should contain the `transform_json_to_markdown` and `decorate_prompt` functions. The `transform_json_to_markdown` function should take a JSON object and convert it into a markdown string. The `decorate_prompt` function should take a prompt string and a dictionary of decorations, and return a decorated prompt string."
             },
             {
-                "filepath": "lesson_manager.py",
-                "instructions": "Handles the management of lessons, including fetching the next lesson and saving progress. Use a simple file-based storage for persistence."
-            },
-            {
-                "filepath": "exercise_runner.py",
-                "instructions": "Executes user code and checks if it matches the expected output. Ensure this is done in a safe and isolated environment."
+                "filepath": "data_loader.py",
+                "instructions": "This file should contain the `load_json_data` function, which takes a file path as input and returns the JSON data as a dictionary. Use the standard library `json` module for this purpose."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Contains the unit and integration tests for the core logic, lesson manager, and exercise runner. Import and use the actual generated modules without creating mock or stub classes for the core logic."
+                "instructions": "This file should contain the unit tests for the `transform_json_to_markdown` and `decorate_prompt` functions. Import the actual modules and test them with various inputs to ensure correctness. Use the `unittest` framework for this purpose."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Exclude venv, __pycache__, .env, and any other heavy directories to keep the repository lightweight."
+                "instructions": "This file should include entries to ignore venv, __pycache__, and .env files."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Provide a detailed explanation of the architecture, setup instructions, and how to run the tests. Include a Mermaid diagram for clarity."
+                "instructions": "This file should provide an overview of the project, including its architecture, how to set up the environment, and how to run the tests. Include a Mermaid diagram for clarity."
+            },
+            {
+                "filepath": "setup.py",
+                "instructions": "This file should contain the setup script for the project, including the necessary dependencies and any other setup instructions. Use the `setuptools` library for this purpose."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "This file should list all the required Python packages for the project. Pin the versions to ensure consistency."
+            },
+            {
+                "filepath": "LICENSE",
+                "instructions": "This file should contain the license for the project. Use the MIT license for this purpose."
             }
         ]
     },
     "files_created": [
-        "core_logic.py",
-        "lesson_manager.py",
-        "exercise_runner.py",
+        "prompt_decorator.py",
+        "data_loader.py",
         "test_main.py",
         ".gitignore",
-        "README.md"
+        "README.md",
+        "setup.py",
+        "requirements.txt",
+        "LICENSE"
     ],
     "blueprint": [
-        "File: core_logic.py provides: class Lesson, def load_lesson, class CoreLogic",
-        "File: lesson_manager.py provides: class LessonManager",
-        "File: exercise_runner.py provides: class ExerciseRunner, def load_exercise",
-        "File: test_main.py provides: class TestCoreLogic, class TestLessonManager, class TestExerciseRunner",
+        "File: prompt_decorator.py provides: def transform_json_to_markdown, def decorate_prompt",
+        "File: data_loader.py provides: def load_json_data",
+        "File: test_main.py provides: class TestPromptDecorator",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: README.md (Static/Config)",
+        "File: setup.py provides: def read_requirements",
+        "File: requirements.txt (Static/Config)",
+        "File: LICENSE (Static/Config)"
     ]
 }
