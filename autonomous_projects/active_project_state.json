@@ -1,75 +1,63 @@
 {
     "plan": {
-        "project_name": "PromptDecorator",
-        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The project aims to create a middleware that allows users to transform structured data (JSON) into markdown and decorate it at prompt-time, without building their own infrastructure. This will be achieved by creating a compact, efficient, and cross-platform Python application with a focus on pure functions and dependency injection for easy testing.",
+        "project_name": "CodeCompress",
+        "vision": "A strict Spec Roadmap detailing the development of a lightweight, efficient file compression utility using arithmetic coding and a simple byte prediction model. The project will focus on compressing text-based files, such as source code, to reduce their size for storage or transmission. Atomic milestones include: 1) Implementing the arithmetic coding algorithm, 2) Developing a simple byte prediction model, 3) Integrating the prediction model with the arithmetic coder, 4) Writing unit tests, and 5) Documenting the architecture and usage. The testing strategy will involve unit tests for each component and integration tests to ensure the entire system works as expected.",
         "interface_contracts": {
-            "prompt_decorator.py": {
-                "transform_json_to_markdown(data: dict) -> str": "Takes a JSON object and transforms it into a markdown string.",
-                "decorate_prompt(prompt: str, decorations: dict) -> str": "Decorates the given prompt with additional information from the decorations dictionary."
+            "arithmetic_coder.py": {
+                "encode(data: bytes) -> bytes": "Encodes the given data using arithmetic coding.",
+                "decode(encoded_data: bytes) -> bytes": "Decodes the given encoded data back to its original form."
             },
-            "data_loader.py": {
-                "load_json_data(file_path: str) -> dict": "Loads JSON data from the specified file path and returns it as a dictionary."
+            "byte_predictor.py": {
+                "predict_next_byte(data: bytes) -> int": "Predicts the next byte in the sequence based on the given data."
             },
-            "test_main.py": {
-                "test_transform_json_to_markdown() -> None": "Tests the `transform_json_to_markdown` function with various inputs.",
-                "test_decorate_prompt() -> None": "Tests the `decorate_prompt` function with various inputs."
+            "compressor.py": {
+                "compress_file(file_path: str) -> bytes": "Compresses the file at the given path and returns the compressed data.",
+                "decompress_file(compressed_data: bytes, output_path: str) -> None": "Decompresses the given data and writes it to the specified output path."
             }
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "commit_message": "Implement a middleware that transforms and decorates structured data (JSON) into markdown for prompt-time use.",
+        "commit_message": "Implement a lightweight, efficient file compression utility using arithmetic coding and a simple byte prediction model.",
         "files_to_generate": [
             {
-                "filepath": "prompt_decorator.py",
-                "instructions": "This file should contain the `transform_json_to_markdown` and `decorate_prompt` functions. The `transform_json_to_markdown` function should take a JSON object and convert it into a markdown string. The `decorate_prompt` function should take a prompt string and a dictionary of decorations, and return a decorated prompt string."
+                "filepath": "arithmetic_coder.py",
+                "instructions": "Implement the arithmetic coding algorithm. This file should contain the `encode` and `decode` functions. The `encode` function should take a byte string and return an encoded byte string. The `decode` function should take an encoded byte string and return the original byte string."
             },
             {
-                "filepath": "data_loader.py",
-                "instructions": "This file should contain the `load_json_data` function, which takes a file path as input and returns the JSON data as a dictionary. Use the standard library `json` module for this purpose."
+                "filepath": "byte_predictor.py",
+                "instructions": "Implement a simple byte prediction model. This file should contain the `predict_next_byte` function, which takes a byte string and predicts the next byte in the sequence. The prediction can be based on a simple statistical model, such as the frequency of the last few bytes."
+            },
+            {
+                "filepath": "compressor.py",
+                "instructions": "Integrate the arithmetic coder and byte predictor to create a file compression utility. This file should contain the `compress_file` and `decompress_file` functions. The `compress_file` function should read the file, use the byte predictor to predict the next byte, and then encode the data using the arithmetic coder. The `decompress_file` function should take the compressed data, decode it using the arithmetic coder, and write the decompressed data to the specified output path."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "This file should contain the unit tests for the `transform_json_to_markdown` and `decorate_prompt` functions. Import the actual modules and test them with various inputs to ensure correctness. Use the `unittest` framework for this purpose."
+                "instructions": "Write a comprehensive unit test suite for the project. This file should import and use the actual generated modules. Include tests for the `encode`, `decode`, `predict_next_byte`, `compress_file`, and `decompress_file` functions. Ensure that the tests cover both edge cases and typical use cases."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "This file should include entries to ignore venv, __pycache__, and .env files."
+                "instructions": "Create a .gitignore file to exclude venv, __pycache__, and .env files from version control."
             },
             {
                 "filepath": "README.md",
-                "instructions": "This file should provide an overview of the project, including its architecture, how to set up the environment, and how to run the tests. Include a Mermaid diagram for clarity."
-            },
-            {
-                "filepath": "setup.py",
-                "instructions": "This file should contain the setup script for the project, including the necessary dependencies and any other setup instructions. Use the `setuptools` library for this purpose."
-            },
-            {
-                "filepath": "requirements.txt",
-                "instructions": "This file should list all the required Python packages for the project. Pin the versions to ensure consistency."
-            },
-            {
-                "filepath": "LICENSE",
-                "instructions": "This file should contain the license for the project. Use the MIT license for this purpose."
+                "instructions": "Document the project's architecture, setup instructions, and usage. Include a Mermaid diagram to illustrate the high-level architecture of the project. Provide clear instructions on how to install the dependencies, run the tests, and use the compression utility."
             }
         ]
     },
     "files_created": [
-        "prompt_decorator.py",
-        "data_loader.py",
+        "arithmetic_coder.py",
+        "byte_predictor.py",
+        "compressor.py",
         "test_main.py",
         ".gitignore",
-        "README.md",
-        "setup.py",
-        "requirements.txt",
-        "LICENSE"
+        "README.md"
     ],
     "blueprint": [
-        "File: prompt_decorator.py provides: def transform_json_to_markdown, def decorate_prompt",
-        "File: data_loader.py provides: def load_json_data",
-        "File: test_main.py provides: class TestPromptDecorator",
+        "File: arithmetic_coder.py provides: def cumulative_distribution, def find_interval, def encode, def decode",
+        "File: byte_predictor.py provides: def predict_next_byte",
+        "File: compressor.py provides: def compress_file, def decompress_file",
+        "File: test_main.py provides: class TestArithmeticCoder, class TestBytePredictor, class TestCompressor",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)",
-        "File: setup.py provides: def read_requirements",
-        "File: requirements.txt (Static/Config)",
-        "File: LICENSE (Static/Config)"
+        "File: README.md (Static/Config)"
     ]
 }
