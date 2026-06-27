@@ -1,63 +1,79 @@
 {
     "plan": {
-        "project_name": "CodeCompress",
-        "vision": "A strict Spec Roadmap detailing the development of a lightweight, efficient file compression utility using arithmetic coding and a simple byte prediction model. The project will focus on compressing text-based files, such as source code, to reduce their size for storage or transmission. Atomic milestones include: 1) Implementing the arithmetic coding algorithm, 2) Developing a simple byte prediction model, 3) Integrating the prediction model with the arithmetic coder, 4) Writing unit tests, and 5) Documenting the architecture and usage. The testing strategy will involve unit tests for each component and integration tests to ensure the entire system works as expected.",
+        "project_name": "DocxEditorLite",
+        "vision": "A lightweight, cross-platform DOCX editor that allows users to create, edit, and save DOCX files without the need for heavy dependencies or external APIs. The project will focus on providing a minimalistic, yet functional, solution for basic document editing needs.",
         "interface_contracts": {
-            "arithmetic_coder.py": {
-                "encode(data: bytes) -> bytes": "Encodes the given data using arithmetic coding.",
-                "decode(encoded_data: bytes) -> bytes": "Decodes the given encoded data back to its original form."
+            "docx_editor.py": {
+                "functions": [
+                    "load_document(file_path: str) -> Document",
+                    "save_document(document: Document, file_path: str) -> None",
+                    "add_paragraph(document: Document, text: str) -> Paragraph",
+                    "add_heading(document: Document, text: str, level: int) -> Heading"
+                ]
             },
-            "byte_predictor.py": {
-                "predict_next_byte(data: bytes) -> int": "Predicts the next byte in the sequence based on the given data."
-            },
-            "compressor.py": {
-                "compress_file(file_path: str) -> bytes": "Compresses the file at the given path and returns the compressed data.",
-                "decompress_file(compressed_data: bytes, output_path: str) -> None": "Decompresses the given data and writes it to the specified output path."
+            "document.py": {
+                "classes": [
+                    "Document(paragraphs: List[Paragraph], headings: List[Heading])",
+                    "Paragraph(text: str)",
+                    "Heading(text: str, level: int)"
+                ]
             }
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "commit_message": "Implement a lightweight, efficient file compression utility using arithmetic coding and a simple byte prediction model.",
+        "commit_message": "Initial commit implementing a lightweight, cross-platform DOCX editor with basic document creation, editing, and saving functionality.",
         "files_to_generate": [
             {
-                "filepath": "arithmetic_coder.py",
-                "instructions": "Implement the arithmetic coding algorithm. This file should contain the `encode` and `decode` functions. The `encode` function should take a byte string and return an encoded byte string. The `decode` function should take an encoded byte string and return the original byte string."
+                "filepath": "docx_editor.py",
+                "instructions": "Contains the main logic for loading, saving, and modifying DOCX documents. Use the `Document`, `Paragraph`, and `Heading` classes from `document.py`. Functions should include `load_document`, `save_document`, `add_paragraph`, and `add_heading`."
             },
             {
-                "filepath": "byte_predictor.py",
-                "instructions": "Implement a simple byte prediction model. This file should contain the `predict_next_byte` function, which takes a byte string and predicts the next byte in the sequence. The prediction can be based on a simple statistical model, such as the frequency of the last few bytes."
-            },
-            {
-                "filepath": "compressor.py",
-                "instructions": "Integrate the arithmetic coder and byte predictor to create a file compression utility. This file should contain the `compress_file` and `decompress_file` functions. The `compress_file` function should read the file, use the byte predictor to predict the next byte, and then encode the data using the arithmetic coder. The `decompress_file` function should take the compressed data, decode it using the arithmetic coder, and write the decompressed data to the specified output path."
+                "filepath": "document.py",
+                "instructions": "Defines the `Document`, `Paragraph`, and `Heading` classes. The `Document` class should manage a list of `Paragraph` and `Heading` objects. The `Paragraph` and `Heading` classes should store their respective text and, for `Heading`, the heading level."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Write a comprehensive unit test suite for the project. This file should import and use the actual generated modules. Include tests for the `encode`, `decode`, `predict_next_byte`, `compress_file`, and `decompress_file` functions. Ensure that the tests cover both edge cases and typical use cases."
-            },
-            {
-                "filepath": ".gitignore",
-                "instructions": "Create a .gitignore file to exclude venv, __pycache__, and .env files from version control."
+                "instructions": "Contains the unit test suite. Import and use the actual generated modules `docx_editor` and `document`. Tests should cover the creation, modification, and saving of documents, as well as the addition of paragraphs and headings. Ensure that the tests do not rely on complex mocks."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Document the project's architecture, setup instructions, and usage. Include a Mermaid diagram to illustrate the high-level architecture of the project. Provide clear instructions on how to install the dependencies, run the tests, and use the compression utility."
+                "instructions": "Provides an overview of the project, including the architecture, how to install and run the project, and any other relevant details. Include a Mermaid diagram for clarity."
+            },
+            {
+                "filepath": ".gitignore",
+                "instructions": "Exclude venv, __pycache__, .env, and other heavy directories to keep the repository lightweight."
+            },
+            {
+                "filepath": "setup.py",
+                "instructions": "A setup script to install the necessary dependencies and create a virtual environment. Pin all dependencies to ensure consistency."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "List all the required Python packages, keeping them lightweight and avoiding heavy ML libraries."
+            },
+            {
+                "filepath": "LICENSE",
+                "instructions": "Include a standard open-source license, such as MIT, to clarify the terms of use and distribution."
             }
         ]
     },
     "files_created": [
-        "arithmetic_coder.py",
-        "byte_predictor.py",
-        "compressor.py",
+        "docx_editor.py",
+        "document.py",
         "test_main.py",
+        "README.md",
         ".gitignore",
-        "README.md"
+        "setup.py",
+        "requirements.txt",
+        "LICENSE"
     ],
     "blueprint": [
-        "File: arithmetic_coder.py provides: def cumulative_distribution, def find_interval, def encode, def decode",
-        "File: byte_predictor.py provides: def predict_next_byte",
-        "File: compressor.py provides: def compress_file, def decompress_file",
-        "File: test_main.py provides: class TestArithmeticCoder, class TestBytePredictor, class TestCompressor",
+        "File: docx_editor.py provides: def load_document, def save_document, def add_paragraph, def add_heading",
+        "File: document.py provides: class Document, class Paragraph, class Heading",
+        "File: test_main.py provides: class TestDocxEditorLite",
+        "File: README.md (Static/Config)",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: setup.py provides: No public classes/functions",
+        "File: requirements.txt (Static/Config)",
+        "File: LICENSE (Static/Config)"
     ]
 }

@@ -35,6 +35,7 @@ STYLE_GUIDE = """
 - Keep functions under 50 lines.
 - Handle exceptions gracefully.
 - Follow PEP 8 guidelines for Python code.
+- On Windows, always close file descriptors returned by tempfile.mkstemp() (e.g. os.close(fd)) immediately to prevent [WinError 32] PermissionError on deletion.
 """
 
 os.makedirs(PROJECTS_DIR, exist_ok=True)
@@ -542,7 +543,7 @@ def generate_file_chunked(models, project_name, vision, filepath, instructions, 
     elif "readme" in filepath.lower():
         instructions += "\nCRITICAL: Include a 'How it Works' section."
     elif "test" in filepath.lower():
-        instructions += "\nCRITICAL: Your tests MUST import the actual classes and functions from the generated modules. Use the EXACT same parameter names and class signatures as shown in the previously generated files. Do NOT declare stub classes or mocks for the code you are testing."
+        instructions += "\nCRITICAL: Your tests MUST import the actual classes and functions from the generated modules. Use the EXACT same parameter names and class signatures as shown in the previously generated files. Do NOT declare stub classes or mocks for the code you are testing. Do NOT write assertions that expect specific serialized output from functions that were generated as empty placeholders or stubs. Double-check method signatures across files: do not call an instance method as a class method, and respect type hints for file paths vs file-like objects."
         
     blueprint_section = f"\n    ROLLING BLUEPRINT:\n    {project_blueprint}\n" if project_blueprint else ""
     
