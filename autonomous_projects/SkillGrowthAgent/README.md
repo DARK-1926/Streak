@@ -1,112 +1,105 @@
 # SkillGrowthAgent
 
 ## Overview
-SkillGrowthAgent is a gamified learning system designed to help users improve and maintain their skills. It leverages AI to provide personalized feedback and challenges, making the learning process engaging and effective.
+SkillGrowthAgent is a specialized tool designed to help developers identify and fill gaps in their skill sets by analyzing their codebase and suggesting learning resources. The agent provides a personalized learning path based on the developer's current projects and skills.
 
 ## Architecture
-The SkillGrowthAgent is built with a modular architecture, where each component has a specific responsibility. The main components are:
-
-- **SkillManager**: Manages user skills and their levels.
-- **ChallengeGenerator**: Generates challenges based on the user's skill level.
-- **FeedbackSystem**: Provides feedback to the user based on their responses.
-- **ScoringSystem**: Tracks and updates the user's score and rank.
-- **CLIInterface**: Handles the command-line interface for user interactions.
-
-### How it Works
-1. **Skill Management**:
-   - Users can add, update, and remove skills using the `SkillManager`.
-   - The `SkillManager` stores and retrieves skill information.
-
-2. **Challenge Generation**:
-   - Based on the user's skill level, the `ChallengeGenerator` generates appropriate challenges.
-   - Challenges are generated for different skill types (e.g., math, coding, vocabulary).
-
-3. **User Interaction**:
-   - The `CLIInterface` provides a menu-driven interface for users to interact with the system.
-   - Users can list skills, add new skills, generate challenges, and view their scores.
-
-4. **Feedback and Scoring**:
-   - After attempting a challenge, the `FeedbackSystem` provides feedback to the user.
-   - The `ScoringSystem` updates the user's score based on their performance.
-
-5. **Testing**:
-   - Unit tests, integration tests, and end-to-end tests ensure the reliability and correctness of the system.
-
-### File Structure
-- **skill_manager.py**: Contains the `SkillManager` class.
-- **challenge_generator.py**: Contains the `ChallengeGenerator` class.
-- **feedback_system.py**: Contains the `FeedbackSystem` class.
-- **scoring_system.py**: Contains the `ScoringSystem` class.
-- **cli_interface.py**: Contains the `CLIInterface` class.
-- **test_main.py**: Contains the test cases for the SkillGrowthAgent.
-
-### Class Diagram
 ```mermaid
-classDiagram
-    class SkillManager {
-        +Dict[str, int] skills
-        +__init__()
-        +add_skill(skill_name: str, level: int)
-        +get_skill_level(skill_name: str) Optional[int]
-        +remove_skill(skill_name: str)
-        +list_skills() Dict[str, int]
-    }
-
-    class ChallengeGenerator {
-        +SkillManager skill_manager
-        +Dict[str, Callable[[int], str]] challenges
-        +__init__(skill_manager: SkillManager)
-        +generate_challenge(skill_name: str) Optional[Dict[str, any]]
-        +_generate_math_challenge(level: int) str
-        +_generate_coding_challenge(level: int) str
-        +_generate_vocabulary_challenge(level: int) str
-    }
-
-    class FeedbackSystem {
-        +Dict[str, str] feedback_messages
-        +__init__()
-        +provide_feedback(is_correct: bool, hint: Optional[str]) str
-        +add_feedback_message(key: str, message: str)
-        +get_feedback_message(key: str) Optional[str]
-    }
-
-    class ScoringSystem {
-        +int score
-        +Dict[str, int] leaderboard
-        +__init__()
-        +update_score(points: int)
-        +get_score() int
-        +set_leaderboard(leaderboard: Dict[str, int])
-        +get_rank(username: str) Optional[int]
-    }
-
-    class CLIInterface {
-        +SkillManager skill_manager
-        +ChallengeGenerator challenge_generator
-        +FeedbackSystem feedback_system
-        +ScoringSystem scoring_system
-        +Dict[str, Callable[[], None]] menu_options
-        +__init__(skill_manager: SkillManager, challenge_generator: ChallengeGenerator, feedback_system: FeedbackSystem, scoring_system: ScoringSystem)
-        +display_menu()
-        +handle_input()
-        +list_skills()
-        +add_skill()
-        +generate_challenge()
-        +show_score()
-        +exit()
-    }
-
-    SkillManager "1" --* "1" ChallengeGenerator : manages
-    CLIInterface "1" --* "1" SkillManager : uses
-    CLIInterface "1" --* "1" ChallengeGenerator : uses
-    CLIInterface "1" --* "1" FeedbackSystem : uses
-    CLIInterface "1" --* "1" ScoringSystem : uses
+graph LR;
+    A[Codebase] -->|Python Files| B[SkillGapAnalyzer]
+    B -->|Identified Gaps| C[ResourceRecommender]
+    C -->|Recommended Resources| D[LearningPathGenerator]
+    D -->|Personalized Learning Path| E[Output]
 ```
 
-### Running the Tests
-To run the tests, use the following command:
-```sh
-python -m unittest test_main.py
-```
+### Components
+- **SkillGapAnalyzer**: Analyzes the codebase to identify the skills present and compares them with a predefined skill profile to find gaps.
+- **ResourceRecommender**: Recommends learning resources based on the identified skill gaps.
+- **LearningPathGenerator**: Generates a structured and personalized learning path from the recommended resources.
 
-This will execute all the test cases defined in `test_main.py`, ensuring that the SkillGrowthAgent functions as expected.
+## Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/SkillGrowthAgent.git
+   cd SkillGrowthAgent
+   ```
+
+2. Create and activate a virtual environment (optional but recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
+   ```
+
+3. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Usage
+### Step-by-Step Guide
+1. **Prepare the Skill Profile**:
+   - Create a JSON file (e.g., `skill_profile.json`) that defines the required skills for different categories. For example:
+     ```json
+     {
+         "Python": ["ast", "unittest"],
+         "Web Development": ["Django", "Flask"]
+     }
+     ```
+
+2. **Run the SkillGapAnalyzer**:
+   - Use the `SkillGapAnalyzer` to analyze your codebase and identify skill gaps.
+   ```python
+   from skillgap_analyzer import SkillGapAnalyzer, load_skill_profile
+
+   skill_profile = load_skill_profile('skill_profile.json')
+   analyzer = SkillGapAnalyzer(skill_profile)
+   skill_gaps = analyzer.identify_skill_gaps('/path/to/your/codebase')
+   print(skill_gaps)
+   ```
+
+3. **Get Resource Recommendations**:
+   - Use the `ResourceRecommender` to get learning resources based on the identified skill gaps.
+   ```python
+   from resource_recommender import recommend_resources
+
+   recommended_resources = recommend_resources(skill_gaps)
+   print(recommended_resources)
+   ```
+
+4. **Generate a Personalized Learning Path**:
+   - Use the `LearningPathGenerator` to create a structured learning path from the recommended resources.
+   ```python
+   from learning_path_generator import generate_learning_path, save_learning_path
+
+   learning_path = generate_learning_path(recommended_resources)
+   save_learning_path(learning_path, 'learning_path.json')
+   ```
+
+5. **Review the Learning Path**:
+   - Open the generated `learning_path.json` file to see your personalized learning path.
+
+## How It Works
+1. **SkillGapAnalyzer**:
+   - The `SkillGapAnalyzer` class analyzes the given codebase by parsing Python files and extracting used libraries and modules.
+   - It compares the extracted skills with the predefined skill profile to identify any gaps.
+
+2. **ResourceRecommender**:
+   - The `ResourceRecommender` class recommends learning resources based on the identified skill gaps.
+   - It uses a predefined resource database to suggest books, websites, and other materials that can help fill the gaps.
+
+3. **LearningPathGenerator**:
+   - The `LearningPathGenerator` class generates a structured and personalized learning path from the recommended resources.
+   - It organizes the resources into a step-by-step plan, prioritizing books over websites for a more focused learning experience.
+
+## Testing
+- The project includes a comprehensive testing strategy with unit tests for core logic and integration tests for the entire pipeline.
+- To run the tests, use the following command:
+  ```bash
+  python -m unittest discover -s tests
+  ```
+
+## Contributing
+- Contributions are welcome! Please read the [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.
+
+## License
+- This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

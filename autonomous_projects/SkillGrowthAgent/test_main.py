@@ -1,69 +1,110 @@
+import os
+import json
 import unittest
-from skill_manager import SkillManager
-from challenge_generator import ChallengeGenerator
-from feedback_system import FeedbackSystem
-from scoring_system import ScoringSystem
-from cli_interface import CLIInterface
+from unittest.mock import patch, mock_open
+from skillgap_analyzer import SkillGapAnalyzer, load_skill_profile
+from resource_recommender import recommend_resources, load_resource_database, save_resource_database
+from learning_path_generator import generate_learning_path, save_learning_path, load_learning_path
 
 class TestSkillGrowthAgent(unittest.TestCase):
 
     def setUp(self):
-        self.skill_manager = SkillManager()
-        self.challenge_generator = ChallengeGenerator(self.skill_manager)
-        self.feedback_system = FeedbackSystem()
-        self.scoring_system = ScoringSystem()
-        self.cli_interface = CLIInterface(self.skill_manager, self.challenge_generator, self.feedback_system, self.scoring_system)
+        self.skill_profile = {
+            "Python": ["ast", "unittest"],
+            "Web Development": ["Django", "Flask"]
+        }
+        self.resource_db = {
+            "Python": [
+                {"title": "Automate the Boring Stuff with Python", "type": "book", "url": "https://automatetheboringstuff.com/"},
+                {"title": "Real Python", "type": "website", "url": "https://realpython.com/"},
+            ],
+            "Web Development": [
+                {"title": "Django for Beginners", "type": "book", "url": "https://djangoforbeginners.com/"},
+                {"title": "Flask Web Development", "type": "book", "url": "https://flask.palletsprojects.com/en/2.0.x/"},
+            ]
+        }
 
-    def test_skill_manager_initialization(self):
-        self.assertIsNotNone(self.skill_manager)
 
-    def test_challenge_generator_initialization(self):
-        self.assertIsNotNone(self.challenge_generator)
+    def test_load_skill_profile(self):
+        m = mock_open(read_data=json.dumps(self.skill_profile))
+        with patch('builtins.open', m):
+            loaded_profile = load_skill_profile('skill_profile.json')
+            # Normalize both sides to sorted lists for order-agnostic comparison
+            normalized_expected = {k: sorted(v) for k, v in self.skill_profile.items()}
+            normalized_loaded = {k: sorted(v) for k, v in loaded_profile.items()}
+            self.assertEqual(normalized_loaded, normalized_expected)
 
-    def test_feedback_system_initialization(self):
-        self.assertIsNotNone(self.feedback_system)
+    def test_skill_gap_analyzer(self):
+        analyzer = SkillGapAnalyzer(self.skill_profile)
+        gaps = analyzer.identify_skill_gaps('path/to/codebase')
+        # Normalize to sorted lists for deterministic comparison
+        normalized_gaps = {k: sorted(v) for k, v in gaps.items()}
+        expected_gaps = {k: sorted(v) for k, v in {'Python': ['unittest', 'ast'], 'Web Development': ['Django', 'Flask']}.items()}
+        self.assertEqual(normalized_gaps, expected_gaps)
 
-    def test_scoring_system_initialization(self):
-        self.assertIsNotNone(self.scoring_system)
+    def test_recommend_resources(self):
+        skill_gaps = {"Python": ["advanced topics"], "Web Development": ["Django"]}
+        m = mock_open(read_data=json.dumps(self.resource_db))
+        with patch('builtins.open', m):
+            recommendations = recommend_resources(skill_gaps)
+        expected_recommendations = {
+            "Web Development": [{"title": "Django for Beginners", "type": "book", "url": "https://djangoforbeginners.com/"}]
+        }
+        self.assertEqual(recommendations, expected_recommendations)
 
-    def test_cli_interface_initialization(self):
-        self.assertIsNotNone(self.cli_interface)
+    def test_load_resource_database(self):
+        m = mock_open(read_data=json.dumps(self.resource_db))
+        with patch('builtins.open', m):
+            loaded_db = load_resource_database('resources.json')
+            self.assertEqual(loaded_db, self.resource_db)
 
-    def test_skill_manager_add_skill(self):
-        self.skill_manager.add_skill("Python", 1)
-        self.assertIn("Python", self.skill_manager.skills)
+    def test_save_resource_database(self):
+        m = mock_open()
+        with patch('builtins.open', m), patch('os.path.exists', return_value=True):
+            save_resource_database('resources.json', self.resource_db)
+            m.assert_called_once_with('resources.json', 'w', encoding='utf-8')
 
-    def test_challenge_generator_generate_challenge(self):
-        self.skill_manager.add_skill("coding", 1)
-        self.skill_manager.add_skill("coding", 1)
-        challenge = self.challenge_generator.generate_challenge("coding")
-        feedback = self.feedback_system.provide_feedback("Python", 1)
-        self.assertIsNotNone(feedback)
+    def test_generate_learning_path(self):
+        recommended_resources = {
+            "Python": [
+                {"title": "Automate the Boring Stuff with Python", "type": "book", "url": "https://automatetheboringstuff.com/"},
+                {"title": "Real Python", "type": "website", "url": "https://realpython.com/"},
+            ],
+            "Web Development": [
+                {"title": "Django for Beginners", "type": "book", "url": "https://djangoforbeginners.com/"},
+                {"title": "Flask Web Development", "type": "book", "url": "https://flask.palletsprojects.com/en/2.0.x/"},
+            ]
+        }
+        learning_path = generate_learning_path(recommended_resources)
+        expected_path = {
+            "Python": [
+                {"step": 1, "title": "Automate the Boring Stuff with Python", "type": "book", "url": "https://automatetheboringstuff.com/"},
+                {"step": 2, "title": "Real Python", "type": "website", "url": "https://realpython.com/"},
+            ],
+            "Web Development": [
+                {"step": 1, "title": "Django for Beginners", "type": "book", "url": "https://djangoforbeginners.com/"},
+                {"step": 2, "title": "Flask Web Development", "type": "book", "url": "https://flask.palletsprojects.com/en/2.0.x/"},
+            ]
+        }
+        self.assertEqual(learning_path, expected_path)
 
-    def test_scoring_system_calculate_score(self):
-        # Check if the scoring system has a method to calculate scores
-        self.assertTrue(hasattr(self.scoring_system, 'calculate_score'),
-                       "ScoringSystem does not have calculate_score method")
-        try:
-            score = self.scoring_system.calculate_score("Python", 1, "Sample solution")
-            self.assertIsNotNone(score)
-        except Exception as e:
-            self.fail(f"Error calling calculate_score: {e}")
+    def test_save_and_load_learning_path(self):
+        learning_path = {
+            "Python": [
+                {"step": 1, "title": "Automate the Boring Stuff with Python", "type": "book", "url": "https://automatetheboringstuff.com/"},
+                {"step": 2, "title": "Real Python", "type": "website", "url": "https://realpython.com/"},
+            ],
+            "Web Development": [
+                {"step": 1, "title": "Django for Beginners", "type": "book", "url": "https://djangoforbeginners.com/"},
+            ],
+        }
+        m = mock_open()
+        with patch('builtins.open', m), patch('os.path.exists', return_value=True):
+            save_learning_path(learning_path, 'learning_path.json')
+        m_read = mock_open(read_data=json.dumps(learning_path))
+        with patch('builtins.open', m_read):
+            loaded_path = load_learning_path('learning_path.json')
+            self.assertEqual(loaded_path, learning_path)
 
-    def test_integration_skill_manager_and_challenge_generator(self):
-        self.skill_manager.add_skill("coding", 1)
-        self.skill_manager.add_skill("coding", 1)
-        challenge = self.challenge_generator.generate_challenge("coding")
-        self.assertIsNotNone(challenge)
-        feedback = self.feedback_system.provide_feedback("Python", 1)
-        self.assertIsNotNone(feedback)
-        self.skill_manager.add_skill("Python", 1)
-        feedback = self.feedback_system.provide_feedback("Python", 1)
-        self.assertIsNotNone(feedback)
-    def test_integration_skill_manager_and_scoring_system(self):
-        self.skill_manager.add_skill("Python", 1)
-        score = self.scoring_system.calculate_score("Python", 1, "Sample solution")
-        self.assertIsNotNone(score)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

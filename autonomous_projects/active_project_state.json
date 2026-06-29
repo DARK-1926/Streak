@@ -1,93 +1,62 @@
 {
     "plan": {
         "project_name": "SkillGrowthAgent",
-        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The SkillGrowthAgent is designed to help users improve and maintain their skills through a gamified learning system, leveraging AI to provide personalized feedback and challenges. Milestones include: 1) Define skill categories and levels, 2) Implement a challenge generation system, 3) Integrate a feedback loop for user improvement, 4) Develop a scoring and ranking system, 5) Create a user-friendly CLI interface. The testing strategy will include unit tests for core logic, integration tests for the challenge generation and feedback systems, and end-to-end tests for the full application flow.",
+        "vision": "A specialized agent that helps developers identify and fill gaps in their skill sets by analyzing their codebase and suggesting learning resources. The agent will provide a personalized learning path based on the developer's current projects and skills. Atomic milestones include: 1. Code analysis and skill gap identification, 2. Resource recommendation, 3. Personalized learning path generation. Testing strategy includes unit tests for core logic and integration tests for the entire pipeline.",
         "interface_contracts": {
-            "skill_manager.py": {
-                "SkillManager": {
-                    "add_skill(skill: str, level: int) -> None": "Adds a new skill with a specified level to the user's profile.",
-                    "get_skills() -> List[Dict[str, Union[str, int]]]": "Returns a list of all skills and their levels."
-                }
-            },
-            "challenge_generator.py": {
-                "ChallengeGenerator": {
-                    "generate_challenge(skill: str, level: int) -> Dict[str, Any]": "Generates a challenge for a given skill and level.",
-                    "validate_challenge(challenge: Dict[str, Any], response: Any) -> bool": "Validates the user's response to a challenge."
-                }
-            },
-            "feedback_system.py": {
-                "FeedbackSystem": {
-                    "provide_feedback(challenge: Dict[str, Any], response: Any) -> str": "Provides feedback based on the user's response to a challenge."
-                }
-            },
-            "scoring_system.py": {
-                "ScoringSystem": {
-                    "update_score(user_id: str, points: int) -> None": "Updates the user's score with the given points.",
-                    "get_rank(user_id: str) -> int": "Returns the user's rank in the leaderboard."
-                }
-            },
-            "cli_interface.py": {
-                "CLIInterface": {
-                    "display_menu() -> None": "Displays the main menu for the user.",
-                    "handle_input(user_input: str) -> None": "Handles user input and routes it to the appropriate function."
-                }
-            }
+            "skillgap_analyzer.py": [
+                "analyze_codebase(codebase_path: str) -> dict",
+                "identify_skill_gaps(skill_profile: dict, codebase_skills: dict) -> dict"
+            ],
+            "resource_recommender.py": [
+                "recommend_resources(skill_gaps: dict) -> list"
+            ],
+            "learning_path_generator.py": [
+                "generate_learning_path(resources: list) -> dict"
+            ]
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "commit_message": "Implement a gamified skill growth agent with a CLI interface, challenge generation, feedback system, and scoring.",
+        "commit_message": "Initial commit of SkillGrowthAgent, a tool to help developers identify and fill skill gaps through code analysis and resource recommendations.",
         "files_to_generate": [
             {
-                "filepath": "skill_manager.py",
-                "instructions": "Define the SkillManager class with methods to add and retrieve skills. Use a dictionary to store skills and their levels. Ensure the class is testable by decoupling from any external dependencies."
+                "filepath": "skillgap_analyzer.py",
+                "instructions": "This file should contain functions to analyze a given codebase (directory path) and identify the skills present in the code. It should also compare these skills with a predefined skill profile to identify gaps. Use standard library or lightweight packages for file I/O and analysis."
             },
             {
-                "filepath": "challenge_generator.py",
-                "instructions": "Define the ChallengeGenerator class with methods to generate and validate challenges. Challenges should be generated based on the user's skill level and type. The validation method should return a boolean indicating if the user's response was correct. Ensure the class is testable by decoupling from any external dependencies."
+                "filepath": "resource_recommender.py",
+                "instructions": "This file should contain a function to recommend learning resources (e.g., books, articles, tutorials) based on the identified skill gaps. The function should take the skill gaps as input and return a list of recommended resources. Use standard library or lightweight packages for data handling and processing."
             },
             {
-                "filepath": "feedback_system.py",
-                "instructions": "Define the FeedbackSystem class with a method to provide feedback based on the user's response to a challenge. The feedback should be informative and helpful. Ensure the class is testable by decoupling from any external dependencies."
-            },
-            {
-                "filepath": "scoring_system.py",
-                "instructions": "Define the ScoringSystem class with methods to update and retrieve the user's score. The score should be updated based on the user's performance in challenges. The get_rank method should return the user's rank in the leaderboard. Ensure the class is testable by decoupling from any external dependencies."
-            },
-            {
-                "filepath": "cli_interface.py",
-                "instructions": "Define the CLIInterface class with methods to display the main menu and handle user input. The handle_input method should route the user's input to the appropriate function. Ensure the class is testable by decoupling from any external dependencies."
+                "filepath": "learning_path_generator.py",
+                "instructions": "This file should contain a function to generate a personalized learning path based on the recommended resources. The function should take the list of resources as input and return a structured learning path. Use standard library or lightweight packages for data structuring and manipulation."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Create a comprehensive unit test suite for the SkillGrowthAgent. Import and use the actual generated modules. Test the core logic of each class and ensure that the integration between classes works as expected. Do not create mock or stub classes for the core logic. The code must pass its own tests."
-            },
-            {
-                "filepath": "README.md",
-                "instructions": "Write a detailed README explaining the architecture of the SkillGrowthAgent, including the purpose of each file, how the classes interact, and how to run the tests. Include a Mermaid diagram for clarity."
+                "instructions": "This file should contain a strict unit test suite that imports and uses the actual generated modules. The tests should cover the core logic of `skillgap_analyzer.py`, `resource_recommender.py`, and `learning_path_generator.py`. Ensure that the tests are deterministic and do not rely on external APIs or complex mocks."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Include patterns to ignore venv, __pycache__, and .env files. Ensure that the repository remains lightweight and free of unnecessary files."
+                "instructions": "This file should exclude venv, __pycache__, .env, and any other large or unnecessary files from version control."
+            },
+            {
+                "filepath": "README.md",
+                "instructions": "This file should explain the architecture, installation, and usage of the SkillGrowthAgent. Include a Mermaid diagram for architecture clarity and provide clear setup instructions."
             }
         ]
     },
     "files_created": [
-        "skill_manager.py",
-        "challenge_generator.py",
-        "feedback_system.py",
-        "scoring_system.py",
-        "cli_interface.py",
+        "skillgap_analyzer.py",
+        "resource_recommender.py",
+        "learning_path_generator.py",
         "test_main.py",
-        "README.md",
-        ".gitignore"
+        ".gitignore",
+        "README.md"
     ],
     "blueprint": [
-        "File: skill_manager.py provides: class SkillManager",
-        "File: challenge_generator.py provides: class ChallengeGenerator",
-        "File: feedback_system.py provides: class FeedbackSystem",
-        "File: scoring_system.py provides: class ScoringSystem",
-        "File: cli_interface.py provides: class CLIInterface",
+        "File: skillgap_analyzer.py provides: class SkillGapAnalyzer, def load_skill_profile",
+        "File: resource_recommender.py provides: def recommend_resources, def load_resource_database, def save_resource_database",
+        "File: learning_path_generator.py provides: def generate_learning_path, def save_learning_path, def load_learning_path",
         "File: test_main.py provides: class TestSkillGrowthAgent",
-        "File: README.md (Static/Config)",
-        "File: .gitignore (Static/Config)"
+        "File: .gitignore (Static/Config)",
+        "File: README.md (Static/Config)"
     ]
 }
