@@ -1,62 +1,66 @@
 {
     "plan": {
-        "project_name": "SkillGrowthAgent",
-        "vision": "A specialized agent that helps developers identify and fill gaps in their skill sets by analyzing their codebase and suggesting learning resources. The agent will provide a personalized learning path based on the developer's current projects and skills. Atomic milestones include: 1. Code analysis and skill gap identification, 2. Resource recommendation, 3. Personalized learning path generation. Testing strategy includes unit tests for core logic and integration tests for the entire pipeline.",
+        "project_name": "KanbanAgent",
+        "vision": "A compact, cross-platform Kanban board application that allows multiple agents to manage and track tasks efficiently. The application will support task creation, movement between columns, and status updates. It will be designed with a focus on simplicity and ease of use, while also providing robust unit tests for deterministic validation.",
         "interface_contracts": {
-            "skillgap_analyzer.py": [
-                "analyze_codebase(codebase_path: str) -> dict",
-                "identify_skill_gaps(skill_profile: dict, codebase_skills: dict) -> dict"
+            "kanban_board.py": [
+                "create_task(task: dict) -> str",
+                "move_task(task_id: str, from_column: str, to_column: str) -> bool",
+                "update_task(task_id: str, updates: dict) -> bool",
+                "get_task(task_id: str) -> dict",
+                "get_all_tasks() -> list[dict]"
             ],
-            "resource_recommender.py": [
-                "recommend_resources(skill_gaps: dict) -> list"
-            ],
-            "learning_path_generator.py": [
-                "generate_learning_path(resources: list) -> dict"
+            "task_manager.py": [
+                "add_task(task: dict) -> str",
+                "remove_task(task_id: str) -> bool",
+                "update_task(task_id: str, updates: dict) -> bool",
+                "get_task(task_id: str) -> dict",
+                "get_all_tasks() -> list[dict]"
             ]
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "commit_message": "Initial commit of SkillGrowthAgent, a tool to help developers identify and fill skill gaps through code analysis and resource recommendations.",
+        "commit_message": "Implement a compact, cross-platform Kanban board application for task management and tracking.",
         "files_to_generate": [
             {
-                "filepath": "skillgap_analyzer.py",
-                "instructions": "This file should contain functions to analyze a given codebase (directory path) and identify the skills present in the code. It should also compare these skills with a predefined skill profile to identify gaps. Use standard library or lightweight packages for file I/O and analysis."
+                "filepath": "kanban_board.py",
+                "instructions": "Contains the main logic for the Kanban board, including functions to create, move, update, and retrieve tasks. Use a dictionary to represent the board with columns as keys and lists of task IDs as values. Each task should be a dictionary with fields like 'id', 'title', 'description', and 'status'."
             },
             {
-                "filepath": "resource_recommender.py",
-                "instructions": "This file should contain a function to recommend learning resources (e.g., books, articles, tutorials) based on the identified skill gaps. The function should take the skill gaps as input and return a list of recommended resources. Use standard library or lightweight packages for data handling and processing."
-            },
-            {
-                "filepath": "learning_path_generator.py",
-                "instructions": "This file should contain a function to generate a personalized learning path based on the recommended resources. The function should take the list of resources as input and return a structured learning path. Use standard library or lightweight packages for data structuring and manipulation."
+                "filepath": "task_manager.py",
+                "instructions": "Handles the storage and retrieval of tasks. Use a dictionary to store tasks with their IDs as keys. Implement functions to add, remove, update, and retrieve tasks. Ensure that the functions return appropriate success or failure indicators."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "This file should contain a strict unit test suite that imports and uses the actual generated modules. The tests should cover the core logic of `skillgap_analyzer.py`, `resource_recommender.py`, and `learning_path_generator.py`. Ensure that the tests are deterministic and do not rely on external APIs or complex mocks."
+                "instructions": "Contains the unit test suite for the Kanban board and task manager. Import and use the actual generated modules to test the core logic. Write tests for each function in `kanban_board.py` and `task_manager.py` to ensure they behave as expected. Use the `unittest` framework for testing."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "This file should exclude venv, __pycache__, .env, and any other large or unnecessary files from version control."
+                "instructions": "Add entries to ignore venv, __pycache__, .env, and other unnecessary files to keep the repository lightweight."
             },
             {
                 "filepath": "README.md",
-                "instructions": "This file should explain the architecture, installation, and usage of the SkillGrowthAgent. Include a Mermaid diagram for architecture clarity and provide clear setup instructions."
+                "instructions": "Provide a detailed explanation of the architecture, how to set up the project, and how to run the tests. Include a brief overview of the project's purpose and the key features it provides."
+            },
+            {
+                "filepath": "setup.py",
+                "instructions": "Create a setup script to install the necessary dependencies and set up the virtual environment. Pin the versions of the dependencies to ensure consistency across different environments."
             }
         ]
     },
     "files_created": [
-        "skillgap_analyzer.py",
-        "resource_recommender.py",
-        "learning_path_generator.py",
+        "kanban_board.py",
+        "task_manager.py",
         "test_main.py",
         ".gitignore",
-        "README.md"
+        "README.md",
+        "setup.py"
     ],
     "blueprint": [
-        "File: skillgap_analyzer.py provides: class SkillGapAnalyzer, def load_skill_profile",
-        "File: resource_recommender.py provides: def recommend_resources, def load_resource_database, def save_resource_database",
-        "File: learning_path_generator.py provides: def generate_learning_path, def save_learning_path, def load_learning_path",
-        "File: test_main.py provides: class TestSkillGrowthAgent",
+        "File: kanban_board.py provides: class KanbanBoard",
+        "File: task_manager.py provides: class TaskManager",
+        "File: test_main.py provides: class TestKanbanBoard, class TestTaskManager",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: README.md (Static/Config)",
+        "File: setup.py provides: No public classes/functions"
     ]
 }
