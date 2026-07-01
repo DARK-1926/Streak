@@ -1,5 +1,5 @@
 {
-    "score": 27,
+    "score": 28,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -211,6 +211,11 @@
             "date": "2026-06-30T11:18:38.526557",
             "project": "KanbanAgent",
             "model": "qwen3-coder-plus"
+        },
+        {
+            "date": "2026-07-01T19:36:21.267608",
+            "project": "SecureCodeWrapper",
+            "model": "qwen3-coder-flash"
         }
     ],
     "model_ratings": {
@@ -251,7 +256,8 @@
         "DocxEditorLite",
         "SkillGrowthAgent",
         "SkillGrowthAgent",
-        "KanbanAgent"
+        "KanbanAgent",
+        "SecureCodeWrapper"
     ],
     "lessons_learned": [
         "Avoid uploading large binary assets; use .gitignore to exclude heavy directories; provide clear setup scripts; integrate Mermaid diagrams for clarity; ensure reproducible environment with venv and pytest.",
@@ -266,7 +272,8 @@
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies."
+        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
+        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies."
     ],
     "planner_ratings": {
         "cohere/north-mini-code-20260617:free": {
@@ -285,14 +292,14 @@
             "test_stages_reached": 1
         },
         "qwen-max": {
-            "plans_created": 12,
+            "plans_created": 13,
             "critique_survivals": 11,
-            "test_stages_reached": 21
+            "test_stages_reached": 23
         },
         "qwen-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 16
+            "test_stages_reached": 18
         },
         "qwen-coder-32b-instruct": {
             "plans_created": 0,
@@ -302,22 +309,22 @@
         "qwen3-coder-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 11
+            "test_stages_reached": 13
         },
         "qwen3-coder-flash": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 9
+            "test_stages_reached": 11
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 8
+            "test_stages_reached": 9
         },
         "qwen/qwen3-coder:free": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 7
+            "test_stages_reached": 8
         }
     },
     "coder_ratings": {
@@ -358,28 +365,28 @@
             "fix_successes": 0
         },
         "qwen-max": {
-            "files_generated": 73,
-            "lint_passes": 46,
-            "fix_attempts": 64,
+            "files_generated": 79,
+            "lint_passes": 50,
+            "fix_attempts": 78,
             "fix_successes": 2
         },
         "qwen-plus": {
             "files_generated": 4,
             "lint_passes": 2,
-            "fix_attempts": 58,
+            "fix_attempts": 72,
             "fix_successes": 2
         },
         "qwen3-coder-plus": {
             "files_generated": 0,
             "lint_passes": 0,
-            "fix_attempts": 39,
+            "fix_attempts": 53,
             "fix_successes": 2
         },
         "qwen3-coder-flash": {
             "files_generated": 0,
             "lint_passes": 0,
-            "fix_attempts": 32,
-            "fix_successes": 1
+            "fix_attempts": 41,
+            "fix_successes": 2
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {
             "files_generated": 0,
