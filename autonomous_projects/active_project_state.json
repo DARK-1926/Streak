@@ -1,71 +1,70 @@
 {
     "plan": {
-        "project_name": "SecureCodeWrapper",
-        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The project aims to create a secure wrapper for running coding agents in a sandboxed environment, ensuring that the code executed is isolated and cannot perform malicious actions. Atomic milestones include: 1) Define the secure execution environment, 2) Implement file system and network isolation, 3) Integrate with a simple API for executing code, 4) Develop a comprehensive test suite to validate security and functionality.",
+        "project_name": "CodeReviewAgent",
+        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The CodeReviewAgent will provide automated code review and feedback for Python code, helping developers improve their code quality, maintainability, and adherence to best practices. The project will be divided into three milestones: 1) Implement core code analysis and feedback generation, 2) Integrate with a simple command-line interface, and 3) Add unit tests and validation. The testing strategy will include unit tests for each function and integration tests for the CLI.",
         "interface_contracts": {
-            "secure_code_wrapper.py": {
-                "functions": [
-                    "execute_code(code: str, input_data: dict) -> dict",
-                    "initialize_environment() -> None"
-                ]
+            "code_reviewer.py": {
+                "analyze_code(code: str) -> dict": "Analyzes the given Python code and returns a dictionary of feedback and suggestions."
             },
-            "sandbox_manager.py": {
-                "functions": [
-                    "create_sandbox() -> str",
-                    "destroy_sandbox(sandbox_id: str) -> None",
-                    "isolate_file_system(sandbox_id: str) -> None",
-                    "isolate_network(sandbox_id: str) -> None"
-                ]
-            },
-            "api_handler.py": {
-                "functions": [
-                    "handle_request(request: dict) -> dict"
-                ]
+            "cli.py": {
+                "run_cli() -> None": "Provides a command-line interface for the CodeReviewAgent, allowing users to input Python code and receive feedback."
             }
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
-        "commit_message": "Implemented a secure wrapper for running coding agents in a sandboxed environment.",
+        "commit_message": "Implement an automated CodeReviewAgent for Python code with a command-line interface and unit tests.",
         "files_to_generate": [
             {
-                "filepath": "secure_code_wrapper.py",
-                "instructions": "This file should contain the main logic for the SecureCodeWrapper. It should import the necessary functions from sandbox_manager.py and api_handler.py. The `execute_code` function should take a string of code and input data, create a sandbox, isolate the file system and network, and then execute the code within the sandbox. The results should be returned as a dictionary. The `initialize_environment` function should set up the initial environment for the sandbox."
+                "filepath": "code_reviewer.py",
+                "instructions": "This file should contain the `analyze_code` function, which takes a string of Python code as input and returns a dictionary of feedback and suggestions. The function should check for common issues such as unused imports, variable naming conventions, and potential bugs. Use standard library functions and avoid heavy dependencies."
             },
             {
-                "filepath": "sandbox_manager.py",
-                "instructions": "This file should contain the logic for managing the sandbox. The `create_sandbox` function should create a new isolated environment and return its unique identifier. The `destroy_sandbox` function should clean up and remove the sandbox. The `isolate_file_system` and `isolate_network` functions should ensure that the sandbox has no access to the host's file system and network, respectively."
+                "filepath": "cli.py",
+                "instructions": "This file should contain the `run_cli` function, which provides a command-line interface for the CodeReviewAgent. The CLI should prompt the user to input Python code, call the `analyze_code` function from `code_reviewer.py`, and display the feedback to the user. Ensure the CLI is cross-platform and works on win32."
             },
             {
-                "filepath": "api_handler.py",
-                "instructions": "This file should contain the logic for handling incoming requests. The `handle_request` function should take a request dictionary, extract the code and input data, and pass it to the `execute_code` function in secure_code_wrapper.py. It should then return the results in a structured format."
+                "filepath": "test_code_reviewer.py",
+                "instructions": "This file should contain the unit tests for the `analyze_code` function in `code_reviewer.py`. Write tests to cover various cases, including valid and invalid Python code, and ensure the function returns the expected feedback. Use the `unittest` module for testing."
             },
             {
-                "filepath": "test_main.py",
-                "instructions": "This file should contain the unit tests for the project. It should import the actual generated modules and use them directly without creating mock or stub classes. The tests should cover the core logic in secure_code_wrapper.py, sandbox_manager.py, and api_handler.py, ensuring that the code executes correctly and securely."
-            },
-            {
-                "filepath": ".gitignore",
-                "instructions": "This file should include entries to ignore venv, __pycache__, and .env files to keep the repository lightweight."
+                "filepath": "test_cli.py",
+                "instructions": "This file should contain the integration tests for the `run_cli` function in `cli.py`. Write tests to simulate user input and verify that the CLI correctly calls the `analyze_code` function and displays the feedback. Use the `unittest` module for testing."
             },
             {
                 "filepath": "README.md",
-                "instructions": "This file should provide a detailed explanation of the architecture, how to set up and run the project, and any other relevant information. It should also include an overview of the security measures implemented."
+                "instructions": "This file should explain the architecture of the CodeReviewAgent, how to install and run the project, and provide examples of how to use the CLI. Include a section on the design decisions and any known limitations."
+            },
+            {
+                "filepath": ".gitignore",
+                "instructions": "This file should ignore venv, __pycache__, and .env files to keep the repository lightweight and free from unnecessary files."
+            },
+            {
+                "filepath": "setup.py",
+                "instructions": "This file should contain the setup script for the project, including any necessary dependencies. Use `setuptools` to create the setup script and pin all dependencies to specific versions."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "This file should list all the required Python packages and their versions. Pin all dependencies to specific versions to ensure reproducibility."
             }
         ]
     },
     "files_created": [
-        "secure_code_wrapper.py",
-        "sandbox_manager.py",
-        "api_handler.py",
-        "test_main.py",
+        "code_reviewer.py",
+        "cli.py",
+        "test_code_reviewer.py",
+        "test_cli.py",
+        "README.md",
         ".gitignore",
-        "README.md"
+        "setup.py",
+        "requirements.txt"
     ],
     "blueprint": [
-        "File: secure_code_wrapper.py provides: def initialize_environment, def execute_code",
-        "File: sandbox_manager.py provides: def create_sandbox, def destroy_sandbox, def isolate_file_system, def isolate_network",
-        "File: api_handler.py provides: def handle_request, def parse_request, def format_response",
-        "File: test_main.py provides: class TestSecureCodeWrapper, class TestSandboxManager, class TestAPIHandler",
+        "File: code_reviewer.py provides: def analyze_code, def is_used, def is_valid_name, def is_none_constant",
+        "File: cli.py provides: def run_cli",
+        "File: test_code_reviewer.py provides: class TestCodeReviewer",
+        "File: test_cli.py provides: class TestCLI",
+        "File: README.md (Static/Config)",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: setup.py provides: No public classes/functions",
+        "File: requirements.txt (Static/Config)"
     ]
 }
