@@ -1,70 +1,60 @@
 {
     "plan": {
-        "project_name": "CodeReviewAgent",
-        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The CodeReviewAgent will provide automated code review and feedback for Python code, helping developers improve their code quality, maintainability, and adherence to best practices. The project will be divided into three milestones: 1) Implement core code analysis and feedback generation, 2) Integrate with a simple command-line interface, and 3) Add unit tests and validation. The testing strategy will include unit tests for each function and integration tests for the CLI.",
+        "project_name": "CodeSandboxAgent",
+        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The CodeSandboxAgent will provide a secure, isolated environment for executing untrusted code snippets, with a focus on security, efficiency, and ease of use.",
         "interface_contracts": {
-            "code_reviewer.py": {
-                "analyze_code(code: str) -> dict": "Analyzes the given Python code and returns a dictionary of feedback and suggestions."
-            },
-            "cli.py": {
-                "run_cli() -> None": "Provides a command-line interface for the CodeReviewAgent, allowing users to input Python code and receive feedback."
-            }
+            "sandbox.py": [
+                "execute_code(code: str) -> dict",
+                "validate_code(code: str) -> bool"
+            ],
+            "security.py": [
+                "sanitize_input(input: str) -> str",
+                "isolate_environment() -> None"
+            ],
+            "test_main.py": [
+                "test_execute_code() -> None",
+                "test_validate_code() -> None",
+                "test_sanitize_input() -> None",
+                "test_isolate_environment() -> None"
+            ]
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
-        "commit_message": "Implement an automated CodeReviewAgent for Python code with a command-line interface and unit tests.",
+        "commit_message": "Implement a secure, isolated environment for executing untrusted code snippets.",
         "files_to_generate": [
             {
-                "filepath": "code_reviewer.py",
-                "instructions": "This file should contain the `analyze_code` function, which takes a string of Python code as input and returns a dictionary of feedback and suggestions. The function should check for common issues such as unused imports, variable naming conventions, and potential bugs. Use standard library functions and avoid heavy dependencies."
-            },
-            {
-                "filepath": "cli.py",
-                "instructions": "This file should contain the `run_cli` function, which provides a command-line interface for the CodeReviewAgent. The CLI should prompt the user to input Python code, call the `analyze_code` function from `code_reviewer.py`, and display the feedback to the user. Ensure the CLI is cross-platform and works on win32."
-            },
-            {
-                "filepath": "test_code_reviewer.py",
-                "instructions": "This file should contain the unit tests for the `analyze_code` function in `code_reviewer.py`. Write tests to cover various cases, including valid and invalid Python code, and ensure the function returns the expected feedback. Use the `unittest` module for testing."
-            },
-            {
-                "filepath": "test_cli.py",
-                "instructions": "This file should contain the integration tests for the `run_cli` function in `cli.py`. Write tests to simulate user input and verify that the CLI correctly calls the `analyze_code` function and displays the feedback. Use the `unittest` module for testing."
-            },
-            {
                 "filepath": "README.md",
-                "instructions": "This file should explain the architecture of the CodeReviewAgent, how to install and run the project, and provide examples of how to use the CLI. Include a section on the design decisions and any known limitations."
+                "instructions": "Provide a detailed explanation of the architecture, including how the sandbox environment is set up, the security measures in place, and how to use the CodeSandboxAgent."
+            },
+            {
+                "filepath": "sandbox.py",
+                "instructions": "Implement the core logic for executing and validating code. This file should include functions to execute code in an isolated environment and validate the input code for potential security issues."
+            },
+            {
+                "filepath": "security.py",
+                "instructions": "Implement security-related functions such as sanitizing input and isolating the execution environment. Ensure that the environment is set up to prevent any access to external resources."
+            },
+            {
+                "filepath": "test_main.py",
+                "instructions": "Create a comprehensive unit test suite that imports and uses the actual generated modules. Include tests for executing code, validating code, sanitizing input, and isolating the environment. The tests should cover all edge cases and ensure the code passes without complex mocks."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "This file should ignore venv, __pycache__, and .env files to keep the repository lightweight and free from unnecessary files."
-            },
-            {
-                "filepath": "setup.py",
-                "instructions": "This file should contain the setup script for the project, including any necessary dependencies. Use `setuptools` to create the setup script and pin all dependencies to specific versions."
-            },
-            {
-                "filepath": "requirements.txt",
-                "instructions": "This file should list all the required Python packages and their versions. Pin all dependencies to specific versions to ensure reproducibility."
+                "instructions": "Include patterns to ignore venv, __pycache__, .env, and other non-essential files to keep the repository lightweight."
             }
         ]
     },
     "files_created": [
-        "code_reviewer.py",
-        "cli.py",
-        "test_code_reviewer.py",
-        "test_cli.py",
         "README.md",
-        ".gitignore",
-        "setup.py",
-        "requirements.txt"
+        "sandbox.py",
+        "security.py",
+        "test_main.py",
+        ".gitignore"
     ],
     "blueprint": [
-        "File: code_reviewer.py provides: def analyze_code, def is_used, def is_valid_name, def is_none_constant",
-        "File: cli.py provides: def run_cli",
-        "File: test_code_reviewer.py provides: class TestCodeReviewer",
-        "File: test_cli.py provides: class TestCLI",
         "File: README.md (Static/Config)",
-        "File: .gitignore (Static/Config)",
-        "File: setup.py provides: No public classes/functions",
-        "File: requirements.txt (Static/Config)"
+        "File: sandbox.py provides: def validate_code, def execute_code",
+        "File: security.py provides: def sanitize_input, def create_isolated_environment, def cleanup_environment, def check_disallowed_keywords, def setup_secure_environment, def teardown_secure_environment",
+        "File: test_main.py provides: class TestCodeSandboxAgent",
+        "File: .gitignore (Static/Config)"
     ]
 }
