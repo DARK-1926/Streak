@@ -919,8 +919,12 @@ def run_beast_cycle():
             while fix_attempts < 8:
                 log_event(f"Validating {project_name} (Attempt {fix_attempts+1}/8)...")
                 try:
-                    result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], 
-                                             cwd=project_dir, capture_output=True, text=True, timeout=120)
+                    process = subprocess.Popen(["cmd.exe", "/c", "setup_and_test.bat"], 
+                                             cwd=project_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    stdout, stderr = process.communicate(timeout=120)
+                    class DummyResult: pass
+                    result = DummyResult()
+                    result.stdout, result.stderr, result.returncode = stdout, stderr, process.returncode
                     
                     output_combined = result.stdout + result.stderr
                     
@@ -1000,7 +1004,9 @@ def run_beast_cycle():
                         fix_attempts += 1
                         grid.record_metric(actual_fixer, "coder", "fix_attempts")
                 except subprocess.TimeoutExpired:
-                    log_event("Test script timed out. Likely a hanging process.")
+                    log_event("Test script timed out. Likely a hanging process. Killing process tree...")
+                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)], capture_output=True)
+                    process.kill()
                     break
                     
             if not success and fix_attempts >= 8:
@@ -1027,7 +1033,8 @@ def run_beast_cycle():
                 
                 # Final check
                 try:
-                    result = subprocess.run(["cmd.exe", "/c", "setup_and_test.bat"], cwd=project_dir, capture_output=True, text=True, timeout=120)
+                    process = subprocess.Popen(["cmd.exe", "/c", "setup_and_test.bat"], cwd=project_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    stdout, stderr = process.communicate(timeout=120)
                     report_path = os.path.join(project_dir, "report.json")
                     if os.path.exists(report_path):
                         import json as pyjson
@@ -1037,6 +1044,9 @@ def run_beast_cycle():
                             if summary.get("passed", 0) > 0 and summary.get("failed", 0) == 0 and summary.get("error", 0) == 0:
                                 success = True
                                 log_event("Sunk Cost Protocol SUCCEEDED.")
+                except subprocess.TimeoutExpired:
+                    subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)], capture_output=True)
+                    process.kill()
                 except Exception: pass
                 
             if success:
