@@ -1,5 +1,5 @@
 {
-    "score": 32,
+    "score": 33,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -236,6 +236,11 @@
             "date": "2026-07-05T15:00:35.518213",
             "project": "CodeFlowEnhancer",
             "model": "qwen-plus"
+        },
+        {
+            "date": "2026-07-06T11:54:36.386407",
+            "project": "CodeFlowOptimizer",
+            "model": "qwen-plus"
         }
     ],
     "model_ratings": {
@@ -281,7 +286,8 @@
         "CodeReviewAgent",
         "CodeSandboxAgent",
         "CodeFlowAgent",
-        "CodeFlowEnhancer"
+        "CodeFlowEnhancer",
+        "CodeFlowOptimizer"
     ],
     "lessons_learned": [
         "Avoid uploading large binary assets; use .gitignore to exclude heavy directories; provide clear setup scripts; integrate Mermaid diagrams for clarity; ensure reproducible environment with venv and pytest.",
@@ -297,6 +303,7 @@
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
+        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
@@ -320,14 +327,14 @@
             "test_stages_reached": 1
         },
         "qwen-max": {
-            "plans_created": 17,
-            "critique_survivals": 15,
-            "test_stages_reached": 31
+            "plans_created": 18,
+            "critique_survivals": 16,
+            "test_stages_reached": 32
         },
         "qwen-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 21
+            "test_stages_reached": 22
         },
         "qwen-coder-32b-instruct": {
             "plans_created": 0,
@@ -393,16 +400,16 @@
             "fix_successes": 0
         },
         "qwen-max": {
-            "files_generated": 106,
-            "lint_passes": 67,
-            "fix_attempts": 86,
+            "files_generated": 111,
+            "lint_passes": 70,
+            "fix_attempts": 93,
             "fix_successes": 3
         },
         "qwen-plus": {
             "files_generated": 4,
             "lint_passes": 2,
-            "fix_attempts": 90,
-            "fix_successes": 4
+            "fix_attempts": 95,
+            "fix_successes": 5
         },
         "qwen3-coder-plus": {
             "files_generated": 0,
