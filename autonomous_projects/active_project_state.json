@@ -1,70 +1,64 @@
 {
     "plan": {
-        "project_name": "HNContentDiversityAgent",
-        "vision": "A specialized agent that analyzes and curates content from Hacker News (HN) to enhance diversity and interest, providing a more engaging and varied front page experience. The project will have the following milestones: 1. Data Collection: Gather HN posts and metadata. 2. Content Analysis: Analyze post titles and content for diversity. 3. Curation: Curate a diverse set of posts. 4. Presentation: Present the curated content in a user-friendly format. Testing Strategy: Unit tests for each component, integration tests for data flow, and end-to-end tests for the entire pipeline.",
+        "project_name": "PersonalFinanceAdvisor",
+        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The project aims to provide a personal finance advisor that can assist users in making financial decisions, such as budgeting, savings, and investments. Key milestones include defining the core financial models, implementing the decision-making logic, and creating a user-friendly interface. The testing strategy will focus on unit tests for the core logic and integration tests for the overall system.",
         "interface_contracts": {
-            "hn_data_collector.py": {
-                "get_hn_posts()": "Fetches and returns a list of HN posts."
-            },
-            "content_analyzer.py": {
-                "analyze_diversity(posts) -> dict": "Analyzes the diversity of the given posts and returns a dictionary with diversity scores."
-            },
-            "content_curator.py": {
-                "curate_content(posts, diversity_scores) -> list": "Curates a list of posts based on their diversity scores."
-            },
-            "presentation_layer.py": {
-                "present_content(curated_posts) -> str": "Formats and presents the curated content as a string."
-            }
+            "finance_model.py": [
+                "calculate_budget",
+                "calculate_savings",
+                "suggest_investments"
+            ],
+            "decision_logic.py": [
+                "make_financial_decision"
+            ],
+            "user_interface.py": [
+                "display_results",
+                "get_user_input"
+            ]
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
-        "commit_message": "Implemented a specialized agent to analyze and curate diverse content from Hacker News.",
+        "commit_message": "Implement a personal finance advisor that assists users in making financial decisions.",
         "files_to_generate": [
             {
-                "filepath": "hn_data_collector.py",
-                "instructions": "Implement a function `get_hn_posts()` that fetches and returns a list of HN posts. Use the HN API or a web scraping library to collect the data. Ensure the function is pure and does not include any side effects."
+                "filepath": "finance_model.py",
+                "instructions": "Define the core financial models including budget calculation, savings estimation, and investment suggestions. Use pure functions and avoid side effects. Ensure the functions are well-documented and follow the defined interface contracts."
             },
             {
-                "filepath": "content_analyzer.py",
-                "instructions": "Implement a function `analyze_diversity(posts)` that takes a list of HN posts and returns a dictionary with diversity scores. Use natural language processing techniques to analyze the titles and content for diversity. Ensure the function is pure and does not include any side effects."
+                "filepath": "decision_logic.py",
+                "instructions": "Implement the decision-making logic that uses the financial models to make recommendations. This file should import the necessary functions from `finance_model.py` and use them to generate financial advice. The `make_financial_decision` function should be a pure function that takes input parameters and returns a decision."
             },
             {
-                "filepath": "content_curator.py",
-                "instructions": "Implement a function `curate_content(posts, diversity_scores)` that takes a list of HN posts and their diversity scores, and returns a curated list of posts. The curation should aim to provide a diverse and interesting selection. Ensure the function is pure and does not include any side effects."
-            },
-            {
-                "filepath": "presentation_layer.py",
-                "instructions": "Implement a function `present_content(curated_posts)` that formats and presents the curated content as a string. The presentation should be user-friendly and easy to read. Ensure the function is pure and does not include any side effects."
+                "filepath": "user_interface.py",
+                "instructions": "Create a user-friendly interface that interacts with the user to get inputs and display the results. This file should import the `make_financial_decision` function from `decision_logic.py` and handle the input and output. Ensure the UI is simple and cross-platform compatible (target OS: win32)."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Write a comprehensive unit test suite that imports and uses the actual generated modules. Test the `get_hn_posts()`, `analyze_diversity()`, `curate_content()`, and `present_content()` functions. Ensure the tests cover all edge cases and validate the correctness of the implementation."
-            },
-            {
-                "filepath": "README.md",
-                "instructions": "Document the architecture of the project, including the purpose of each file, the flow of data, and how to run the project. Provide examples of how to use the agent and any configuration details."
+                "instructions": "Write a strict unit test suite that imports and uses the actual generated modules. Test the core logic in `finance_model.py` and `decision_logic.py` with various input scenarios. Ensure the tests cover all edge cases and validate the correctness of the financial models and decision logic."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Create a .gitignore file to ignore venv, __pycache__, and .env files. Add any other necessary exclusions to keep the repository lightweight."
+                "instructions": "Include a .gitignore file to ignore venv, __pycache__, .env, and other non-essential files. Ensure the repository remains lightweight and clean."
+            },
+            {
+                "filepath": "README.md",
+                "instructions": "Explain the architecture of the project, how to set up and run the application, and any other relevant information. Include a section on the design choices and how they address the critical scope limits and trends."
             }
         ]
     },
     "files_created": [
-        "hn_data_collector.py",
-        "content_analyzer.py",
-        "content_curator.py",
-        "presentation_layer.py",
+        "finance_model.py",
+        "decision_logic.py",
+        "user_interface.py",
         "test_main.py",
-        "README.md",
-        ".gitignore"
+        ".gitignore",
+        "README.md"
     ],
     "blueprint": [
-        "File: hn_data_collector.py provides: def get_hn_posts",
-        "File: content_analyzer.py provides: def preprocess_text, def calculate_diversity_score, def analyze_diversity",
-        "File: content_curator.py provides: def curate_content",
-        "File: presentation_layer.py provides: def present_content",
-        "File: test_main.py provides: class TestHNContentDiversityAgent",
-        "File: README.md (Static/Config)",
-        "File: .gitignore (Static/Config)"
+        "File: finance_model.py provides: def calculate_budget, def estimate_savings, def suggest_investments",
+        "File: decision_logic.py provides: def make_financial_decision",
+        "File: user_interface.py provides: def get_user_input, def display_results, def main",
+        "File: test_main.py provides: class TestFinanceModel, class TestDecisionLogic",
+        "File: .gitignore (Static/Config)",
+        "File: README.md (Static/Config)"
     ]
 }
