@@ -1,63 +1,53 @@
 {
     "plan": {
-        "project_name": "CodeFlowSecurityAgent",
-        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The project aims to create a security-focused agent that monitors and enforces secure coding practices in real-time. Atomic milestones include: 1) Define core security rules and policies, 2) Implement real-time code analysis, 3) Integrate with existing IDEs, 4) Develop a robust testing suite, 5) Document and release.",
+        "project_name": "LeapSecondHandler",
+        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The project aims to create a robust, cross-platform Python application that handles and adjusts for negative leap seconds in time-sensitive systems, ensuring they remain accurate and reliable. The application will be designed with a focus on algorithmic efficiency, security, and isolation, and will include a comprehensive unit test suite to validate its functionality.",
         "interface_contracts": {
-            "code_flow_security_agent.py": [
-                "def analyze_code(code: str) -> dict",
-                "def enforce_rules(code: str, rules: list) -> bool"
+            "leap_second_handler.py": [
+                "check_leap_second() -> bool: Checks if the current system is affected by a negative leap second.",
+                "adjust_time(timestamp: str) -> str: Adjusts the given timestamp to account for a negative leap second."
             ],
-            "security_rules.py": [
-                "def get_security_rules() -> list",
-                "def add_rule(rule: dict) -> None"
-            ],
-            "ide_integration.py": [
-                "def integrate_with_ide(ide: str) -> None",
-                "def get_supported_ides() -> list"
+            "time_utils.py": [
+                "get_current_utc_time() -> str: Returns the current UTC time as a string.",
+                "convert_to_utc(timestamp: str, timezone: str) -> str: Converts a given timestamp from a specified timezone to UTC."
             ]
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
-        "commit_message": "Implement a security-focused agent that monitors and enforces secure coding practices in real-time.",
+        "commit_message": "Implement a Leap Second Handler for adjusting time-sensitive systems in the event of a negative leap second.",
         "files_to_generate": [
             {
-                "filepath": "code_flow_security_agent.py",
-                "instructions": "This file contains the main logic for analyzing and enforcing security rules. It should include functions `analyze_code` which takes a string of code and returns a dictionary of security issues, and `enforce_rules` which takes a string of code and a list of rules, and returns a boolean indicating if the code passes all rules."
+                "filepath": "leap_second_handler.py",
+                "instructions": "This file should contain the core logic for checking if the system is affected by a negative leap second and adjusting timestamps accordingly. It should include the functions check_leap_second() and adjust_time()."
             },
             {
-                "filepath": "security_rules.py",
-                "instructions": "This file defines the security rules and policies. It should include functions `get_security_rules` which returns a list of predefined security rules, and `add_rule` which adds a new rule to the list."
-            },
-            {
-                "filepath": "ide_integration.py",
-                "instructions": "This file handles integration with various IDEs. It should include functions `integrate_with_ide` which takes an IDE name and integrates the agent with it, and `get_supported_ides` which returns a list of supported IDEs."
+                "filepath": "time_utils.py",
+                "instructions": "This file should contain utility functions for getting the current UTC time and converting timestamps between different timezones and UTC. It should include the functions get_current_utc_time() and convert_to_utc()."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "This file contains the unit tests for the project. It should import and use the actual generated modules to test the core logic. The tests must cover all functions in `code_flow_security_agent.py`, `security_rules.py`, and `ide_integration.py`."
+                "instructions": "This file should contain a comprehensive unit test suite for the core logic in leap_second_handler.py and time_utils.py. The tests must import and use the actual generated modules, not mock or stub classes. Ensure all core functionalities are tested."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "This file should ignore venv, __pycache__, and .env files to keep the repository lightweight."
+                "instructions": "This file should include entries to ignore venv, __pycache__, and .env files to keep the repository lightweight."
             },
             {
                 "filepath": "README.md",
-                "instructions": "This file should explain the architecture of the project, including the purpose of each file, how to set up and run the project, and any other relevant information."
+                "instructions": "This file should provide an overview of the project, including the architecture, how to run the tests, and any other necessary setup instructions."
             }
         ]
     },
     "files_created": [
-        "code_flow_security_agent.py",
-        "security_rules.py",
-        "ide_integration.py",
+        "leap_second_handler.py",
+        "time_utils.py",
         "test_main.py",
         ".gitignore",
         "README.md"
     ],
     "blueprint": [
-        "File: code_flow_security_agent.py provides: class CodeFlowSecurityAgent",
-        "File: security_rules.py provides: class SecurityRules, def initialize_default_rules",
-        "File: ide_integration.py provides: def get_supported_ides, def integrate_with_ide, def _integrate_with_pycharm, def _integrate_with_vscode, def _integrate_with_sublimetext",
-        "File: test_main.py provides: class TestCodeFlowSecurityAgent, class TestSecurityRules, class TestIDEIntegration",
+        "File: leap_second_handler.py provides: class LeapSecondHandler",
+        "File: time_utils.py provides: def get_current_utc_time, def convert_to_utc",
+        "File: test_main.py provides: class TestLeapSecondHandler, class TestTimeUtils",
         "File: .gitignore (Static/Config)",
         "File: README.md (Static/Config)"
     ]
