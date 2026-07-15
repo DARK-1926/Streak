@@ -1,60 +1,60 @@
 {
     "plan": {
         "project_name": "HNContentIntegrityAgent",
-        "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy. The HNContentIntegrityAgent will automatically flag and label AI-generated content on Hacker News, providing a clear indicator for users to skip such content. Milestones include: 1. Define core logic for detecting AI-generated text. 2. Implement the flagging mechanism. 3. Integrate with the HN API (simulated for testing). 4. Develop a comprehensive unit test suite. 5. Document the architecture and usage.",
+        "vision": "A specialized agent designed to flag and categorize AI-generated content on Hacker News (HN) to enhance content integrity. The agent will use natural language processing (NLP) techniques to analyze and classify articles, providing a clear indicator for users to skip AI-generated text if they choose. The project will be developed in a modular, test-driven manner, ensuring robustness and maintainability.",
         "interface_contracts": {
-            "content_analyzer.py": {
-                "analyze_text(text: str) -> bool": "Returns True if the text is detected as AI-generated, otherwise False."
+            "hn_content_fetcher.py": {
+                "fetch_hn_articles()": "Fetches the latest articles from HN and returns them as a list of dictionaries."
             },
-            "flag_manager.py": {
-                "flag_content(content_id: int, is_ai_generated: bool) -> None": "Flags the content with the given ID as AI-generated or not."
+            "ai_detection_model.py": {
+                "train_model(training_data)": "Trains the NLP model using the provided training data.",
+                "predict(text)": "Predicts whether the given text is AI-generated and returns a boolean."
             },
-            "hn_api_simulator.py": {
-                "get_content_by_id(content_id: int) -> dict": "Simulates fetching content from HN by ID, returning a dictionary with content details.",
-                "update_content_flag(content_id: int, is_ai_generated: bool) -> dict": "Simulates updating the content flag on HN."
+            "content_flagger.py": {
+                "flag_ai_generated_content(articles, ai_detection_model)": "Flags AI-generated content in the provided list of articles using the AI detection model."
             }
         },
         "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
-        "commit_message": "Implemented an AI-generated content detection and flagging system for Hacker News.",
+        "commit_message": "Implemented a specialized agent to detect and flag AI-generated content on Hacker News.",
         "files_to_generate": [
             {
-                "filepath": "content_analyzer.py",
-                "instructions": "Implement the `analyze_text` function that takes a string of text and returns a boolean indicating whether the text is AI-generated. Use simple heuristics or lightweight NLP techniques to detect AI-generated content. Ensure the function is pure and does not have side effects."
+                "filepath": "hn_content_fetcher.py",
+                "instructions": "Implement a function `fetch_hn_articles()` that fetches the latest articles from Hacker News and returns them as a list of dictionaries. Each dictionary should contain the title, URL, and text of the article."
             },
             {
-                "filepath": "flag_manager.py",
-                "instructions": "Implement the `flag_content` function that takes a content ID and a boolean indicating whether the content is AI-generated. This function should update a simulated database or file (e.g., a JSON file) with the flag status. Ensure the function is decoupled from any specific I/O operations for easy testing."
+                "filepath": "ai_detection_model.py",
+                "instructions": "Implement functions `train_model(training_data)` and `predict(text)`. The `train_model` function should train an NLP model using the provided training data, and the `predict` function should predict whether the given text is AI-generated and return a boolean."
             },
             {
-                "filepath": "hn_api_simulator.py",
-                "instructions": "Simulate the Hacker News API with functions `get_content_by_id` and `update_content_flag`. These functions should return and update a dictionary representing the content. The `get_content_by_id` function should return a dictionary with the content details, and `update_content_flag` should update the flag status in the dictionary."
+                "filepath": "content_flagger.py",
+                "instructions": "Implement a function `flag_ai_generated_content(articles, ai_detection_model)` that flags AI-generated content in the provided list of articles using the AI detection model. The function should update the articles list with a new key `is_ai_generated` set to True or False based on the prediction."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Write a comprehensive unit test suite that imports and uses the actual generated modules. Test the `analyze_text` function with various text inputs, the `flag_content` function with different content IDs and flags, and the `hn_api_simulator` functions for correctness. Ensure the tests cover all edge cases and validate the behavior of the core logic."
+                "instructions": "Write a comprehensive unit test suite that imports and uses the actual generated modules. Test the `fetch_hn_articles`, `train_model`, `predict`, and `flag_ai_generated_content` functions. Ensure that the tests cover all edge cases and that the core logic can be tested without complex mocks."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Create a .gitignore file to ignore venv, __pycache__, and .env files. Add any other necessary entries to keep the repository clean and lightweight."
+                "instructions": "Create a .gitignore file to ignore venv, __pycache__, and .env files."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Document the architecture, how to run the project, and the purpose of each file. Provide clear instructions on setting up the environment and running the tests. Include a section on the design decisions and the rationale behind them."
+                "instructions": "Write a README.md explaining the architecture, how to set up the project, and how to run the tests. Include a section on the design decisions and the testing strategy."
             }
         ]
     },
     "files_created": [
-        "content_analyzer.py",
-        "flag_manager.py",
-        "hn_api_simulator.py",
+        "hn_content_fetcher.py",
+        "ai_detection_model.py",
+        "content_flagger.py",
         "test_main.py",
         ".gitignore",
         "README.md"
     ],
     "blueprint": [
-        "File: content_analyzer.py provides: def load_patterns, def analyze_text",
-        "File: flag_manager.py provides: def flag_content",
-        "File: hn_api_simulator.py provides: def get_content_by_id, def update_content_flag",
+        "File: hn_content_fetcher.py provides: def fetch_hn_articles",
+        "File: ai_detection_model.py provides: def load_training_data, def train_model, def predict",
+        "File: content_flagger.py provides: def flag_ai_generated_content",
         "File: test_main.py provides: class TestHNContentIntegrityAgent",
         "File: .gitignore (Static/Config)",
         "File: README.md (Static/Config)"

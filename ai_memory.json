@@ -1,5 +1,5 @@
 {
-    "score": 41,
+    "score": 42,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -281,6 +281,11 @@
             "date": "2026-07-14T11:07:09.230828",
             "project": "HNContentIntegrityAgent",
             "model": "qwen-plus"
+        },
+        {
+            "date": "2026-07-15T16:13:16.518324",
+            "project": "HNContentIntegrityAgent",
+            "model": "qwen-plus"
         }
     ],
     "model_ratings": {
@@ -309,7 +314,6 @@
         "cohere/north-mini-code:free": -2
     },
     "past_projects": [
-        "PromptDecorator",
         "CodeCompress",
         "DocxEditorLite",
         "SkillGrowthAgent",
@@ -328,6 +332,7 @@
         "CodeFlowSecurityAgent",
         "LeapSecondHandler",
         "HNContentFilterAgent",
+        "HNContentIntegrityAgent",
         "HNContentIntegrityAgent"
     ],
     "lessons_learned": [
@@ -336,7 +341,7 @@
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
+        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
@@ -369,14 +374,14 @@
             "test_stages_reached": 1
         },
         "qwen-max": {
-            "plans_created": 26,
-            "critique_survivals": 23,
-            "test_stages_reached": 47
+            "plans_created": 27,
+            "critique_survivals": 24,
+            "test_stages_reached": 55
         },
         "qwen-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 35
+            "test_stages_reached": 41
         },
         "qwen-coder-32b-instruct": {
             "plans_created": 0,
@@ -386,22 +391,22 @@
         "qwen3-coder-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 25
+            "test_stages_reached": 28
         },
         "qwen3-coder-flash": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 19
+            "test_stages_reached": 22
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 16
+            "test_stages_reached": 17
         },
         "qwen/qwen3-coder:free": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 14
+            "test_stages_reached": 15
         }
     },
     "coder_ratings": {
@@ -442,27 +447,27 @@
             "fix_successes": 0
         },
         "qwen-max": {
-            "files_generated": 160,
-            "lint_passes": 103,
-            "fix_attempts": 171,
+            "files_generated": 166,
+            "lint_passes": 107,
+            "fix_attempts": 202,
             "fix_successes": 5
         },
         "qwen-plus": {
             "files_generated": 4,
             "lint_passes": 2,
-            "fix_attempts": 164,
-            "fix_successes": 7
+            "fix_attempts": 195,
+            "fix_successes": 8
         },
         "qwen3-coder-plus": {
             "files_generated": 0,
             "lint_passes": 0,
-            "fix_attempts": 107,
+            "fix_attempts": 128,
             "fix_successes": 6
         },
         "qwen3-coder-flash": {
             "files_generated": 0,
             "lint_passes": 0,
-            "fix_attempts": 78,
+            "fix_attempts": 91,
             "fix_successes": 3
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {

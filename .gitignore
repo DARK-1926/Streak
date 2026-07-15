@@ -212,3 +212,10 @@ __pycache__/
 node_modules/
 *.log
 .env
+
+.venv/
+venv/
+__pycache__/
+node_modules/
+*.log
+.env

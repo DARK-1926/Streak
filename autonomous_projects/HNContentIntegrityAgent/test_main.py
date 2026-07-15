@@ -1,75 +1,65 @@
 import unittest
-from unittest.mock import patch, mock_open
-import unittest
-from unittest.mock import patch, mock_open
-import os
-import json
-import re
-from content_analyzer import load_patterns, analyze_text
-import json
-from content_analyzer import load_patterns, analyze_text
-from flag_manager import flag_content
-from hn_api_simulator import get_content_by_id, update_content_flag
+from unittest.mock import patch, MagicMock
+try:
+    from content_flagger import flag_ai_generated_content
+except ModuleNotFoundError as e:
+    if "sklearn" in str(e):
+        print(f'Warning: {e}. Please install it with `pip install scikit-learn` and `pip install joblib`')
+        flag_ai_generated_content = None
+    else:
+        raise e
+from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from ai_detection_model import load_training_data, train_model, predict
+from content_flagger import flag_ai_generated_content
+from hn_content_fetcher import fetch_hn_articles
 
 class TestHNContentIntegrityAgent(unittest.TestCase):
 
-    def setUp(self):
-        # Setup a temporary patterns file for testing
-        self.patterns_file_path = 'test_patterns.txt'
-        with open(self.patterns_file_path, 'w') as f:
-            f.write("AI-generated text,This is a pattern to detect AI-generated text\n")
-            f.write("Another pattern,Description for another pattern\n")
+    def test_fetch_hn_articles(self):
+        articles = fetch_hn_articles()
+        self.assertIsInstance(articles, list)
+        for article in articles:
+            self.assertIsInstance(article, dict)
+            self.assertIn('title', article)
+            self.assertIn('url', article)
+            self.assertIn('text', article)
 
-    def tearDown(self):
-        # Clean up the temporary patterns file
-        if os.path.exists(self.patterns_file_path):
-            os.remove(self.patterns_file_path)
-        if os.path.exists('content_flags.json'):
-            os.remove('content_flags.json')
+    @patch('hn_content_fetcher.requests', new_callable=MagicMock)
+    def test_fetch_hn_articles_with_exception(self, mock_get):
+        mock_get.side_effect = Exception("Network error")
+        articles = fetch_hn_articles()
+        self.assertEqual(articles, [])
 
-    def test_load_patterns(self):
-        patterns = load_patterns(self.patterns_file_path)
-        self.assertEqual(len(patterns), 2)
-        self.assertIsInstance(patterns[0][0], re.Pattern)
+    def test_load_training_data(self):
+        texts, labels = load_training_data()
+        self.assertIsInstance(texts, list)
+        self.assertIsInstance(labels, list)
+        self.assertEqual(len(texts), len(labels))
 
-    def test_analyze_text(self):
-        patterns = load_patterns(self.patterns_file_path)
-        self.assertTrue(analyze_text("This is a sample of AI-generated text.", patterns))
-        self.assertFalse(analyze_text("This is a normal text without any specific patterns.", patterns))
+    def test_train_model(self):
+        training_data = load_training_data()
+        model = train_model(training_data)
+        self.assertIsNotNone(model)
 
-    def test_flag_content(self):
-        flag_content('12345', True)
-        with open('content_flags.json', 'r') as db_file:
-            content_flags = json.load(db_file)
-        self.assertIn('12345', content_flags)
-        self.assertTrue(content_flags['12345'])
+    def test_predict(self):
+        training_data = load_training_data()
+        model = train_model(training_data)
+        sample_text = "This is a sample text to check if it's AI-generated."
+        result = predict(sample_text, model)
+        self.assertIn(result, [True, False])
 
-        flag_content('67890', False)
-        with open('content_flags.json', 'r') as db_file:
-            content_flags = json.load(db_file)
-        self.assertIn('67890', content_flags)
-        self.assertFalse(content_flags['67890'])
+    def test_flag_ai_generated_content(self):
+        training_data = load_training_data()
+        model = train_model(training_data)
+        articles = [
+            {'title': 'Test Article 1', 'url': 'http://example.com/1', 'text': 'This is a test text.'},
+            {'title': 'Test Article 2', 'url': 'http://example.com/2', 'text': 'Another test text.'}
+        ]
+        flag_ai_generated_content(articles, model)
+        for article in articles:
+            self.assertIn('is_ai_generated', article)
+            self.assertIn(article['is_ai_generated'], [True, False])
 
-    def test_hn_api_simulator_integration(self):
-        # Initialize some sample content in the global scope
-        # Initialize some sample content in the global scope
-        from hn_api_simulator import CONTENT_DB
-        CONTENT_DB.clear()
-        CONTENT_DB.update({
-            '12345': {'title': 'Sample Title', 'text': 'Sample text content.', 'is_ai_generated': False},
-            '67890': {'title': 'Another Title', 'text': 'More sample text content.', 'is_ai_generated': False}
-        })
-        content = get_content_by_id('12345')
-        self.assertIsNotNone(content)
-        self.assertEqual(content['title'], 'Sample Title')
-
-        update_content_flag('12345', True)
-        updated_content = get_content_by_id('12345')
-        self.assertIsNotNone(updated_content)
-        self.assertTrue(updated_content['is_ai_generated'])
-
-        non_existent_content = get_content_by_id('99999')
-        self.assertIsNone(non_existent_content)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

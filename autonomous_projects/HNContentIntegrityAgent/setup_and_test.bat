@@ -13,13 +13,14 @@ if exist .venv (
 )
 
 python -m pip install --quiet --upgrade pip
-if "%req_install%" NEQ "" (
-    %req_install%
-    if %ERRORLEVEL% NEQ 0 (
-        echo PIP INSTALL FAILED
-        exit /b %ERRORLEVEL%
-    )
+
+echo Installing requirements...
+python -m pip install -r requirements.txt
+if %ERRORLEVEL% NEQ 0 (
+    echo PIP INSTALL FAILED
+    exit /b %ERRORLEVEL%
 )
+
 python -m pip install --quiet pytest pytest-json-report
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 

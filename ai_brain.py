@@ -69,8 +69,8 @@ def increment_quota():
     quota = load_quota()
     quota["count"] += 1
     save_quota(quota)
-    if quota["count"] >= 50: # Free tier limit
-        log_event("DAILY QUOTA EXHAUSTED (50 requests). Exiting.")
+    if quota["count"] >= 500: # Increased limit for ReAct agent
+        log_event("DAILY SCRIPT QUOTA EXHAUSTED (500 requests). Exiting.")
         exit(1)
 
 # ==========================================
@@ -258,7 +258,7 @@ def enforce_rate_limit():
             
     _request_timestamps.append(time.time())
 
-def call_openrouter(models_list, sys_prompt, user_prompt, temperature=0.4, max_tokens=8000):
+def call_openrouter(models_list, sys_prompt=None, user_prompt=None, temperature=0.4, max_tokens=8000, messages=None):
     """
     Leverages OpenRouter's native `models` array for fallback failover, 
     and plugins for response-healing and context-compression.
@@ -270,12 +270,17 @@ def call_openrouter(models_list, sys_prompt, user_prompt, temperature=0.4, max_t
         target_model = models_list[0]
         is_qwen = target_model.startswith("qwen")
         
+        if messages is None:
+            msgs = [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}]
+        else:
+            msgs = messages
+            
         if is_qwen and QWEN_API_KEY:
             url = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions"
             headers = {"Authorization": f"Bearer {QWEN_API_KEY}", "Content-Type": "application/json"}
             payload = {
                 "model": target_model,
-                "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                "messages": msgs,
                 "temperature": temperature,
                 "max_tokens": max_tokens
             }
@@ -284,7 +289,7 @@ def call_openrouter(models_list, sys_prompt, user_prompt, temperature=0.4, max_t
             headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
             payload = {
                 "models": models_list,
-                "messages": [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                "messages": msgs,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
                 "plugins": [{"id": "response-healing"}, {"id": "context-compression"}]
@@ -445,6 +450,7 @@ def plan_project(models, trends, memory, error_context=None):
     5. CRITICAL: Only Python projects are supported. Do NOT create Node.js/JavaScript projects.
     6. CRITICAL: MUST be cross-platform. Target OS: {sys.platform}. Do NOT use `curses` or other OS-specific libraries not available on this platform.
     7. CRITICAL: Do NOT use heavy ML libraries like `tensorflow`, `torch`, `transformers`, or `numpy`. Stick to standard library or lightweight packages.
+    8. CRITICAL: If you use ANY third-party packages, you MUST output a `requirements.txt` file listing them.
     8. CRITICAL TDD REQUIREMENT: Design Pure Functions and use Dependency Injection wherever possible. Decouple core logic from side-effects (e.g., file I/O, network requests, os.path.exists) so the code can be easily unit tested without complex mocks.
     
     Trends: {trends}
@@ -459,6 +465,7 @@ def plan_project(models, trends, memory, error_context=None):
     
     Respond ONLY with this JSON schema:
     {{
+        "chain_of_thought": "Write out your step-by-step reasoning for the architecture and how you will ensure it works.",
         "project_name": "name",
         "vision": "A strict Spec Roadmap detailing the exact Agentic problem, atomic milestones, and Testing Strategy.",
         "interface_contracts": "Explicit mapping of which file provides which functions/classes.",
@@ -475,7 +482,7 @@ def plan_project(models, trends, memory, error_context=None):
     content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.8) 
     if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return content, actual_model
     if not content: return None, actual_model
-    return extract_json(content, required_keys=["project_name", "files_to_generate", "lessons_learned", "interface_contracts"]), actual_model
+    return extract_json(content, required_keys=["chain_of_thought", "project_name", "files_to_generate", "lessons_learned", "interface_contracts"]), actual_model
 
 def validate_plan(plan):
     if not plan: return False
@@ -506,6 +513,7 @@ def critique_plan(models, plan):
     3. Missing interfaces or missing test coverage.
     
     Respond ONLY with the completely fixed, valid JSON plan using the exact same schema.
+    Ensure you include a "chain_of_thought" field at the very beginning of the JSON to explain your critique and changes.
     """
     content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.2)
     if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return plan, actual_model 
@@ -618,9 +626,16 @@ def generate_tests(models, project_name, file_list, project_dir):
         with open(req_path, "r", encoding="utf-8") as f:
             req_content = f.read().strip()
     
-    req_install = ""
+    req_install_block = ""
     if req_content:
-        req_install = "pip install -r requirements.txt"
+        req_install_block = """
+echo Installing requirements...
+python -m pip install -r requirements.txt
+if %ERRORLEVEL% NEQ 0 (
+    echo PIP INSTALL FAILED
+    exit /b %ERRORLEVEL%
+)
+"""
     
     # Instead of asking the AI to generate a bat script (which wastes tokens and
     # often produces broken scripts), use a hardcoded reliable template.
@@ -639,13 +654,7 @@ if exist .venv (
 )
 
 python -m pip install --quiet --upgrade pip
-if "%req_install%" NEQ "" (
-    %req_install%
-    if %ERRORLEVEL% NEQ 0 (
-        echo PIP INSTALL FAILED
-        exit /b %ERRORLEVEL%
-    )
-)
+{req_install_block}
 python -m pip install --quiet pytest pytest-json-report
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 
@@ -658,51 +667,118 @@ exit /b %EXITCODE%
     log_event("Using hardcoded reliable test script template (0 tokens used).")
     return bat_script.strip(), "hardcoded-template"
 
-def fix_error(models, project_dir, files_to_check, error_log):
-    log_event("Stage 4: Identifying Fixes (Agentless Localization)...")
-    
-    file_contents = {}
-    for fname in files_to_check:
-        full_path = os.path.join(project_dir, fname)
-        if os.path.exists(full_path) and os.path.isfile(full_path):
+class ReActAgent:
+    def __init__(self, models, project_dir):
+        self.models = models
+        self.project_dir = project_dir
+        self.messages = []
+        
+    def search_code(self, query):
+        results = []
+        for root, dirs, files in os.walk(self.project_dir):
+            if "venv" in root or "__pycache__" in root or ".git" in root: continue
+            for file in files:
+                if file.endswith(".py"):
+                    path = os.path.join(root, file)
+                    try:
+                        with open(path, "r", encoding="utf-8") as f:
+                            lines = f.readlines()
+                            for i, line in enumerate(lines):
+                                if query.lower() in line.lower():
+                                    results.append(f"{file}:{i+1}: {line.strip()}")
+                    except: pass
+        if not results: return "No matches found."
+        return "\\n".join(results[:50])
+        
+    def view_file(self, filepath, start_line, end_line):
+        full_path = os.path.join(self.project_dir, filepath)
+        if not os.path.exists(full_path): return f"File not found: {filepath}"
+        try:
             with open(full_path, "r", encoding="utf-8") as f:
-                lines = f.read().splitlines()
-                numbered_lines = [f"{i+1}: {line}" for i, line in enumerate(lines)]
-                file_contents[fname] = "\n".join(numbered_lines)[:15000] # Cap size per file
-                
-    files_str = "\n".join([f"--- {k} ---\n{v}\n" for k, v in file_contents.items()])
-                
-    sys_prompt = "You are a Debugger operating under the GSD framework. You fix code and respond ONLY with valid JSON."
-    user_prompt = f"""
-    The test script failed.
-    Error Log:
-    {error_log}
-    
-    CURRENT SOURCE CODE OF SUSPECTED FILES:
-    {files_str}
-    
-    Perform a Root Cause Analysis. 
-    CRITICAL: Do NOT blindly trust the test suite. If the test asserts something factually incorrect, specify that the TEST FILE needs fixing instead of breaking the implementation logic to match a bad test.
-    
-    Then, specify EXACTLY which lines to replace to fix the code. Use line numbers corresponding to the source code provided above. You MUST provide the complete drop-in replacement lines. Do NOT rewrite the entire file.
-    
-    Respond ONLY with this JSON schema:
-    {{
-        "root_cause_analysis": "Write a 2-sentence explanation of EXACTLY why the code failed.",
-        "files_to_update": [
-            {{
-                "filepath": "path/to/file.ext",
-                "start_line": 40,
-                "end_line": 45,
-                "replacement_code": "    exact replacement code here\\n    matching indentation\\n"
-            }}
+                lines = f.readlines()
+            start = max(0, start_line - 1)
+            end = min(len(lines), end_line)
+            numbered = [f"{i+1}: {lines[i].rstrip()}" for i in range(start, end)]
+            return "\\n".join(numbered)
+        except Exception as e:
+            return str(e)
+
+    def run(self, sys_prompt, user_prompt, max_turns=5):
+        self.messages = [
+            {"role": "system", "content": sys_prompt},
+            {"role": "user", "content": user_prompt}
         ]
-    }}
-    """
-    content, actual_model = call_openrouter(models, sys_prompt, user_prompt, temperature=0.2)
-    if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]: return content, actual_model
-    if not content: return None, actual_model
-    return extract_json(content, required_keys=["root_cause_analysis", "files_to_update"]), actual_model
+        
+        for turn in range(max_turns):
+            log_event(f"ReAct Turn {turn+1}...")
+            content, actual_model = call_openrouter(self.models, messages=self.messages, temperature=0.2)
+            if content in ["SERVER_ERROR", "QUOTA_EXHAUSTED"]:
+                return content, actual_model
+                
+            log_event(f"Agent Raw Output: {content.strip()}")
+            self.messages.append({"role": "assistant", "content": content})
+            
+            tool_calls = re.findall(r'<tool_call>(.*?)</tool_call>', content, re.DOTALL)
+            if not tool_calls:
+                json_blocks = re.findall(r'```json(.*?)```', content, re.DOTALL)
+                for jb in json_blocks:
+                    if '"tool"' in jb:
+                        tool_calls.append(jb)
+                        
+            if not tool_calls:
+                self.messages.append({"role": "user", "content": "You MUST output a valid <tool_call> block or ```json block."})
+                continue
+                
+            for tc_str in tool_calls:
+                try:
+                    tc = json.loads(tc_str.strip())
+                    tool_name = tc.get("tool")
+                    if tool_name == "search_code":
+                        res = self.search_code(tc.get("query", ""))
+                        self.messages.append({"role": "user", "content": f"Tool Result ({tool_name}):\\n{res}"})
+                    elif tool_name == "view_file":
+                        res = self.view_file(tc.get("filepath", ""), tc.get("start_line", 1), tc.get("end_line", 100))
+                        self.messages.append({"role": "user", "content": f"Tool Result ({tool_name}):\\n{res}"})
+                    elif tool_name == "finish":
+                        return tc, actual_model
+                    else:
+                        self.messages.append({"role": "user", "content": f"Unknown tool: {tool_name}"})
+                except Exception as e:
+                    self.messages.append({"role": "user", "content": f"Tool Parse Error (Ensure it is valid JSON): {e}"})
+                    
+        return "SERVER_ERROR", self.models[0]
+
+def fix_error(models, project_dir, files_to_check, error_log):
+    log_event("Stage 4: Agentic Debugging...")
+    agent = ReActAgent(models, project_dir)
+    sys_prompt = """You are an Autonomous Debugging Agent. 
+You MUST use tools to investigate the codebase and solve the error. DO NOT GUESS.
+Available Tools (Output strictly in this XML format):
+
+<tool_call>
+{"tool": "search_code", "query": "function_name"}
+</tool_call>
+
+<tool_call>
+{"tool": "view_file", "filepath": "main.py", "start_line": 1, "end_line": 50}
+</tool_call>
+
+When you are ready to fix the code, use the finish tool:
+<tool_call>
+{
+  "tool": "finish",
+  "files_to_update": [
+    {
+      "filepath": "main.py",
+      "target_content": "exact existing code block",
+      "replacement_content": "exact new code block"
+    }
+  ]
+}
+</tool_call>
+"""
+    user_prompt = f"The test failed.\\nError Log:\\n{error_log}\\nFiles mentioned: {files_to_check}\\nBegin investigation using your tools."
+    return agent.run(sys_prompt, user_prompt, max_turns=6)
 
 # ==========================================
 # THE RELENTLESS EXECUTION LOOP
@@ -921,7 +997,7 @@ def run_beast_cycle():
                 try:
                     process = subprocess.Popen(["cmd.exe", "/c", "setup_and_test.bat"], 
                                              cwd=project_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                    stdout, stderr = process.communicate(timeout=120)
+                    stdout, stderr = process.communicate(timeout=300)
                     class DummyResult: pass
                     result = DummyResult()
                     result.stdout, result.stderr, result.returncode = stdout, stderr, process.returncode
@@ -973,30 +1049,27 @@ def run_beast_cycle():
                             
                         for f_info in fix_plan.get("files_to_update", []):
                             filepath = f_info.get("filepath")
-                            start_line = f_info.get("start_line")
-                            end_line = f_info.get("end_line")
-                            replacement_code = f_info.get("replacement_code")
-                            if not filepath or not start_line or not end_line or replacement_code is None: continue
+                            target_content = f_info.get("target_content")
+                            replacement_content = f_info.get("replacement_content")
+                            if not filepath or not target_content or replacement_content is None: continue
                             
                             full_path = os.path.abspath(os.path.join(project_dir, filepath))
                             if os.path.commonpath([full_path, os.path.abspath(project_dir)]) != os.path.abspath(project_dir): continue
                             if not os.path.exists(full_path): continue
                             
-                            log_event(f"Applying LINE NUMBER patch to {filepath} ({start_line} to {end_line})...")
+                            log_event(f"Applying SEARCH/REPLACE patch to {filepath}...")
                             
                             with open(full_path, "r", encoding="utf-8") as f:
-                                lines = f.read().splitlines()
+                                file_content = f.read()
                                 
                             try:
-                                s_idx = int(start_line) - 1
-                                e_idx = int(end_line)
-                                if s_idx < 0: s_idx = 0
-                                
-                                new_lines = replacement_code.splitlines()
-                                patched_lines = lines[:s_idx] + new_lines + lines[e_idx:]
+                                patched_content = apply_search_replace(file_content, target_content, replacement_content)
+                                if patched_content == "ERROR_SEARCH_NOT_FOUND":
+                                    log_event(f"Failed to apply patch to {filepath}: TARGET_CONTENT not found.")
+                                    continue
                                 
                                 with open(full_path, "w", encoding="utf-8") as f:
-                                    f.write("\n".join(patched_lines) + "\n")
+                                    f.write(patched_content)
                                 log_event(f"Successfully patched {filepath}.")
                             except Exception as e:
                                 log_event(f"Failed to apply patch to {filepath}: {e}")
@@ -1034,7 +1107,7 @@ def run_beast_cycle():
                 # Final check
                 try:
                     process = subprocess.Popen(["cmd.exe", "/c", "setup_and_test.bat"], cwd=project_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                    stdout, stderr = process.communicate(timeout=120)
+                    stdout, stderr = process.communicate(timeout=300)
                     report_path = os.path.join(project_dir, "report.json")
                     if os.path.exists(report_path):
                         import json as pyjson
