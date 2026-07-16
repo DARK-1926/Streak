@@ -1,62 +1,81 @@
 {
     "plan": {
-        "project_name": "HNContentIntegrityAgent",
-        "vision": "A specialized agent designed to flag and categorize AI-generated content on Hacker News (HN) to enhance content integrity. The agent will use natural language processing (NLP) techniques to analyze and classify articles, providing a clear indicator for users to skip AI-generated text if they choose. The project will be developed in a modular, test-driven manner, ensuring robustness and maintainability.",
+        "chain_of_thought": "1. Scope Check: The plan defines exactly 8 files (.gitignore, requirements.txt, README.md, heuristics.py, csv_processor.py, agent.py, main.py, test_main.py). No scope creep detected. 2. Dependency Check: Only `pytest` is listed in requirements. The architecture strictly uses Python standard library modules (`math`, `collections`, `csv`, `io`, `mmap`, `argparse`). No hidden paid-API dependencies or heavy ML libraries. 3. Interface & Test Coverage Check: The Dependency Injection strategy using `io.TextIOBase` is excellent for unit testing. However, `main.py` relies on `mmap`, which requires actual file descriptors and has OS-specific quirks (especially on Windows). Testing `main()` directly via `argparse` is brittle and doesn't isolate the `mmap` logic. I will refactor the `main.py` interface to expose a `process_file` function for the core `mmap` I/O logic, keeping `main()` as a thin CLI wrapper. I will also update `test_main.py` to include an integration test using pytest's `tmp_path` fixture to validate the `mmap` and `TextIOWrapper` integration on real files, ensuring cross-platform compatibility and complete test coverage.",
+        "project_name": "SlopFilterAgent",
+        "vision": "Spec Roadmap:\n1. Milestone 1: Implement pure mathematical heuristic functions for text analysis (entropy, repetition) in `heuristics.py`.\n2. Milestone 2: Build DI-based CSV parsing and formatting in `csv_processor.py` using `io.TextIOBase`.\n3. Milestone 3: Create the orchestration logic in `agent.py` to filter datasets based on heuristic thresholds.\n4. Milestone 4: Develop `test_main.py` with strict unit tests using `io.StringIO` to validate core logic without filesystem mocks, plus an integration test for `mmap`.\n5. Milestone 5: Build the CLI entry point `main.py` utilizing `mmap` for memory-efficient file handling, exposing a testable `process_file` function.\n6. Testing Strategy: Pure function validation for math logic; stream injection for CSV parsing; integration test for the filtering pipeline and memory-mapped I/O using synthetic 'slop' vs 'human' data.",
         "interface_contracts": {
-            "hn_content_fetcher.py": {
-                "fetch_hn_articles()": "Fetches the latest articles from HN and returns them as a list of dictionaries."
-            },
-            "ai_detection_model.py": {
-                "train_model(training_data)": "Trains the NLP model using the provided training data.",
-                "predict(text)": "Predicts whether the given text is AI-generated and returns a boolean."
-            },
-            "content_flagger.py": {
-                "flag_ai_generated_content(articles, ai_detection_model)": "Flags AI-generated content in the provided list of articles using the AI detection model."
-            }
+            "heuristics.py": [
+                "calculate_shannon_entropy(text: str) -> float",
+                "calculate_repetition_ratio(text: str) -> float",
+                "is_likely_slop(text: str, entropy_threshold: float, repetition_threshold: float) -> bool"
+            ],
+            "csv_processor.py": [
+                "parse_csv_content(input_stream: io.TextIOBase, text_column: str) -> List[Dict[str, str]]",
+                "format_csv_content(comments: List[Dict[str, str]], output_stream: io.TextIOBase) -> None"
+            ],
+            "agent.py": [
+                "filter_high_signal_comments(comments: List[Dict[str, str]], text_key: str, entropy_thresh: float, rep_thresh: float) -> List[Dict[str, str]]"
+            ],
+            "main.py": [
+                "process_file(input_path: str, output_path: str, text_column: str, entropy_thresh: float, rep_thresh: float) -> None",
+                "main() -> None"
+            ]
         },
-        "lessons_learned": "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
-        "commit_message": "Implemented a specialized agent to detect and flag AI-generated content on Hacker News.",
+        "lessons_learned": "This project avoids past mistakes by using memory-mapped files (`mmap`) for efficient data handling of large CSVs, prioritizing algorithmic efficiency (O(N) text scanning) over OOP overhead, and ensuring that all dependencies are pinned. The repository is kept lightweight. Core logic is strictly isolated via Dependency Injection (using `io.TextIOBase`), ensuring the code executed within the sandbox can be unit tested without filesystem access or complex mocks. The `mmap` logic is separated from the CLI argument parsing to allow integration testing via `tmp_path`. There are no hidden paid-API dependencies or heavy ML libraries.",
+        "commit_message": "Implement SlopFilterAgent to extract high-signal human comments from CSV datasets using pure Python statistical heuristics and memory-mapped I/O.",
         "files_to_generate": [
             {
-                "filepath": "hn_content_fetcher.py",
-                "instructions": "Implement a function `fetch_hn_articles()` that fetches the latest articles from Hacker News and returns them as a list of dictionaries. Each dictionary should contain the title, URL, and text of the article."
-            },
-            {
-                "filepath": "ai_detection_model.py",
-                "instructions": "Implement functions `train_model(training_data)` and `predict(text)`. The `train_model` function should train an NLP model using the provided training data, and the `predict` function should predict whether the given text is AI-generated and return a boolean."
-            },
-            {
-                "filepath": "content_flagger.py",
-                "instructions": "Implement a function `flag_ai_generated_content(articles, ai_detection_model)` that flags AI-generated content in the provided list of articles using the AI detection model. The function should update the articles list with a new key `is_ai_generated` set to True or False based on the prediction."
-            },
-            {
-                "filepath": "test_main.py",
-                "instructions": "Write a comprehensive unit test suite that imports and uses the actual generated modules. Test the `fetch_hn_articles`, `train_model`, `predict`, and `flag_ai_generated_content` functions. Ensure that the tests cover all edge cases and that the core logic can be tested without complex mocks."
-            },
-            {
                 "filepath": ".gitignore",
-                "instructions": "Create a .gitignore file to ignore venv, __pycache__, and .env files."
+                "instructions": "Standard Python gitignore. Must ignore venv/, __pycache__/, .env, *.pyc, .pytest_cache/, and any local data files like *.csv or *.txt (except requirements.txt)."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "List only `pytest==8.2.0`. No other third-party dependencies are allowed. The project must rely entirely on the Python standard library."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a README.md explaining the architecture, how to set up the project, and how to run the tests. Include a section on the design decisions and the testing strategy."
+                "instructions": "Explain the architecture of SlopFilterAgent. Detail how it uses Shannon entropy and repetition ratios to detect AI slop in CSV files. Explain the Dependency Injection strategy using `io.TextIOBase` for testability, and the use of `mmap` for memory efficiency. Include instructions on how to run `pytest` and how to execute `main.py`."
+            },
+            {
+                "filepath": "heuristics.py",
+                "instructions": "Implement pure functions for text analysis. No side effects. \n1. `calculate_shannon_entropy(text: str) -> float`: Use `collections.Counter` and `math.log2` to calculate the entropy of characters in the text. \n2. `calculate_repetition_ratio(text: str) -> float`: Split text into words, return the ratio of unique words to total words (lower ratio means higher repetition). \n3. `is_likely_slop(text: str, entropy_threshold: float, repetition_threshold: float) -> bool`: Return True if entropy is below threshold AND repetition ratio is below threshold. Handle empty strings gracefully (return False)."
+            },
+            {
+                "filepath": "csv_processor.py",
+                "instructions": "Implement CSV I/O using Dependency Injection. Do NOT use file paths. \n1. `parse_csv_content(input_stream: io.TextIOBase, text_column: str) -> List[Dict[str, str]]`: Use `csv.DictReader` on the stream. Return a list of dictionaries. \n2. `format_csv_content(comments: List[Dict[str, str]], output_stream: io.TextIOBase) -> None`: Use `csv.DictWriter` to write the list of dicts to the stream. Include proper header writing. Import `csv` and `io` from standard library."
+            },
+            {
+                "filepath": "agent.py",
+                "instructions": "Implement the orchestration logic. \n1. `filter_high_signal_comments(comments: List[Dict[str, str]], text_key: str, entropy_thresh: float = 3.5, rep_thresh: float = 0.4) -> List[Dict[str, str]]`: Iterate through comments. Use `heuristics.is_likely_slop` on the value of `text_key` for each comment. Return a new list containing only the comments that are NOT likely slop. Import `heuristics`."
+            },
+            {
+                "filepath": "main.py",
+                "instructions": "CLI entry point using `argparse`. \n1. Implement `process_file(input_path, output_path, text_column, entropy_thresh, rep_thresh)`: Open the input file in `'rb'` mode. Use `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)` to map it. Wrap the mmap object in `io.TextIOWrapper(mm, encoding='utf-8')` and pass to `csv_processor.parse_csv_content`. Pass the result to `agent.filter_high_signal_comments`. Open the output file normally and pass to `csv_processor.format_csv_content`. Handle Windows `mmap` specifics correctly (e.g., ensure file is not empty before mapping).\n2. Implement `main()`: Parse `--input`, `--output`, `--text-column`, `--entropy`, and `--repetition` arguments, then call `process_file`."
+            },
+            {
+                "filepath": "test_main.py",
+                "instructions": "Strict unit test suite using `pytest`. MUST import actual modules (`heuristics`, `csv_processor`, `agent`, `main`). Do NOT mock `open` or use stub classes for the unit tests. \n1. Test `calculate_shannon_entropy` with a highly repetitive string vs a random string. \n2. Test `calculate_repetition_ratio` with 'bot bot bot' vs 'hello world this is a test'. \n3. Test `parse_csv_content` by passing an `io.StringIO('id,text\\n1,hello\\n2,bot bot bot')` and verifying the output list. \n4. Test `filter_high_signal_comments` by passing a synthetic list of dicts and ensuring the 'bot' entry is filtered out while the 'hello' entry remains. \n5. Test `format_csv_content` by passing an `io.StringIO()` as the output stream and verifying `getvalue()` contains the correct CSV format.\n6. Integration Test: Test `main.process_file` using pytest's `tmp_path` fixture. Create a sample CSV file with mixed slop and human comments, run `process_file`, read the output file, and verify it contains only the high-signal comments. This validates the `mmap` and `TextIOWrapper` integration on real files."
             }
         ]
     },
     "files_created": [
-        "hn_content_fetcher.py",
-        "ai_detection_model.py",
-        "content_flagger.py",
-        "test_main.py",
         ".gitignore",
-        "README.md"
+        "requirements.txt",
+        "README.md",
+        "heuristics.py",
+        "csv_processor.py",
+        "agent.py",
+        "main.py",
+        "test_main.py"
     ],
     "blueprint": [
-        "File: hn_content_fetcher.py provides: def fetch_hn_articles",
-        "File: ai_detection_model.py provides: def load_training_data, def train_model, def predict",
-        "File: content_flagger.py provides: def flag_ai_generated_content",
-        "File: test_main.py provides: class TestHNContentIntegrityAgent",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: requirements.txt (Static/Config)",
+        "File: README.md (Static/Config)",
+        "File: heuristics.py provides: def calculate_shannon_entropy, def calculate_repetition_ratio, def is_likely_slop",
+        "File: csv_processor.py provides: def parse_csv_content, def format_csv_content",
+        "File: agent.py provides: def filter_high_signal_comments",
+        "File: main.py provides: def process_file, def main",
+        "File: test_main.py provides: def test_calculate_shannon_entropy, def test_calculate_repetition_ratio, def test_parse_csv_content, def test_filter_high_signal_comments, def test_format_csv_content, def test_process_file_integration"
     ]
 }

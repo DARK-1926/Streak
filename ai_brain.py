@@ -785,7 +785,7 @@ When you are ready to fix the code, use the finish tool:
 </tool_call>
 """
     user_prompt = f"The test failed.\\nError Log:\\n{error_log}\\nFiles mentioned: {files_to_check}\\nBegin investigation using your tools."
-    return agent.run(sys_prompt, user_prompt, max_turns=4)
+    return agent.run(sys_prompt, user_prompt, max_turns=10)
 
 # ==========================================
 # THE RELENTLESS EXECUTION LOOP
