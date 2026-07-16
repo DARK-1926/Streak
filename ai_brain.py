@@ -78,7 +78,7 @@ def increment_quota():
 # ==========================================
 def fetch_live_free_models():
     def inject_qwen(models):
-        qwen_models = ["qwen-max", "qwen-plus", "qwen3-coder-plus", "qwen3-coder-flash"]
+        qwen_models = ["qwen3.7-max-preview", "qwen3-max", "qwen-plus", "qwen3-coder-plus", "qwen3-coder-flash"]
         for qm in reversed(qwen_models):
             if qm not in models:
                 models.insert(0, qm)
@@ -698,7 +698,13 @@ class ReActAgent:
                 lines = f.readlines()
             start = max(0, start_line - 1)
             end = min(len(lines), end_line)
+            is_truncated = False
+            if end - start > 100:
+                end = start + 100
+                is_truncated = True
             numbered = [f"{i+1}: {lines[i].rstrip()}" for i in range(start, end)]
+            if is_truncated:
+                numbered.append("... [TRUNCATED] Max 100 lines per view. Request subsequent lines if needed.")
             return "\\n".join(numbered)
         except Exception as e:
             return str(e)
@@ -751,7 +757,8 @@ class ReActAgent:
 def fix_error(models, project_dir, files_to_check, error_log):
     log_event("Stage 4: Agentic Debugging...")
     agent = ReActAgent(models, project_dir)
-    sys_prompt = """You are an Autonomous Debugging Agent. 
+    sys_prompt = """You are an Autonomous Debugging Agent.
+CRITICAL: To save tokens, output MAXIMUM 1 short sentence of reasoning before calling your tool. Do NOT write paragraphs.
 You MUST use tools to investigate the codebase and solve the error. DO NOT GUESS.
 Available Tools (Output strictly in this XML format):
 
@@ -778,7 +785,7 @@ When you are ready to fix the code, use the finish tool:
 </tool_call>
 """
     user_prompt = f"The test failed.\\nError Log:\\n{error_log}\\nFiles mentioned: {files_to_check}\\nBegin investigation using your tools."
-    return agent.run(sys_prompt, user_prompt, max_turns=6)
+    return agent.run(sys_prompt, user_prompt, max_turns=4)
 
 # ==========================================
 # THE RELENTLESS EXECUTION LOOP
@@ -992,8 +999,8 @@ def run_beast_cycle():
                 f.write(test_script.strip())
                 
             fix_attempts = 0
-            while fix_attempts < 8:
-                log_event(f"Validating {project_name} (Attempt {fix_attempts+1}/8)...")
+            while fix_attempts < 4:
+                log_event(f"Validating {project_name} (Attempt {fix_attempts+1}/4)...")
                 try:
                     process = subprocess.Popen(["cmd.exe", "/c", "setup_and_test.bat"], 
                                              cwd=project_dir, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -1021,7 +1028,7 @@ def run_beast_cycle():
                     if success:
                         break 
                     else:
-                        if fix_attempts >= 7:
+                        if fix_attempts >= 4:
                             log_event("FAILURE. Maximum fix attempts reached. Proceeding to Sunk Cost Protocol...")
                             fix_attempts += 1
                             break
