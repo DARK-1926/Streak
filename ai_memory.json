@@ -1,5 +1,5 @@
 {
-    "score": 44,
+    "score": 45,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -296,6 +296,11 @@
             "date": "2026-07-16T11:45:04.880216",
             "project": "SlopFilterAgent",
             "model": "qwen3.7-max-preview"
+        },
+        {
+            "date": "2026-07-17T14:23:50.000999",
+            "project": "NetGhostAgent",
+            "model": "qwen3.7-max-preview"
         }
     ],
     "model_ratings": {
@@ -325,7 +330,6 @@
     },
     "past_projects": [
         "SkillGrowthAgent",
-        "SkillGrowthAgent",
         "KanbanAgent",
         "SecureCodeWrapper",
         "CodeReviewAgent",
@@ -343,12 +347,12 @@
         "HNContentIntegrityAgent",
         "HNContentIntegrityAgent",
         "HNContentIntegrityAgent",
-        "SlopFilterAgent"
+        "SlopFilterAgent",
+        "NetGhostAgent"
     ],
     "lessons_learned": [
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
-        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
@@ -365,7 +369,8 @@
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
-        "This project avoids past mistakes by using memory-mapped files (`mmap`) for efficient data handling of large CSVs, prioritizing algorithmic efficiency (O(N) text scanning) over OOP overhead, and ensuring that all dependencies are pinned. The repository is kept lightweight. Core logic is strictly isolated via Dependency Injection (using `io.TextIOBase`), ensuring the code executed within the sandbox can be unit tested without filesystem access or complex mocks. The `mmap` logic is separated from the CLI argument parsing to allow integration testing via `tmp_path`. There are no hidden paid-API dependencies or heavy ML libraries."
+        "This project avoids past mistakes by using memory-mapped files (`mmap`) for efficient data handling of large CSVs, prioritizing algorithmic efficiency (O(N) text scanning) over OOP overhead, and ensuring that all dependencies are pinned. The repository is kept lightweight. Core logic is strictly isolated via Dependency Injection (using `io.TextIOBase`), ensuring the code executed within the sandbox can be unit tested without filesystem access or complex mocks. The `mmap` logic is separated from the CLI argument parsing to allow integration testing via `tmp_path`. There are no hidden paid-API dependencies or heavy ML libraries.",
+        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for efficient, low-memory handling of massive router log exports. It prioritizes algorithmic O(N) state-tracking efficiency over heavy OOP overhead. Core logic is strictly decoupled via Dependency Injection (accepting `Iterable[LogEvent]`), ensuring the engine can be unit tested purely in-memory. To prevent runtime crashes on win32, explicit file-size checks are implemented before invoking `mmap`, and line decoding is handled via a robust generator rather than `io.TextIOWrapper`. The repository remains lightweight with zero external dependencies beyond testing."
     ],
     "planner_ratings": {
         "cohere/north-mini-code-20260617:free": {
@@ -419,9 +424,9 @@
             "test_stages_reached": 15
         },
         "qwen3.7-max-preview": {
-            "plans_created": 1,
+            "plans_created": 2,
             "critique_survivals": 0,
-            "test_stages_reached": 3
+            "test_stages_reached": 4
         },
         "qwen3-max": {
             "plans_created": 0,
@@ -515,10 +520,10 @@
             "fix_successes": 1
         },
         "qwen3.7-max-preview": {
-            "files_generated": 8,
-            "lint_passes": 5,
+            "files_generated": 16,
+            "lint_passes": 10,
             "fix_attempts": 1,
-            "fix_successes": 2
+            "fix_successes": 3
         },
         "qwen3-max": {
             "files_generated": 0,

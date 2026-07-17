@@ -1,81 +1,64 @@
 {
     "plan": {
-        "chain_of_thought": "1. Scope Check: The plan defines exactly 8 files (.gitignore, requirements.txt, README.md, heuristics.py, csv_processor.py, agent.py, main.py, test_main.py). No scope creep detected. 2. Dependency Check: Only `pytest` is listed in requirements. The architecture strictly uses Python standard library modules (`math`, `collections`, `csv`, `io`, `mmap`, `argparse`). No hidden paid-API dependencies or heavy ML libraries. 3. Interface & Test Coverage Check: The Dependency Injection strategy using `io.TextIOBase` is excellent for unit testing. However, `main.py` relies on `mmap`, which requires actual file descriptors and has OS-specific quirks (especially on Windows). Testing `main()` directly via `argparse` is brittle and doesn't isolate the `mmap` logic. I will refactor the `main.py` interface to expose a `process_file` function for the core `mmap` I/O logic, keeping `main()` as a thin CLI wrapper. I will also update `test_main.py` to include an integration test using pytest's `tmp_path` fixture to validate the `mmap` and `TextIOWrapper` integration on real files, ensuring cross-platform compatibility and complete test coverage.",
-        "project_name": "SlopFilterAgent",
-        "vision": "Spec Roadmap:\n1. Milestone 1: Implement pure mathematical heuristic functions for text analysis (entropy, repetition) in `heuristics.py`.\n2. Milestone 2: Build DI-based CSV parsing and formatting in `csv_processor.py` using `io.TextIOBase`.\n3. Milestone 3: Create the orchestration logic in `agent.py` to filter datasets based on heuristic thresholds.\n4. Milestone 4: Develop `test_main.py` with strict unit tests using `io.StringIO` to validate core logic without filesystem mocks, plus an integration test for `mmap`.\n5. Milestone 5: Build the CLI entry point `main.py` utilizing `mmap` for memory-efficient file handling, exposing a testable `process_file` function.\n6. Testing Strategy: Pure function validation for math logic; stream injection for CSV parsing; integration test for the filtering pipeline and memory-mapped I/O using synthetic 'slop' vs 'human' data.",
-        "interface_contracts": {
-            "heuristics.py": [
-                "calculate_shannon_entropy(text: str) -> float",
-                "calculate_repetition_ratio(text: str) -> float",
-                "is_likely_slop(text: str, entropy_threshold: float, repetition_threshold: float) -> bool"
-            ],
-            "csv_processor.py": [
-                "parse_csv_content(input_stream: io.TextIOBase, text_column: str) -> List[Dict[str, str]]",
-                "format_csv_content(comments: List[Dict[str, str]], output_stream: io.TextIOBase) -> None"
-            ],
-            "agent.py": [
-                "filter_high_signal_comments(comments: List[Dict[str, str]], text_key: str, entropy_thresh: float, rep_thresh: float) -> List[Dict[str, str]]"
-            ],
-            "main.py": [
-                "process_file(input_path: str, output_path: str, text_column: str, entropy_thresh: float, rep_thresh: float) -> None",
-                "main() -> None"
-            ]
-        },
-        "lessons_learned": "This project avoids past mistakes by using memory-mapped files (`mmap`) for efficient data handling of large CSVs, prioritizing algorithmic efficiency (O(N) text scanning) over OOP overhead, and ensuring that all dependencies are pinned. The repository is kept lightweight. Core logic is strictly isolated via Dependency Injection (using `io.TextIOBase`), ensuring the code executed within the sandbox can be unit tested without filesystem access or complex mocks. The `mmap` logic is separated from the CLI argument parsing to allow integration testing via `tmp_path`. There are no hidden paid-API dependencies or heavy ML libraries.",
-        "commit_message": "Implement SlopFilterAgent to extract high-signal human comments from CSV datasets using pure Python statistical heuristics and memory-mapped I/O.",
+        "chain_of_thought": "1. Scope check: The plan defines exactly 8 files, adhering strictly to the constraint. No scope creep. 2. Dependency check: Only `pytest` is listed in requirements. No hidden paid-API dependencies. 3. Interface & Test check: The core logic interfaces are well decoupled. However, there is a technical risk in `cli.py`: `io.TextIOWrapper` can be finicky with raw `mmap` objects across different OS implementations (especially win32), and `mmap.mmap` throws a `ValueError` on empty files. Furthermore, `test_main.py` lacks coverage for this specific empty-file edge case and the CLI's JSON output. 4. Fixes applied: Updated `cli.py` instructions to explicitly check for empty files before invoking `mmap` and to use a robust `mmap.readline().decode('utf-8')` generator instead of `TextIOWrapper`. Expanded `test_main.py` instructions to include integration tests for the CLI using `tmp_path` and `capsys` to verify empty file handling and JSON stdout formatting.",
+        "project_name": "NetGhostAgent",
+        "vision": "Spec Roadmap: 1. Define strict data models for network events and anomalies. 2. Implement a pure regex-based parser to extract DHCP, ARP, and NAT events from standard syslog text. 3. Build a state-machine engine that processes chronological events to detect contradictions (e.g., NAT translations for IPs lacking active DHCP leases or ARP entries). 4. Create a CLI wrapper using `mmap` for memory-efficient file reading on win32, with explicit safeguards for empty files. 5. Develop a strict TDD suite validating the parser, engine, and CLI edge cases. Testing Strategy: Core logic (`parser`, `engine`) operates entirely on iterables and primitives. Tests will inject raw strings and event lists, asserting exact anomaly outputs. CLI tests will use temporary filesystem fixtures to validate I/O and memory-mapping safety without external mocks.",
+        "interface_contracts": "models.py: Provides `EventType(Enum)`, `LogEvent(dataclass)`, `Anomaly(dataclass)`.\nparser.py: Provides `parse_line(line: str) -> Optional[LogEvent]`.\nengine.py: Provides `detect_anomalies(events: Iterable[LogEvent]) -> List[Anomaly]`.\ncli.py: Provides `main(argv: List[str]) -> int` (handles I/O, mmap, and wiring).",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for efficient, low-memory handling of massive router log exports. It prioritizes algorithmic O(N) state-tracking efficiency over heavy OOP overhead. Core logic is strictly decoupled via Dependency Injection (accepting `Iterable[LogEvent]`), ensuring the engine can be unit tested purely in-memory. To prevent runtime crashes on win32, explicit file-size checks are implemented before invoking `mmap`, and line decoding is handled via a robust generator rather than `io.TextIOWrapper`. The repository remains lightweight with zero external dependencies beyond testing.",
+        "commit_message": "Implement NetGhostAgent to deterministically detect ARP/NAT ghost client contradictions in router syslog exports using pure functional state tracking and robust mmap.",
         "files_to_generate": [
             {
-                "filepath": ".gitignore",
-                "instructions": "Standard Python gitignore. Must ignore venv/, __pycache__/, .env, *.pyc, .pytest_cache/, and any local data files like *.csv or *.txt (except requirements.txt)."
+                "filepath": "models.py",
+                "instructions": "Create a lightweight, pure Python module defining the core data structures. Use `dataclasses` and `enum`. Define `EventType` enum with values: `DHCP_ASSIGN`, `DHCP_RELEASE`, `ARP_UPDATE`, `NAT_TRANSLATE`. Define `LogEvent` dataclass with fields: `timestamp` (int), `event_type` (EventType), `ip` (str), `mac` (Optional[str]), `port` (Optional[int]). Define `Anomaly` dataclass with fields: `timestamp` (int), `ip` (str), `description` (str). No external imports."
             },
             {
-                "filepath": "requirements.txt",
-                "instructions": "List only `pytest==8.2.0`. No other third-party dependencies are allowed. The project must rely entirely on the Python standard library."
+                "filepath": "parser.py",
+                "instructions": "Create a pure function module for log parsing. Import `re` and `Optional` from typing, and models from `models.py`. Implement `parse_line(line: str) -> Optional[LogEvent]`. Use compiled regex patterns to detect standard syslog formats for DHCP (e.g., 'DHCPACK on ([0-9.]+) to ([a-f0-9:]+)'), ARP (e.g., 'ARP update for ([0-9.]+) at ([a-f0-9:]+)'), and NAT (e.g., 'NAT translation for ([0-9.]+):([0-9]+)'). Return a populated `LogEvent` if a match is found, otherwise return `None`. Ensure all regex is case-insensitive and robust against partial matches. No side effects."
             },
             {
-                "filepath": "README.md",
-                "instructions": "Explain the architecture of SlopFilterAgent. Detail how it uses Shannon entropy and repetition ratios to detect AI slop in CSV files. Explain the Dependency Injection strategy using `io.TextIOBase` for testability, and the use of `mmap` for memory efficiency. Include instructions on how to run `pytest` and how to execute `main.py`."
+                "filepath": "engine.py",
+                "instructions": "Create the core state-machine module. Import `Iterable`, `List`, `Dict` from typing, and models from `models.py`. Implement `detect_anomalies(events: Iterable[LogEvent]) -> List[Anomaly]`. Maintain internal state dictionaries: `active_leases: Dict[str, str]` (IP -> MAC) and `arp_table: Dict[str, str]` (IP -> MAC). Iterate through events chronologically. On `DHCP_ASSIGN`, add to leases. On `DHCP_RELEASE`, remove from leases. On `ARP_UPDATE`, update arp_table. On `NAT_TRANSLATE`, check if the IP exists in `active_leases` or `arp_table`. If not, append an `Anomaly` to the results list indicating a 'Ghost Client: NAT activity without DHCP/ARP presence'. Return the list of anomalies. This must be a pure function with no I/O."
             },
             {
-                "filepath": "heuristics.py",
-                "instructions": "Implement pure functions for text analysis. No side effects. \n1. `calculate_shannon_entropy(text: str) -> float`: Use `collections.Counter` and `math.log2` to calculate the entropy of characters in the text. \n2. `calculate_repetition_ratio(text: str) -> float`: Split text into words, return the ratio of unique words to total words (lower ratio means higher repetition). \n3. `is_likely_slop(text: str, entropy_threshold: float, repetition_threshold: float) -> bool`: Return True if entropy is below threshold AND repetition ratio is below threshold. Handle empty strings gracefully (return False)."
-            },
-            {
-                "filepath": "csv_processor.py",
-                "instructions": "Implement CSV I/O using Dependency Injection. Do NOT use file paths. \n1. `parse_csv_content(input_stream: io.TextIOBase, text_column: str) -> List[Dict[str, str]]`: Use `csv.DictReader` on the stream. Return a list of dictionaries. \n2. `format_csv_content(comments: List[Dict[str, str]], output_stream: io.TextIOBase) -> None`: Use `csv.DictWriter` to write the list of dicts to the stream. Include proper header writing. Import `csv` and `io` from standard library."
-            },
-            {
-                "filepath": "agent.py",
-                "instructions": "Implement the orchestration logic. \n1. `filter_high_signal_comments(comments: List[Dict[str, str]], text_key: str, entropy_thresh: float = 3.5, rep_thresh: float = 0.4) -> List[Dict[str, str]]`: Iterate through comments. Use `heuristics.is_likely_slop` on the value of `text_key` for each comment. Return a new list containing only the comments that are NOT likely slop. Import `heuristics`."
-            },
-            {
-                "filepath": "main.py",
-                "instructions": "CLI entry point using `argparse`. \n1. Implement `process_file(input_path, output_path, text_column, entropy_thresh, rep_thresh)`: Open the input file in `'rb'` mode. Use `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)` to map it. Wrap the mmap object in `io.TextIOWrapper(mm, encoding='utf-8')` and pass to `csv_processor.parse_csv_content`. Pass the result to `agent.filter_high_signal_comments`. Open the output file normally and pass to `csv_processor.format_csv_content`. Handle Windows `mmap` specifics correctly (e.g., ensure file is not empty before mapping).\n2. Implement `main()`: Parse `--input`, `--output`, `--text-column`, `--entropy`, and `--repetition` arguments, then call `process_file`."
+                "filepath": "cli.py",
+                "instructions": "Create the CLI entry point. Import `argparse`, `sys`, `mmap`, `os`, `json`, and functions from `parser` and `engine`. Implement `main(argv: List[str] = None) -> int`. Parse arguments for `--logfile` (required). Check if the file size is 0 using `os.path.getsize()`; if so, print an empty JSON list and return 0 gracefully to avoid `mmap` ValueError. Open the file in binary mode, use `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Create a generator that yields `mmap.readline().decode('utf-8')` until an empty byte string is returned. Iterate lines, pass to `parser.parse_line`, filter out `None`, and stream the resulting generator into `engine.detect_anomalies`. Print anomalies to stdout as formatted JSON. Handle `KeyboardInterrupt` and file errors gracefully. Ensure cross-platform compatibility (win32 safe)."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Strict unit test suite using `pytest`. MUST import actual modules (`heuristics`, `csv_processor`, `agent`, `main`). Do NOT mock `open` or use stub classes for the unit tests. \n1. Test `calculate_shannon_entropy` with a highly repetitive string vs a random string. \n2. Test `calculate_repetition_ratio` with 'bot bot bot' vs 'hello world this is a test'. \n3. Test `parse_csv_content` by passing an `io.StringIO('id,text\\n1,hello\\n2,bot bot bot')` and verifying the output list. \n4. Test `filter_high_signal_comments` by passing a synthetic list of dicts and ensuring the 'bot' entry is filtered out while the 'hello' entry remains. \n5. Test `format_csv_content` by passing an `io.StringIO()` as the output stream and verifying `getvalue()` contains the correct CSV format.\n6. Integration Test: Test `main.process_file` using pytest's `tmp_path` fixture. Create a sample CSV file with mixed slop and human comments, run `process_file`, read the output file, and verify it contains only the high-signal comments. This validates the `mmap` and `TextIOWrapper` integration on real files."
+                "instructions": "Create a strict unit test suite using `pytest`. Import `parse_line` from `parser`, `detect_anomalies` from `engine`, `main` from `cli`, and models from `models`. 1. Test `parse_line` with valid DHCP, ARP, and NAT strings, asserting correct model creation. 2. Test `parse_line` with garbage strings, asserting `None` return. 3. Test `detect_anomalies` by injecting a hardcoded list of `LogEvent` objects representing a normal flow (no anomalies). 4. Test `detect_anomalies` by injecting a list containing a NAT event for an IP that has no preceding DHCP or ARP events, asserting exactly one `Anomaly` is returned. 5. Test `cli.main` using pytest's `tmp_path` fixture: create an empty log file, pass it via `--logfile`, and assert it returns 0 without throwing a ValueError. 6. Test `cli.main` with a temporary file containing a ghost client log, capturing stdout (using `capsys`) to assert it prints valid JSON containing the anomaly."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "List exactly one dependency: `pytest==8.2.0`. No other packages are needed as the project relies entirely on the Python standard library."
+            },
+            {
+                "filepath": ".gitignore",
+                "instructions": "Include standard Python ignores: `__pycache__/`, `*.py[cod]`, `*$py.class`, `.env`, `venv/`, `.pytest_cache/`, `*.log`."
+            },
+            {
+                "filepath": "README.md",
+                "instructions": "Write a concise README. Title: NetGhostAgent. Explain that it solves the 'Router ARP/NAT contradict' problem by deterministically parsing local syslog exports to find ghost clients. Detail the architecture: pure functional core (`parser`, `engine`) decoupled from memory-mapped I/O (`cli`). Provide setup instructions: `python -m venv venv`, `source venv/bin/activate` (or `venv\\Scripts\\activate` on win32), `pip install -r requirements.txt`. Provide run instructions: `python cli.py --logfile router.log`. Provide test instructions: `pytest test_main.py`."
             }
         ]
     },
     "files_created": [
-        ".gitignore",
+        "models.py",
+        "parser.py",
+        "engine.py",
+        "cli.py",
+        "test_main.py",
         "requirements.txt",
-        "README.md",
-        "heuristics.py",
-        "csv_processor.py",
-        "agent.py",
-        "main.py",
-        "test_main.py"
+        ".gitignore",
+        "README.md"
     ],
     "blueprint": [
-        "File: .gitignore (Static/Config)",
+        "File: models.py provides: class EventType, class LogEvent, class Anomaly",
+        "File: parser.py provides: def parse_line",
+        "File: engine.py provides: def detect_anomalies",
+        "File: cli.py provides: def _generate_lines, def main",
+        "File: test_main.py provides: def test_parse_line_valid_dhcp, def test_parse_line_valid_arp, def test_parse_line_valid_nat, def test_parse_line_garbage, def test_detect_anomalies_normal_flow, def test_detect_anomalies_ghost_client, def test_cli_main_empty_file, def test_cli_main_ghost_client_log",
         "File: requirements.txt (Static/Config)",
-        "File: README.md (Static/Config)",
-        "File: heuristics.py provides: def calculate_shannon_entropy, def calculate_repetition_ratio, def is_likely_slop",
-        "File: csv_processor.py provides: def parse_csv_content, def format_csv_content",
-        "File: agent.py provides: def filter_high_signal_comments",
-        "File: main.py provides: def process_file, def main",
-        "File: test_main.py provides: def test_calculate_shannon_entropy, def test_calculate_repetition_ratio, def test_parse_csv_content, def test_filter_high_signal_comments, def test_format_csv_content, def test_process_file_integration"
+        "File: .gitignore (Static/Config)",
+        "File: README.md (Static/Config)"
     ]
 }
