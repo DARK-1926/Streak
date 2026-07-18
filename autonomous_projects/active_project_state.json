@@ -1,64 +1,71 @@
 {
     "plan": {
-        "chain_of_thought": "1. Scope check: The plan defines exactly 8 files, adhering strictly to the constraint. No scope creep. 2. Dependency check: Only `pytest` is listed in requirements. No hidden paid-API dependencies. 3. Interface & Test check: The core logic interfaces are well decoupled. However, there is a technical risk in `cli.py`: `io.TextIOWrapper` can be finicky with raw `mmap` objects across different OS implementations (especially win32), and `mmap.mmap` throws a `ValueError` on empty files. Furthermore, `test_main.py` lacks coverage for this specific empty-file edge case and the CLI's JSON output. 4. Fixes applied: Updated `cli.py` instructions to explicitly check for empty files before invoking `mmap` and to use a robust `mmap.readline().decode('utf-8')` generator instead of `TextIOWrapper`. Expanded `test_main.py` instructions to include integration tests for the CLI using `tmp_path` and `capsys` to verify empty file handling and JSON stdout formatting.",
-        "project_name": "NetGhostAgent",
-        "vision": "Spec Roadmap: 1. Define strict data models for network events and anomalies. 2. Implement a pure regex-based parser to extract DHCP, ARP, and NAT events from standard syslog text. 3. Build a state-machine engine that processes chronological events to detect contradictions (e.g., NAT translations for IPs lacking active DHCP leases or ARP entries). 4. Create a CLI wrapper using `mmap` for memory-efficient file reading on win32, with explicit safeguards for empty files. 5. Develop a strict TDD suite validating the parser, engine, and CLI edge cases. Testing Strategy: Core logic (`parser`, `engine`) operates entirely on iterables and primitives. Tests will inject raw strings and event lists, asserting exact anomaly outputs. CLI tests will use temporary filesystem fixtures to validate I/O and memory-mapping safety without external mocks.",
-        "interface_contracts": "models.py: Provides `EventType(Enum)`, `LogEvent(dataclass)`, `Anomaly(dataclass)`.\nparser.py: Provides `parse_line(line: str) -> Optional[LogEvent]`.\nengine.py: Provides `detect_anomalies(events: Iterable[LogEvent]) -> List[Anomaly]`.\ncli.py: Provides `main(argv: List[str]) -> int` (handles I/O, mmap, and wiring).",
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for efficient, low-memory handling of massive router log exports. It prioritizes algorithmic O(N) state-tracking efficiency over heavy OOP overhead. Core logic is strictly decoupled via Dependency Injection (accepting `Iterable[LogEvent]`), ensuring the engine can be unit tested purely in-memory. To prevent runtime crashes on win32, explicit file-size checks are implemented before invoking `mmap`, and line decoding is handled via a robust generator rather than `io.TextIOWrapper`. The repository remains lightweight with zero external dependencies beyond testing.",
-        "commit_message": "Implement NetGhostAgent to deterministically detect ARP/NAT ghost client contradictions in router syslog exports using pure functional state tracking and robust mmap.",
+        "chain_of_thought": "Critique of the proposed plan reveals three architectural flaws: 1) Using `itertools.tee` on a generator reading a massive log file will cause a severe memory leak, as `tee` buffers the entire file in memory if one iterator is consumed before the other. This violates the strict low-memory constraint. I will fix this by implementing a two-pass approach (re-reading the file path or seeking the TextIOBase). 2) The win32 `mmap` empty-file safeguard is a critical feature but lacks test coverage due to the 'no filesystem mocking' rule. I will solve this by utilizing pytest's native `tmp_path` fixture to create real temporary files, allowing us to test the actual `mmap` and `os.path.getsize` logic safely without mocks. 3) The `hashlib` implementation in `sentinel_core.py` attempts to hash a tuple of strings, which will raise a TypeError. I will add explicit instructions to encode the joined strings to UTF-8 bytes before hashing. The scope remains exactly 7 files, and no external paid APIs are introduced.",
+        "project_name": "SpikeGuardAgent",
+        "vision": "Spec Roadmap:\n1. Core Algorithms (`sentinel_core.py`): Implement pure, stateless functions for O(N) sequence loop detection and sliding-window frequency spike detection.\n2. Safe I/O Layer (`sentinel_io.py`): Implement a robust generator for streaming lines using `mmap`, with strict win32 safeguards against empty files, and a regex-based timestamp extractor.\n3. CLI Wiring (`main.py`): Parse arguments and wire the I/O generator into the core algorithms using a memory-safe two-pass approach, outputting a JSON anomaly report.\n4. Deterministic Validation (`test_main.py`): Write strict unit tests using synthetic `io.StringIO` streams and pytest's `tmp_path` for real file I/O testing, completely avoiding `unittest.mock`.\n5. Repository Hygiene: Add `.gitignore`, `README.md`, and `requirements.txt`.",
+        "interface_contracts": {
+            "sentinel_core.py": [
+                "def detect_loops(lines: Iterable[str], sequence_len: int = 3, repeat_threshold: int = 5) -> List[Dict[str, Any]]",
+                "def detect_frequency_spikes(timestamps: Iterable[float], window_sec: float = 60.0, max_events: int = 100) -> List[Dict[str, Any]]"
+            ],
+            "sentinel_io.py": [
+                "def stream_log_lines(source: Union[str, io.TextIOBase]) -> Iterable[str]",
+                "def extract_timestamps(lines: Iterable[str], regex_pattern: str = r'\\[(.*?)\\]') -> Iterable[float]"
+            ],
+            "main.py": [
+                "def run_analysis(source: Union[str, io.TextIOBase]) -> Dict[str, Any]",
+                "def main() -> None"
+            ]
+        },
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing, explicitly guarding against the win32 `mmap` empty-file crash. Crucially, it avoids the `itertools.tee` memory trap on large generators by using a two-pass execution model (re-reading files or seeking streams). Core logic is strictly decoupled via Dependency Injection, allowing the test suite to validate actual file I/O using pytest's `tmp_path` and in-memory streams, completely eliminating the need for `unittest.mock`.",
+        "commit_message": "Implement SpikeGuardAgent: a lightweight, win32-safe log anomaly detector using mmap, two-pass O(1) memory processing, and pure functional sliding windows.",
         "files_to_generate": [
             {
-                "filepath": "models.py",
-                "instructions": "Create a lightweight, pure Python module defining the core data structures. Use `dataclasses` and `enum`. Define `EventType` enum with values: `DHCP_ASSIGN`, `DHCP_RELEASE`, `ARP_UPDATE`, `NAT_TRANSLATE`. Define `LogEvent` dataclass with fields: `timestamp` (int), `event_type` (EventType), `ip` (str), `mac` (Optional[str]), `port` (Optional[int]). Define `Anomaly` dataclass with fields: `timestamp` (int), `ip` (str), `description` (str). No external imports."
-            },
-            {
-                "filepath": "parser.py",
-                "instructions": "Create a pure function module for log parsing. Import `re` and `Optional` from typing, and models from `models.py`. Implement `parse_line(line: str) -> Optional[LogEvent]`. Use compiled regex patterns to detect standard syslog formats for DHCP (e.g., 'DHCPACK on ([0-9.]+) to ([a-f0-9:]+)'), ARP (e.g., 'ARP update for ([0-9.]+) at ([a-f0-9:]+)'), and NAT (e.g., 'NAT translation for ([0-9.]+):([0-9]+)'). Return a populated `LogEvent` if a match is found, otherwise return `None`. Ensure all regex is case-insensitive and robust against partial matches. No side effects."
-            },
-            {
-                "filepath": "engine.py",
-                "instructions": "Create the core state-machine module. Import `Iterable`, `List`, `Dict` from typing, and models from `models.py`. Implement `detect_anomalies(events: Iterable[LogEvent]) -> List[Anomaly]`. Maintain internal state dictionaries: `active_leases: Dict[str, str]` (IP -> MAC) and `arp_table: Dict[str, str]` (IP -> MAC). Iterate through events chronologically. On `DHCP_ASSIGN`, add to leases. On `DHCP_RELEASE`, remove from leases. On `ARP_UPDATE`, update arp_table. On `NAT_TRANSLATE`, check if the IP exists in `active_leases` or `arp_table`. If not, append an `Anomaly` to the results list indicating a 'Ghost Client: NAT activity without DHCP/ARP presence'. Return the list of anomalies. This must be a pure function with no I/O."
-            },
-            {
-                "filepath": "cli.py",
-                "instructions": "Create the CLI entry point. Import `argparse`, `sys`, `mmap`, `os`, `json`, and functions from `parser` and `engine`. Implement `main(argv: List[str] = None) -> int`. Parse arguments for `--logfile` (required). Check if the file size is 0 using `os.path.getsize()`; if so, print an empty JSON list and return 0 gracefully to avoid `mmap` ValueError. Open the file in binary mode, use `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Create a generator that yields `mmap.readline().decode('utf-8')` until an empty byte string is returned. Iterate lines, pass to `parser.parse_line`, filter out `None`, and stream the resulting generator into `engine.detect_anomalies`. Print anomalies to stdout as formatted JSON. Handle `KeyboardInterrupt` and file errors gracefully. Ensure cross-platform compatibility (win32 safe)."
-            },
-            {
-                "filepath": "test_main.py",
-                "instructions": "Create a strict unit test suite using `pytest`. Import `parse_line` from `parser`, `detect_anomalies` from `engine`, `main` from `cli`, and models from `models`. 1. Test `parse_line` with valid DHCP, ARP, and NAT strings, asserting correct model creation. 2. Test `parse_line` with garbage strings, asserting `None` return. 3. Test `detect_anomalies` by injecting a hardcoded list of `LogEvent` objects representing a normal flow (no anomalies). 4. Test `detect_anomalies` by injecting a list containing a NAT event for an IP that has no preceding DHCP or ARP events, asserting exactly one `Anomaly` is returned. 5. Test `cli.main` using pytest's `tmp_path` fixture: create an empty log file, pass it via `--logfile`, and assert it returns 0 without throwing a ValueError. 6. Test `cli.main` with a temporary file containing a ghost client log, capturing stdout (using `capsys`) to assert it prints valid JSON containing the anomaly."
-            },
-            {
-                "filepath": "requirements.txt",
-                "instructions": "List exactly one dependency: `pytest==8.2.0`. No other packages are needed as the project relies entirely on the Python standard library."
-            },
-            {
                 "filepath": ".gitignore",
-                "instructions": "Include standard Python ignores: `__pycache__/`, `*.py[cod]`, `*$py.class`, `.env`, `venv/`, `.pytest_cache/`, `*.log`."
+                "instructions": "Standard Python .gitignore. Must include: __pycache__/, *.py[cod], *$py.class, .env, venv/, .pytest_cache/, *.log, and .mypy_cache/."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a concise README. Title: NetGhostAgent. Explain that it solves the 'Router ARP/NAT contradict' problem by deterministically parsing local syslog exports to find ghost clients. Detail the architecture: pure functional core (`parser`, `engine`) decoupled from memory-mapped I/O (`cli`). Provide setup instructions: `python -m venv venv`, `source venv/bin/activate` (or `venv\\Scripts\\activate` on win32), `pip install -r requirements.txt`. Provide run instructions: `python cli.py --logfile router.log`. Provide test instructions: `pytest test_main.py`."
+                "instructions": "Explain the architecture of SpikeGuardAgent. Detail how it solves AI sycophancy loops and billing spikes using O(N) pure functions. Document the Dependency Injection strategy, the two-pass memory-safe execution model, and the win32 `mmap` safety checks. Include instructions to run `pytest`."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "List exactly one dependency: pytest==8.2.0. No other external packages are allowed."
+            },
+            {
+                "filepath": "sentinel_core.py",
+                "instructions": "Implement pure, stateless algorithmic functions. NO file I/O or OS calls here. Use standard library only (collections.deque, typing, hashlib).\n1. `detect_loops(lines: Iterable[str], sequence_len: int = 3, repeat_threshold: int = 5) -> List[Dict[str, Any]]`: Iterate through lines, maintaining a rolling tuple of the last `sequence_len` lines. Join the tuple into a single string, encode to UTF-8 bytes, and hash it using `hashlib.sha256`. If the same hash repeats `repeat_threshold` times consecutively, flag an anomaly. Return list of dicts with 'type': 'loop', 'start_line', 'end_line', 'content_sample'.\n2. `detect_frequency_spikes(timestamps: Iterable[float], window_sec: float = 60.0, max_events: int = 100) -> List[Dict[str, Any]]`: Use a `collections.deque` as a sliding window. Iterate through sorted floats. If the number of events within `window_sec` exceeds `max_events`, flag a spike. Return list of dicts with 'type': 'spike', 'window_start', 'window_end', 'count'."
+            },
+            {
+                "filepath": "sentinel_io.py",
+                "instructions": "Implement I/O operations with strict win32 safety and Dependency Injection support. Use standard library only (os, mmap, io, re, datetime, typing).\n1. `stream_log_lines(source: Union[str, io.TextIOBase]) -> Iterable[str]`: If `source` is a string (filepath), check `os.path.getsize(source)`. If 0, return immediately (prevents win32 `mmap` ValueError). If > 0, open file, create `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`, and yield decoded UTF-8 lines, ignoring decode errors. If `source` is an `io.TextIOBase`, just yield from it directly. Ensure `mmap` and file handles are closed properly using context managers.\n2. `extract_timestamps(lines: Iterable[str], regex_pattern: str = r'\\[(.*?)\\]') -> Iterable[float]`: Compile regex. Iterate lines, search for pattern. Parse matched string using `datetime.datetime.fromisoformat`. Yield float timestamps."
+            },
+            {
+                "filepath": "main.py",
+                "instructions": "CLI entry point and DI wiring. Use standard library only (argparse, sys, json, typing, io).\n1. `run_analysis(source: Union[str, io.TextIOBase]) -> Dict[str, Any]`: To maintain O(1) memory and avoid `itertools.tee` buffering, process the source in two passes. If `source` is a string, call `sentinel_io.stream_log_lines(source)` for `detect_loops`, then call it again for `extract_timestamps`. If `source` is an `io.TextIOBase`, pass it to `detect_loops`, call `source.seek(0)`, then pass it to `extract_timestamps`. Return a combined JSON-serializable dictionary of results.\n2. `def main() -> None`: Setup `argparse` to accept a log file path. Call `run_analysis(filepath)` and print the JSON result to stdout. Handle FileNotFoundError gracefully."
+            },
+            {
+                "filepath": "test_main.py",
+                "instructions": "Strict unit test suite using `pytest`. MUST import `sentinel_core`, `sentinel_io`, and `main`. DO NOT use `unittest.mock`.\n1. `test_detect_loops`: Pass a synthetic list of strings to `sentinel_core.detect_loops` where a 3-line sequence repeats 6 times. Assert an anomaly is returned.\n2. `test_detect_loops_no_anomaly`: Pass a list of unique strings. Assert empty list returned.\n3. `test_detect_frequency_spikes`: Pass a synthetic list of floats to `sentinel_core.detect_frequency_spikes` where 150 events occur within 10 seconds. Assert a spike anomaly is returned.\n4. `test_stream_log_lines_memory`: Pass an `io.StringIO('line1\\nline2\\n')` to `sentinel_io.stream_log_lines`. Assert it yields the exact strings.\n5. `test_stream_log_lines_mmap_and_empty`: Use pytest's `tmp_path` fixture to create a real 0-byte file and a real multi-line file. Assert the 0-byte file yields nothing (verifying win32 safeguard without mocks) and the multi-line file yields correctly via `mmap`.\n6. `test_extract_timestamps`: Pass an `io.StringIO('[2024-05-01T12:00:00] Event\\n[2024-05-01T12:00:01] Event')` to `sentinel_io.extract_timestamps`. Assert it yields two valid float timestamps.\n7. `test_run_analysis_integration`: Pass an `io.StringIO` containing repetitive lines with timestamps to `main.run_analysis`. Assert the returned dict contains both 'loops' and 'spikes' keys with valid data."
             }
         ]
     },
     "files_created": [
-        "models.py",
-        "parser.py",
-        "engine.py",
-        "cli.py",
-        "test_main.py",
-        "requirements.txt",
         ".gitignore",
-        "README.md"
+        "README.md",
+        "requirements.txt",
+        "sentinel_core.py",
+        "sentinel_io.py",
+        "main.py",
+        "test_main.py"
     ],
     "blueprint": [
-        "File: models.py provides: class EventType, class LogEvent, class Anomaly",
-        "File: parser.py provides: def parse_line",
-        "File: engine.py provides: def detect_anomalies",
-        "File: cli.py provides: def _generate_lines, def main",
-        "File: test_main.py provides: def test_parse_line_valid_dhcp, def test_parse_line_valid_arp, def test_parse_line_valid_nat, def test_parse_line_garbage, def test_detect_anomalies_normal_flow, def test_detect_anomalies_ghost_client, def test_cli_main_empty_file, def test_cli_main_ghost_client_log",
-        "File: requirements.txt (Static/Config)",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: README.md (Static/Config)",
+        "File: requirements.txt (Static/Config)",
+        "File: sentinel_core.py provides: def detect_loops, def detect_frequency_spikes",
+        "File: sentinel_io.py provides: def stream_log_lines, def extract_timestamps",
+        "File: main.py provides: def run_analysis, def main",
+        "File: test_main.py provides: def test_detect_loops, def test_detect_loops_no_anomaly, def test_detect_frequency_spikes, def test_stream_log_lines_memory, def test_stream_log_lines_mmap_and_empty, def test_extract_timestamps, def test_run_analysis_integration"
     ]
 }
