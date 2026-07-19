@@ -1,51 +1,39 @@
 {
     "plan": {
-        "chain_of_thought": "1. Critique Scope & Dependencies: The plan is well-scoped (6 files) and uses only the standard library plus pytest. No hidden paid APIs. 2. Critique Architecture: The `mmap` implementation lacks explicit cross-platform read-access flags (`mmap.ACCESS_READ`), which can cause permission errors on Windows. The sliding window logic in `detect_agent_spikes` is mathematically flawed; it must evict expired timestamps from the left before evaluating the threshold. 3. Critique Testing: The CLI specifies exiting with code 1 if a file is not found, but there is no test coverage for `FileNotFoundError` in the core logic. 4. Fixes Applied: Updated `core.py` instructions to enforce `access=mmap.ACCESS_READ` and proper sliding window eviction. Added `test_run_audit_file_not_found` to the interface contracts and test suite to ensure complete coverage.",
-        "project_name": "AgentSpendDriftAuditor",
-        "vision": "Spec Roadmap: 1. Build pure functions for Decimal-based cost accumulation and sliding-window spike detection. 2. Implement a robust file I/O layer using `mmap` with explicit win32 empty-file guards, cross-platform access flags, and a two-pass reading strategy. 3. Wire CLI via `argparse`. 4. Testing Strategy: Use `pytest` with `tmp_path` to test actual file I/O, and pass in-memory string iterables to test pure mathematical logic. No mocks will be used. Milestone 1: Drift math validation. Milestone 2: Spike detection algorithm. Milestone 3: Safe mmap orchestration. Milestone 4: End-to-end CLI integration.",
-        "interface_contracts": {
-            "core.py": [
-                "def calculate_exact_cost(lines: Iterable[str]) -> decimal.Decimal",
-                "def detect_agent_spikes(lines: Iterable[str], window_sec: int, threshold: int) -> list[dict]",
-                "def run_audit(file_path: str, window_sec: int, threshold: int) -> dict"
-            ],
-            "main.py": [
-                "def main() -> None"
-            ],
-            "test_core.py": [
-                "def test_calculate_exact_cost()",
-                "def test_detect_agent_spikes()",
-                "def test_run_audit_empty_file(tmp_path)",
-                "def test_run_audit_file_not_found()",
-                "def test_run_audit_integration(tmp_path)"
-            ]
-        },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive agent logs, explicitly guarding against the win32 `mmap` empty-file crash and enforcing `ACCESS_READ` for cross-platform safety. Crucially, it avoids the `itertools.tee` memory trap on large generators by using a strict two-pass execution model (seeking the mmap stream back to 0). Core logic is decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. No heavy OOP or external APIs are used.",
-        "commit_message": "Implement AgentSpendDriftAuditor to detect float divergence and API rate spikes in autonomous agent logs using two-pass mmap processing.",
+        "chain_of_thought": "Critique: The proposed plan is highly robust and well-architected. It strictly adheres to the scope limit (7 files total, well under the 8-file maximum), contains zero hidden paid-API dependencies (relying solely on the Python standard library and pytest), and features comprehensive test coverage. The test suite explicitly targets the known win32 `mmap` empty-file crash and IEEE 754 float drift. The Dependency Injection pattern via `Iterable[str]` perfectly decouples the pure math logic from the I/O layer. No major structural changes are needed. I have slightly refined the instructions for clarity, ensured all type hints are explicitly imported in the file generation steps to guarantee static analysis passes, and updated the interface contracts to reflect these imports.",
+        "project_name": "FloatDriftAuditorAgent",
+        "vision": "A strict Spec Roadmap to build a high-performance billing drift auditor. Milestone 1: Define pure data models and interface contracts. Milestone 2: Implement pure functional core logic using `decimal` to detect float accumulation drift from an iterable of strings. Milestone 3: Implement memory-mapped file I/O with win32 empty-file crash guards. Milestone 4: Write comprehensive unit and integration tests using `pytest` and `tmp_path` without any mocking of core logic. Testing Strategy: Validate pure math logic with in-memory lists; validate I/O and mmap safety with physical temporary files.",
+        "interface_contracts": "models.py: `from decimal import Decimal; from typing import NamedTuple; class DriftReport(NamedTuple): total_float: float, total_decimal: Decimal, divergence: Decimal, transaction_count: int`\nauditor.py: `from typing import Iterable, Tuple; from decimal import Decimal; from models import DriftReport; def parse_cost(line: str) -> Tuple[float, Decimal] | None`, `def audit_stream(lines: Iterable[str]) -> DriftReport`\nmain.py: `from models import DriftReport; def process_file(filepath: str) -> DriftReport`",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a single-pass execution model that accumulates both float and decimal sums simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
+        "commit_message": "Implement FloatDriftAuditorAgent to detect IEEE 754 accumulation errors in massive billing logs using mmap and pure DI.",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Standard Python gitignore. Include: __pycache__/, *.py[cod], *$py.class, .env, venv/, .pytest_cache/, *.log, .mypy_cache/."
+                "instructions": "Standard Python gitignore. Include: venv/, __pycache__/, *.pyc, .env, .pytest_cache/, *.csv, logs/."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "List only `pytest==8.0.0` as the sole external dependency for testing."
+                "instructions": "List only `pytest` as the sole external dependency for testing."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Explain the architecture: A CLI tool to audit agent JSONL logs for AWS-style billing spikes and float drift. Detail the two-pass `mmap` strategy, the win32 empty-file guard, the `ACCESS_READ` flag, and the Dependency Injection pattern used for pure function testing. Include usage instructions."
+                "instructions": "Explain the architecture of FloatDriftAuditorAgent. Detail how it solves the AWS $1.7B float drift problem using Python's `decimal` module. Explain the Dependency Injection pattern used for testability, the `mmap` strategy for performance, and the specific win32 empty-file guard."
             },
             {
-                "filepath": "core.py",
-                "instructions": "Implement the core auditing logic. \n1. Imports: `json`, `decimal`, `mmap`, `os`, `collections.deque`, `typing.Iterable`.\n2. `calculate_exact_cost(lines: Iterable[str]) -> decimal.Decimal`: Pure function. Iterates lines, parses JSON, extracts 'cost' as string (to avoid float conversion), and adds to a `Decimal` accumulator. Returns total.\n3. `detect_agent_spikes(lines: Iterable[str], window_sec: int, threshold: int) -> list[dict]`: Pure function. Iterates lines, parses JSON. Uses a `defaultdict(deque)` keyed by `agent_id` to store timestamps. For each event, pop timestamps from the left of the deque while `current_timestamp - deque[0] > window_sec`. If `len(deque) >= threshold`, append a spike event to results and clear the deque. Return list of spikes.\n4. `run_audit(file_path: str, window_sec: int, threshold: int) -> dict`: Orchestrator. Checks `os.path.getsize(file_path) == 0` (Win32 guard) and returns zeroed report if true. Opens file `rb`, creates `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. \nPass 1: Yields decoded lines (`line.decode('utf-8')`) to `calculate_exact_cost`. \nCalls `m.seek(0)`. \nPass 2: Yields decoded lines to `detect_agent_spikes`. \nReturns dict with `exact_cost` (stringified Decimal) and `spikes`."
+                "filepath": "models.py",
+                "instructions": "Define a pure data structure using `typing.NamedTuple`. Import `Decimal` from the standard `decimal` library. Create `class DriftReport(NamedTuple): total_float: float, total_decimal: Decimal, divergence: Decimal, transaction_count: int`."
+            },
+            {
+                "filepath": "auditor.py",
+                "instructions": "Implement the core pure logic. Import `Decimal` from `decimal`, `Iterable` and `Tuple` from `typing`, and `DriftReport` from `models`. \n1. `def parse_cost(line: str) -> tuple[float, Decimal] | None`: Strips whitespace, ignores empty lines or headers (e.g., if line starts with 'tx_id'). Splits by comma, takes the last element as the cost. Returns a tuple of `(float(cost), Decimal(cost))`. Returns None on ValueError.\n2. `def audit_stream(lines: Iterable[str]) -> DriftReport`: Iterates through lines, calls `parse_cost`. Accumulates `sum_f` (float) and `sum_d` (Decimal). Counts valid transactions. Calculates `divergence = Decimal(str(sum_f)) - sum_d`. Returns `DriftReport(sum_f, sum_d, divergence, count)`. No I/O or side effects allowed here."
             },
             {
                 "filepath": "main.py",
-                "instructions": "CLI entry point. Imports `argparse`, `sys`, and `run_audit` from `core`. Parses arguments: `file_path` (str), `--window` (int, default 60), `--threshold` (int, default 100). Calls `run_audit` inside a try/except block catching `FileNotFoundError`. Prints the exact cost and any detected spikes in a clean, cross-platform text format. No `curses`. Exits with code 1 if file not found."
+                "instructions": "Implement the CLI and I/O layer. Import `os`, `mmap`, `sys`, `Decimal` from `decimal`, `auditor`, and `models`. \n1. `def process_file(filepath: str) -> models.DriftReport`: Check `os.path.getsize(filepath)`. If 0, return `models.DriftReport(0.0, Decimal('0'), Decimal('0'), 0)` to prevent the win32 `mmap` crash. Otherwise, open file in `rb` mode, create `m = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Create a generator that decodes lines: `(line.decode('utf-8').strip() for line in iter(m.readline, b''))`. Pass this generator to `auditor.audit_stream()`. Close mmap and file. Return report.\n2. `if __name__ == '__main__':` block to take a filepath from `sys.argv[1]`, call `process_file`, and print the `DriftReport`."
             },
             {
-                "filepath": "test_core.py",
-                "instructions": "Strict TDD suite using `pytest`. Imports actual functions from `core`. \n1. `test_calculate_exact_cost`: Passes an in-memory list of JSON strings with costs like '0.1' and '0.2'. Asserts result is exactly `Decimal('0.3')`, proving no float drift.\n2. `test_detect_agent_spikes`: Passes in-memory JSON strings with 150 events for 'agent-1' within 10 seconds. Asserts a spike is detected.\n3. `test_run_audit_empty_file(tmp_path)`: Creates a 0-byte file. Asserts `run_audit` returns safely without `ValueError` (testing the win32 guard).\n4. `test_run_audit_file_not_found`: Asserts `run_audit` raises `FileNotFoundError` when given a non-existent path.\n5. `test_run_audit_integration(tmp_path)`: Writes 200 valid JSONL lines to a file in `tmp_path`. Calls `run_audit`. Asserts the returned dictionary contains the correct Decimal string and a populated spikes list."
+                "filepath": "test_auditor.py",
+                "instructions": "Strict unit and integration tests using `pytest` and `decimal.Decimal`. \n1. `test_parse_cost_valid`: Assert `auditor.parse_cost('tx1,aws,0.0001')` returns `(0.0001, Decimal('0.0001'))`.\n2. `test_parse_cost_invalid`: Assert `auditor.parse_cost('header')` returns `None`.\n3. `test_audit_stream_drift`: Create a list of strings representing 10,000 transactions of `0.0001`. Float sum will drift, Decimal sum will be exactly 1.0. Assert `report.divergence != 0`.\n4. `test_process_file_integration(tmp_path)`: Create a temporary CSV file with known data. Call `main.process_file(str(file))`. Assert the returned report matches expected values.\n5. `test_process_file_empty_win32_guard(tmp_path)`: Create an empty file (0 bytes). Call `main.process_file(str(file))`. Assert it returns a zeroed `DriftReport` without raising an exception."
             }
         ]
     },
@@ -53,16 +41,18 @@
         ".gitignore",
         "requirements.txt",
         "README.md",
-        "core.py",
+        "models.py",
+        "auditor.py",
         "main.py",
-        "test_core.py"
+        "test_auditor.py"
     ],
     "blueprint": [
         "File: .gitignore (Static/Config)",
         "File: requirements.txt (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: core.py provides: def calculate_exact_cost, def detect_agent_spikes, def run_audit",
-        "File: main.py provides: def main",
-        "File: test_core.py provides: def test_calculate_exact_cost, def test_detect_agent_spikes, def test_run_audit_empty_file, def test_run_audit_file_not_found, def test_run_audit_integration"
+        "File: models.py provides: class DriftReport",
+        "File: auditor.py provides: def parse_cost, def audit_stream",
+        "File: main.py provides: def process_file",
+        "File: test_auditor.py provides: def test_parse_cost_valid, def test_parse_cost_invalid, def test_audit_stream_drift, def test_process_file_integration, def test_process_file_empty_win32_guard"
     ]
 }
