@@ -1,71 +1,68 @@
 {
     "plan": {
-        "chain_of_thought": "Critique of the proposed plan reveals three architectural flaws: 1) Using `itertools.tee` on a generator reading a massive log file will cause a severe memory leak, as `tee` buffers the entire file in memory if one iterator is consumed before the other. This violates the strict low-memory constraint. I will fix this by implementing a two-pass approach (re-reading the file path or seeking the TextIOBase). 2) The win32 `mmap` empty-file safeguard is a critical feature but lacks test coverage due to the 'no filesystem mocking' rule. I will solve this by utilizing pytest's native `tmp_path` fixture to create real temporary files, allowing us to test the actual `mmap` and `os.path.getsize` logic safely without mocks. 3) The `hashlib` implementation in `sentinel_core.py` attempts to hash a tuple of strings, which will raise a TypeError. I will add explicit instructions to encode the joined strings to UTF-8 bytes before hashing. The scope remains exactly 7 files, and no external paid APIs are introduced.",
-        "project_name": "SpikeGuardAgent",
-        "vision": "Spec Roadmap:\n1. Core Algorithms (`sentinel_core.py`): Implement pure, stateless functions for O(N) sequence loop detection and sliding-window frequency spike detection.\n2. Safe I/O Layer (`sentinel_io.py`): Implement a robust generator for streaming lines using `mmap`, with strict win32 safeguards against empty files, and a regex-based timestamp extractor.\n3. CLI Wiring (`main.py`): Parse arguments and wire the I/O generator into the core algorithms using a memory-safe two-pass approach, outputting a JSON anomaly report.\n4. Deterministic Validation (`test_main.py`): Write strict unit tests using synthetic `io.StringIO` streams and pytest's `tmp_path` for real file I/O testing, completely avoiding `unittest.mock`.\n5. Repository Hygiene: Add `.gitignore`, `README.md`, and `requirements.txt`.",
+        "chain_of_thought": "1. Critique Scope & Dependencies: The plan is well-scoped (6 files) and uses only the standard library plus pytest. No hidden paid APIs. 2. Critique Architecture: The `mmap` implementation lacks explicit cross-platform read-access flags (`mmap.ACCESS_READ`), which can cause permission errors on Windows. The sliding window logic in `detect_agent_spikes` is mathematically flawed; it must evict expired timestamps from the left before evaluating the threshold. 3. Critique Testing: The CLI specifies exiting with code 1 if a file is not found, but there is no test coverage for `FileNotFoundError` in the core logic. 4. Fixes Applied: Updated `core.py` instructions to enforce `access=mmap.ACCESS_READ` and proper sliding window eviction. Added `test_run_audit_file_not_found` to the interface contracts and test suite to ensure complete coverage.",
+        "project_name": "AgentSpendDriftAuditor",
+        "vision": "Spec Roadmap: 1. Build pure functions for Decimal-based cost accumulation and sliding-window spike detection. 2. Implement a robust file I/O layer using `mmap` with explicit win32 empty-file guards, cross-platform access flags, and a two-pass reading strategy. 3. Wire CLI via `argparse`. 4. Testing Strategy: Use `pytest` with `tmp_path` to test actual file I/O, and pass in-memory string iterables to test pure mathematical logic. No mocks will be used. Milestone 1: Drift math validation. Milestone 2: Spike detection algorithm. Milestone 3: Safe mmap orchestration. Milestone 4: End-to-end CLI integration.",
         "interface_contracts": {
-            "sentinel_core.py": [
-                "def detect_loops(lines: Iterable[str], sequence_len: int = 3, repeat_threshold: int = 5) -> List[Dict[str, Any]]",
-                "def detect_frequency_spikes(timestamps: Iterable[float], window_sec: float = 60.0, max_events: int = 100) -> List[Dict[str, Any]]"
-            ],
-            "sentinel_io.py": [
-                "def stream_log_lines(source: Union[str, io.TextIOBase]) -> Iterable[str]",
-                "def extract_timestamps(lines: Iterable[str], regex_pattern: str = r'\\[(.*?)\\]') -> Iterable[float]"
+            "core.py": [
+                "def calculate_exact_cost(lines: Iterable[str]) -> decimal.Decimal",
+                "def detect_agent_spikes(lines: Iterable[str], window_sec: int, threshold: int) -> list[dict]",
+                "def run_audit(file_path: str, window_sec: int, threshold: int) -> dict"
             ],
             "main.py": [
-                "def run_analysis(source: Union[str, io.TextIOBase]) -> Dict[str, Any]",
                 "def main() -> None"
+            ],
+            "test_core.py": [
+                "def test_calculate_exact_cost()",
+                "def test_detect_agent_spikes()",
+                "def test_run_audit_empty_file(tmp_path)",
+                "def test_run_audit_file_not_found()",
+                "def test_run_audit_integration(tmp_path)"
             ]
         },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing, explicitly guarding against the win32 `mmap` empty-file crash. Crucially, it avoids the `itertools.tee` memory trap on large generators by using a two-pass execution model (re-reading files or seeking streams). Core logic is strictly decoupled via Dependency Injection, allowing the test suite to validate actual file I/O using pytest's `tmp_path` and in-memory streams, completely eliminating the need for `unittest.mock`.",
-        "commit_message": "Implement SpikeGuardAgent: a lightweight, win32-safe log anomaly detector using mmap, two-pass O(1) memory processing, and pure functional sliding windows.",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive agent logs, explicitly guarding against the win32 `mmap` empty-file crash and enforcing `ACCESS_READ` for cross-platform safety. Crucially, it avoids the `itertools.tee` memory trap on large generators by using a strict two-pass execution model (seeking the mmap stream back to 0). Core logic is decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. No heavy OOP or external APIs are used.",
+        "commit_message": "Implement AgentSpendDriftAuditor to detect float divergence and API rate spikes in autonomous agent logs using two-pass mmap processing.",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Standard Python .gitignore. Must include: __pycache__/, *.py[cod], *$py.class, .env, venv/, .pytest_cache/, *.log, and .mypy_cache/."
-            },
-            {
-                "filepath": "README.md",
-                "instructions": "Explain the architecture of SpikeGuardAgent. Detail how it solves AI sycophancy loops and billing spikes using O(N) pure functions. Document the Dependency Injection strategy, the two-pass memory-safe execution model, and the win32 `mmap` safety checks. Include instructions to run `pytest`."
+                "instructions": "Standard Python gitignore. Include: __pycache__/, *.py[cod], *$py.class, .env, venv/, .pytest_cache/, *.log, .mypy_cache/."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "List exactly one dependency: pytest==8.2.0. No other external packages are allowed."
+                "instructions": "List only `pytest==8.0.0` as the sole external dependency for testing."
             },
             {
-                "filepath": "sentinel_core.py",
-                "instructions": "Implement pure, stateless algorithmic functions. NO file I/O or OS calls here. Use standard library only (collections.deque, typing, hashlib).\n1. `detect_loops(lines: Iterable[str], sequence_len: int = 3, repeat_threshold: int = 5) -> List[Dict[str, Any]]`: Iterate through lines, maintaining a rolling tuple of the last `sequence_len` lines. Join the tuple into a single string, encode to UTF-8 bytes, and hash it using `hashlib.sha256`. If the same hash repeats `repeat_threshold` times consecutively, flag an anomaly. Return list of dicts with 'type': 'loop', 'start_line', 'end_line', 'content_sample'.\n2. `detect_frequency_spikes(timestamps: Iterable[float], window_sec: float = 60.0, max_events: int = 100) -> List[Dict[str, Any]]`: Use a `collections.deque` as a sliding window. Iterate through sorted floats. If the number of events within `window_sec` exceeds `max_events`, flag a spike. Return list of dicts with 'type': 'spike', 'window_start', 'window_end', 'count'."
+                "filepath": "README.md",
+                "instructions": "Explain the architecture: A CLI tool to audit agent JSONL logs for AWS-style billing spikes and float drift. Detail the two-pass `mmap` strategy, the win32 empty-file guard, the `ACCESS_READ` flag, and the Dependency Injection pattern used for pure function testing. Include usage instructions."
             },
             {
-                "filepath": "sentinel_io.py",
-                "instructions": "Implement I/O operations with strict win32 safety and Dependency Injection support. Use standard library only (os, mmap, io, re, datetime, typing).\n1. `stream_log_lines(source: Union[str, io.TextIOBase]) -> Iterable[str]`: If `source` is a string (filepath), check `os.path.getsize(source)`. If 0, return immediately (prevents win32 `mmap` ValueError). If > 0, open file, create `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`, and yield decoded UTF-8 lines, ignoring decode errors. If `source` is an `io.TextIOBase`, just yield from it directly. Ensure `mmap` and file handles are closed properly using context managers.\n2. `extract_timestamps(lines: Iterable[str], regex_pattern: str = r'\\[(.*?)\\]') -> Iterable[float]`: Compile regex. Iterate lines, search for pattern. Parse matched string using `datetime.datetime.fromisoformat`. Yield float timestamps."
+                "filepath": "core.py",
+                "instructions": "Implement the core auditing logic. \n1. Imports: `json`, `decimal`, `mmap`, `os`, `collections.deque`, `typing.Iterable`.\n2. `calculate_exact_cost(lines: Iterable[str]) -> decimal.Decimal`: Pure function. Iterates lines, parses JSON, extracts 'cost' as string (to avoid float conversion), and adds to a `Decimal` accumulator. Returns total.\n3. `detect_agent_spikes(lines: Iterable[str], window_sec: int, threshold: int) -> list[dict]`: Pure function. Iterates lines, parses JSON. Uses a `defaultdict(deque)` keyed by `agent_id` to store timestamps. For each event, pop timestamps from the left of the deque while `current_timestamp - deque[0] > window_sec`. If `len(deque) >= threshold`, append a spike event to results and clear the deque. Return list of spikes.\n4. `run_audit(file_path: str, window_sec: int, threshold: int) -> dict`: Orchestrator. Checks `os.path.getsize(file_path) == 0` (Win32 guard) and returns zeroed report if true. Opens file `rb`, creates `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. \nPass 1: Yields decoded lines (`line.decode('utf-8')`) to `calculate_exact_cost`. \nCalls `m.seek(0)`. \nPass 2: Yields decoded lines to `detect_agent_spikes`. \nReturns dict with `exact_cost` (stringified Decimal) and `spikes`."
             },
             {
                 "filepath": "main.py",
-                "instructions": "CLI entry point and DI wiring. Use standard library only (argparse, sys, json, typing, io).\n1. `run_analysis(source: Union[str, io.TextIOBase]) -> Dict[str, Any]`: To maintain O(1) memory and avoid `itertools.tee` buffering, process the source in two passes. If `source` is a string, call `sentinel_io.stream_log_lines(source)` for `detect_loops`, then call it again for `extract_timestamps`. If `source` is an `io.TextIOBase`, pass it to `detect_loops`, call `source.seek(0)`, then pass it to `extract_timestamps`. Return a combined JSON-serializable dictionary of results.\n2. `def main() -> None`: Setup `argparse` to accept a log file path. Call `run_analysis(filepath)` and print the JSON result to stdout. Handle FileNotFoundError gracefully."
+                "instructions": "CLI entry point. Imports `argparse`, `sys`, and `run_audit` from `core`. Parses arguments: `file_path` (str), `--window` (int, default 60), `--threshold` (int, default 100). Calls `run_audit` inside a try/except block catching `FileNotFoundError`. Prints the exact cost and any detected spikes in a clean, cross-platform text format. No `curses`. Exits with code 1 if file not found."
             },
             {
-                "filepath": "test_main.py",
-                "instructions": "Strict unit test suite using `pytest`. MUST import `sentinel_core`, `sentinel_io`, and `main`. DO NOT use `unittest.mock`.\n1. `test_detect_loops`: Pass a synthetic list of strings to `sentinel_core.detect_loops` where a 3-line sequence repeats 6 times. Assert an anomaly is returned.\n2. `test_detect_loops_no_anomaly`: Pass a list of unique strings. Assert empty list returned.\n3. `test_detect_frequency_spikes`: Pass a synthetic list of floats to `sentinel_core.detect_frequency_spikes` where 150 events occur within 10 seconds. Assert a spike anomaly is returned.\n4. `test_stream_log_lines_memory`: Pass an `io.StringIO('line1\\nline2\\n')` to `sentinel_io.stream_log_lines`. Assert it yields the exact strings.\n5. `test_stream_log_lines_mmap_and_empty`: Use pytest's `tmp_path` fixture to create a real 0-byte file and a real multi-line file. Assert the 0-byte file yields nothing (verifying win32 safeguard without mocks) and the multi-line file yields correctly via `mmap`.\n6. `test_extract_timestamps`: Pass an `io.StringIO('[2024-05-01T12:00:00] Event\\n[2024-05-01T12:00:01] Event')` to `sentinel_io.extract_timestamps`. Assert it yields two valid float timestamps.\n7. `test_run_analysis_integration`: Pass an `io.StringIO` containing repetitive lines with timestamps to `main.run_analysis`. Assert the returned dict contains both 'loops' and 'spikes' keys with valid data."
+                "filepath": "test_core.py",
+                "instructions": "Strict TDD suite using `pytest`. Imports actual functions from `core`. \n1. `test_calculate_exact_cost`: Passes an in-memory list of JSON strings with costs like '0.1' and '0.2'. Asserts result is exactly `Decimal('0.3')`, proving no float drift.\n2. `test_detect_agent_spikes`: Passes in-memory JSON strings with 150 events for 'agent-1' within 10 seconds. Asserts a spike is detected.\n3. `test_run_audit_empty_file(tmp_path)`: Creates a 0-byte file. Asserts `run_audit` returns safely without `ValueError` (testing the win32 guard).\n4. `test_run_audit_file_not_found`: Asserts `run_audit` raises `FileNotFoundError` when given a non-existent path.\n5. `test_run_audit_integration(tmp_path)`: Writes 200 valid JSONL lines to a file in `tmp_path`. Calls `run_audit`. Asserts the returned dictionary contains the correct Decimal string and a populated spikes list."
             }
         ]
     },
     "files_created": [
         ".gitignore",
-        "README.md",
         "requirements.txt",
-        "sentinel_core.py",
-        "sentinel_io.py",
+        "README.md",
+        "core.py",
         "main.py",
-        "test_main.py"
+        "test_core.py"
     ],
     "blueprint": [
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)",
         "File: requirements.txt (Static/Config)",
-        "File: sentinel_core.py provides: def detect_loops, def detect_frequency_spikes",
-        "File: sentinel_io.py provides: def stream_log_lines, def extract_timestamps",
-        "File: main.py provides: def run_analysis, def main",
-        "File: test_main.py provides: def test_detect_loops, def test_detect_loops_no_anomaly, def test_detect_frequency_spikes, def test_stream_log_lines_memory, def test_stream_log_lines_mmap_and_empty, def test_extract_timestamps, def test_run_analysis_integration"
+        "File: README.md (Static/Config)",
+        "File: core.py provides: def calculate_exact_cost, def detect_agent_spikes, def run_audit",
+        "File: main.py provides: def main",
+        "File: test_core.py provides: def test_calculate_exact_cost, def test_detect_agent_spikes, def test_run_audit_empty_file, def test_run_audit_file_not_found, def test_run_audit_integration"
     ]
 }
