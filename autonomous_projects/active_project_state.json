@@ -1,44 +1,43 @@
 {
     "plan": {
-        "chain_of_thought": "Critique: The proposed plan is highly focused, adheres to the <8 files constraint (7 files total), and avoids all external/paid dependencies by relying strictly on the Python standard library and pytest. The dependency injection pattern for testing is excellent. However, there is a gap in test coverage: the plan heavily emphasizes the Win32 `mmap` empty-file crash guard in `io_handler.py` and `lessons_learned`, but fails to include a test case validating this behavior. I have updated `test_drift_engine.py` to include Test Case 5, which explicitly tests the 0-byte file scenario to ensure the guard prevents a `ValueError`. All other interfaces and constraints are perfectly aligned with the requirements.",
-        "project_name": "CloudDriftAuditor",
-        "vision": "A strict Spec Roadmap for an agentic billing anomaly detector:\n- Milestone 1: Implement pure mathematical drift detection (`drift_engine.py`) that compares IEEE 754 float accumulation against exact `decimal.Decimal` accumulation in a single pass.\n- Milestone 2: Implement robust I/O (`io_handler.py`) utilizing `mmap` with explicit `os.path.getsize` guards to prevent win32 crashes, yielding decoded lines.\n- Milestone 3: Build the CLI orchestrator (`main.py`) to wire I/O to the engine.\n- Milestone 4: Execute strict TDD (`test_drift_engine.py`) validating the engine with `io.StringIO` and `tmp_path` to ensure zero mock usage, mathematical accuracy, and Win32 safety.",
+        "chain_of_thought": "The '$1.7B AWS Estimated Billing' trend highlights the catastrophic risk of runaway cloud resource provisioning (e.g., compromised keys spinning up massive compute fleets). To solve this agentic gap without paid APIs or cloud dependencies, I will design 'CloudTrailSpikeAuditor'. This is a local-first, offline CLI tool that ingests massive AWS CloudTrail JSONL exports to detect anomalous provisioning spikes (e.g., thousands of 'RunInstances' or 'CreateVolume' calls) in a single pass. To ensure robustness on win32 and massive file support, I will use memory-mapped files (`mmap`) with explicit `os.path.getsize` guards against empty-file crashes. I will strictly decouple the I/O from the core logic: `io_engine.py` will yield lines, while `sentinel_core.py` will accept an `Iterable[str]`. This Dependency Injection allows `test_main.py` to thoroughly unit test the spike detection algorithm using pure in-memory lists, completely eliminating the need for `unittest.mock`.",
+        "project_name": "CloudTrailSpikeAuditor",
+        "vision": "Spec Roadmap:\n1. Problem: Detect AWS billing anomalies caused by runaway infrastructure provisioning without requiring cloud API access or heavy ML.\n2. Milestone 1: Implement `io_engine.py` to safely stream lines from massive JSONL files using `mmap`, including win32 empty-file guards.\n3. Milestone 2: Implement `sentinel_core.py` with pure functions to parse JSON lines and aggregate provisioning events (RunInstances, CreateVolume, etc.) in a single pass, avoiding `itertools.tee`.\n4. Milestone 3: Wire components in `main.py` via a CLI interface.\n5. Testing Strategy: Strict TDD. `test_main.py` will test `sentinel_core` using raw string arrays (Dependency Injection). It will test `io_engine` using `pytest`'s `tmp_path` to verify actual file I/O and the win32 empty-file guard. No mocks will be used.",
         "interface_contracts": {
-            "drift_engine.py": "Provides `class AuditReport(NamedTuple)` and `def audit_stream(lines: Iterable[str], spike_threshold: Decimal) -> AuditReport`.",
-            "io_handler.py": "Provides `def stream_billing_file(filepath: str) -> Iterable[str]`.",
-            "main.py": "Provides `def main()` which imports `stream_billing_file` and `audit_stream`.",
-            "test_drift_engine.py": "Imports `audit_stream` and `AuditReport` directly from `drift_engine`, and `stream_billing_file` from `io_handler`."
+            "io_engine.py": "def stream_log_lines(file_path: str) -> Iterator[str]",
+            "sentinel_core.py": "def analyze_provisioning_spikes(lines: Iterable[str], spike_threshold: int = 100) -> dict",
+            "main.py": "def main(argv: list[str] | None = None) -> int"
         },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates both float and decimal sums simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
-        "commit_message": "Implement CloudDriftAuditor: single-pass billing log scanner detecting float drift and AWS-style $1B anomalies.",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates event frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
+        "commit_message": "Implement CloudTrailSpikeAuditor to detect AWS billing spike anomalies via local offline JSONL log analysis.",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Standard Python gitignore including `__pycache__/`, `*.pyc`, `.env`, `venv/`, `.pytest_cache/`, and `*.csv`."
+                "instructions": "Create a standard Python .gitignore. Must include: __pycache__/, *.py[cod], *$py.class, .env, venv/, ENV/, .pytest_cache/, and *.jsonl (to prevent committing massive log files)."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "Contains exactly one line: `pytest==8.0.0`."
+                "instructions": "List only the required testing dependency: pytest==8.2.0. No other third-party packages are allowed; the application must rely entirely on the Python standard library."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Document the CloudDriftAuditor. Explain that it solves the 'float divergence' and 'AWS $1.7B billing error' problems by doing a single-pass scan of billing CSVs. Detail the architecture: pure functions in `drift_engine.py` and memory-mapped I/O in `io_handler.py`. Include instructions on how to run tests (`pytest`) and how to run the CLI (`python main.py <file.csv>`)."
+                "instructions": "Write a concise README explaining the CloudTrailSpikeAuditor. Detail the architecture: how `io_engine.py` handles memory-mapped file I/O safely on win32, and how `sentinel_core.py` uses pure functions and Dependency Injection to process streams of CloudTrail events. Include instructions on how to run the CLI (`python main.py <logfile.jsonl>`) and how to run tests (`pytest`)."
             },
             {
-                "filepath": "drift_engine.py",
-                "instructions": "Implement the core mathematical engine using ONLY the standard library (`decimal`, `typing`).\n1. Define `AuditReport` as a `NamedTuple` with fields: `total_float: float`, `total_decimal: Decimal`, `drift: Decimal`, `max_charge: Decimal`, `anomalies: List[str]`.\n2. Implement `def audit_stream(lines: Iterable[str], spike_threshold: Decimal = Decimal('10000.00')) -> AuditReport:`.\n3. The function must perform a STRICT SINGLE PASS over `lines`. Do not use `itertools.tee`.\n4. For each line, parse CSV format: `timestamp,service,cost`. Skip headers.\n5. Accumulate `cost` into a running `float` sum AND a running `Decimal` sum.\n6. Track `max_charge`. If `cost > spike_threshold`, append to `anomalies` list: `f'SPIKE: {service} charged {cost}'`.\n7. Calculate `drift` as `abs(Decimal(str(total_float)) - total_decimal)`.\n8. Return the populated `AuditReport`."
+                "filepath": "io_engine.py",
+                "instructions": "Implement the file I/O engine. Create a generator function `stream_log_lines(file_path: str) -> Iterator[str]`. CRITICAL: Before opening the file, check `os.path.getsize(file_path)`. If it is 0, return immediately to prevent the win32 `mmap` empty-file crash. If > 0, open the file in binary read mode ('rb'), create an `mmap.mmap` object with `access=mmap.ACCESS_READ`, and yield decoded UTF-8 strings line by line. Ensure the mmap and file are properly closed using context managers or try/finally blocks. Do not use any external libraries."
             },
             {
-                "filepath": "io_handler.py",
-                "instructions": "Implement robust file I/O using ONLY the standard library (`mmap`, `os`, `typing`).\n1. Implement `def stream_billing_file(filepath: str) -> Iterable[str]:`.\n2. CRITICAL WIN32 GUARD: Check `os.path.getsize(filepath)`. If it is 0, yield nothing and return immediately to prevent `mmap` ValueError on Windows.\n3. Open the file in binary read mode (`'rb'`).\n4. Create an `mmap.mmap` object with `access=mmap.ACCESS_READ`.\n5. Iterate over the mmap object using `iter(mm.readline, b\"\")`.\n6. Decode each line using `.decode('utf-8').strip()` and yield it.\n7. Ensure context managers (`with`) are used correctly, but note that since this is a generator, the file must remain open while yielding. Use a try/finally block or yield from within the `with` context."
+                "filepath": "sentinel_core.py",
+                "instructions": "Implement the core analysis logic using pure functions. Create `analyze_provisioning_spikes(lines: Iterable[str], spike_threshold: int = 100) -> dict`. This function MUST accept an iterable of strings (Dependency Injection) so it can be tested in-memory. Iterate through the lines exactly once (single-pass, no `itertools.tee`). Use the standard library `json.loads` to parse each line. Track the frequency of high-risk AWS API calls: 'RunInstances', 'CreateVolume', 'CreateBucket', and 'AllocateAddress'. If any event count exceeds `spike_threshold`, flag it in a 'spikes' dictionary. Return a summary dict containing 'total_events', 'spikes', and 'is_anomalous' (boolean). Catch and ignore `json.JSONDecodeError` for malformed lines."
             },
             {
                 "filepath": "main.py",
-                "instructions": "Implement the CLI entry point using `argparse` and `sys`.\n1. Import `stream_billing_file` from `io_handler` and `audit_stream` from `drift_engine`.\n2. Parse a single positional argument: `filepath`.\n3. Call `stream_billing_file(filepath)` and pass the resulting generator to `audit_stream()`.\n4. Print the results formatted nicely: Total Float, Total Decimal, Drift Amount, Max Charge, and a list of any Anomalies.\n5. If `anomalies` is not empty or `drift > Decimal('0.01')`, exit with status code 1 to indicate failure/alert. Otherwise exit 0."
+                "instructions": "Implement the CLI entry point. Create `main(argv: list[str] | None = None) -> int`. Use `argparse` to accept a required positional argument `logfile` and an optional `--threshold` integer (default 100). Import `stream_log_lines` from `io_engine` and `analyze_provisioning_spikes` from `sentinel_core`. Pass the generator from `stream_log_lines` directly into `analyze_provisioning_spikes`. Print the resulting dictionary as formatted JSON to stdout. Return 0 on success, 1 on FileNotFoundError. Include the standard `if __name__ == '__main__': raise SystemExit(main())` block."
             },
             {
-                "filepath": "test_drift_engine.py",
-                "instructions": "Implement strict unit tests using `pytest`, `io`, and `decimal.Decimal`. DO NOT use `unittest.mock`.\n1. Test `audit_stream` directly by passing an `io.StringIO` object as the `Iterable[str]`.\n2. Test Case 1 (Normal): Pass lines `['ts,svc,cost', '1,a,10.50', '2,b,20.25']`. Assert `total_decimal` is `30.75`, `drift` is `0`, and `anomalies` is empty.\n3. Test Case 2 (Spike): Pass lines with a cost of `2000000.00`. Assert `anomalies` contains 1 item starting with 'SPIKE'.\n4. Test Case 3 (Float Drift): Pass a generator that yields `1000` lines of `ts,svc,0.10`. Float addition of 0.1 will drift from Decimal addition. Assert `drift > 0`.\n5. Test Case 4 (Integration with I/O): Use pytest's `tmp_path` fixture. Write a sample CSV to a file. Import `stream_billing_file` from `io_handler`, pass the `tmp_path` file, and feed it to `audit_stream`. Assert results match.\n6. Test Case 5 (Empty File Guard): Use pytest's `tmp_path` to create an empty (0-byte) file. Pass it to `stream_billing_file` and feed the result to `audit_stream`. Assert that it completes without raising a `ValueError` and returns an `AuditReport` with zeroed totals, validating the critical Win32 `mmap` guard."
+                "filepath": "test_main.py",
+                "instructions": "Implement a strict, comprehensive pytest suite. DO NOT USE `unittest.mock`. \n1. Test `sentinel_core.analyze_provisioning_spikes` by passing a raw Python list of JSON strings (in-memory DI). Verify it correctly counts 'RunInstances' and flags anomalies when the threshold is crossed. Verify it handles malformed JSON gracefully.\n2. Test `io_engine.stream_log_lines` using pytest's `tmp_path` fixture. Write a sample JSONL file to `tmp_path`, stream it, and assert the lines match. \n3. CRITICAL: Test the win32 empty-file guard by creating a 0-byte file in `tmp_path` and asserting that `stream_log_lines` returns an empty iterator without raising an exception.\n4. Test `main.main` by calling it directly with a list of arguments pointing to the `tmp_path` file, capturing stdout via `capsys` to verify JSON output."
             }
         ]
     },
@@ -46,18 +45,18 @@
         ".gitignore",
         "requirements.txt",
         "README.md",
-        "drift_engine.py",
-        "io_handler.py",
+        "io_engine.py",
+        "sentinel_core.py",
         "main.py",
-        "test_drift_engine.py"
+        "test_main.py"
     ],
     "blueprint": [
         "File: .gitignore (Static/Config)",
         "File: requirements.txt (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: drift_engine.py provides: class AuditReport, def audit_stream",
-        "File: io_handler.py provides: def stream_billing_file",
+        "File: io_engine.py provides: def stream_log_lines",
+        "File: sentinel_core.py provides: def analyze_provisioning_spikes",
         "File: main.py provides: def main",
-        "File: test_drift_engine.py provides: def test_audit_stream_normal, def test_audit_stream_spike, def test_audit_stream_float_drift, def test_integration_with_io, def test_empty_file_guard"
+        "File: test_main.py provides: def test_analyze_provisioning_spikes_counts_and_flags, def test_analyze_provisioning_spikes_no_anomaly, def test_stream_log_lines_reads_file, def test_stream_log_lines_empty_file, def test_main_success, def test_main_file_not_found"
     ]
 }
