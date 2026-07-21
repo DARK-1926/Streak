@@ -1,5 +1,5 @@
 {
-    "score": 50,
+    "score": 51,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -326,6 +326,11 @@
             "date": "2026-07-20T10:20:32.694497",
             "project": "CloudTrailSpikeAuditor",
             "model": "qwen3.7-max-preview"
+        },
+        {
+            "date": "2026-07-21T12:37:26.739782",
+            "project": "ZombieComputeAuditor",
+            "model": "qwen3.7-max-preview"
         }
     ],
     "model_ratings": {
@@ -354,7 +359,6 @@
         "cohere/north-mini-code:free": -2
     },
     "past_projects": [
-        "CodeFlowAgent",
         "CodeFlowEnhancer",
         "CodeFlowOptimizer",
         "CodeSessionManager",
@@ -373,10 +377,10 @@
         "AgentSpendDriftAuditor",
         "FloatDriftAuditorAgent",
         "CloudDriftAuditor",
-        "CloudTrailSpikeAuditor"
+        "CloudTrailSpikeAuditor",
+        "ZombieComputeAuditor"
     ],
     "lessons_learned": [
-        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
@@ -395,7 +399,8 @@
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive agent logs, explicitly guarding against the win32 `mmap` empty-file crash and enforcing `ACCESS_READ` for cross-platform safety. Crucially, it avoids the `itertools.tee` memory trap on large generators by using a strict two-pass execution model (seeking the mmap stream back to 0). Core logic is decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. No heavy OOP or external APIs are used.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a single-pass execution model that accumulates both float and decimal sums simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates both float and decimal sums simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
-        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates event frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`."
+        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates event frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
+        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL compute logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates agent costs and task yields simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Furthermore, it enforces strict resource safety by utilizing context managers for file and mmap handling, and prevents `KeyError` crashes by validating JSON schema completeness per line."
     ],
     "planner_ratings": {
         "cohere/north-mini-code-20260617:free": {
@@ -449,9 +454,9 @@
             "test_stages_reached": 15
         },
         "qwen3.7-max-preview": {
-            "plans_created": 7,
+            "plans_created": 8,
             "critique_survivals": 1,
-            "test_stages_reached": 9
+            "test_stages_reached": 10
         },
         "qwen3-max": {
             "plans_created": 0,
@@ -545,10 +550,10 @@
             "fix_successes": 1
         },
         "qwen3.7-max-preview": {
-            "files_generated": 50,
-            "lint_passes": 29,
+            "files_generated": 56,
+            "lint_passes": 32,
             "fix_attempts": 8,
-            "fix_successes": 7
+            "fix_successes": 8
         },
         "qwen3-max": {
             "files_generated": 0,
