@@ -18,6 +18,8 @@ load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 QWEN_API_KEY = os.getenv("QWEN_API_KEY")
 
+ALIBABA_MODELS = ["qwen3.7-max-preview", "qwen3-max", "qwen-plus", "qwen3-coder-plus", "qwen3-coder-flash"]
+
 if not OPENROUTER_API_KEY:
     print("Error: OPENROUTER_API_KEY not found.")
     exit(1)
@@ -78,8 +80,7 @@ def increment_quota():
 # ==========================================
 def fetch_live_free_models():
     def inject_qwen(models):
-        qwen_models = ["qwen3.7-max-preview", "qwen3-max", "qwen-plus", "qwen3-coder-plus", "qwen3-coder-flash"]
-        for qm in reversed(qwen_models):
+        for qm in reversed(ALIBABA_MODELS):
             if qm not in models:
                 models.insert(0, qm)
         return models
@@ -130,7 +131,7 @@ class NeuralGrid:
         available = [m for m in self.models if m not in self.unhealthy_models]
         if not available: return None
         def score(m):
-            if m.startswith("qwen"): return 1000.0
+            if m in ALIBABA_MODELS: return 1000.0
             metrics = self.memory.get("planner_ratings", {}).get(m, {"plans_created": 0, "critique_survivals": 0, "test_stages_reached": 0})
             if isinstance(metrics, int): metrics = {"plans_created": metrics, "critique_survivals": 0, "test_stages_reached": 0}
             plans = max(metrics.get("plans_created", 1), 1)
@@ -142,7 +143,7 @@ class NeuralGrid:
         available = [m for m in self.models if m not in self.unhealthy_models]
         if not available: return None
         def score(m):
-            if m.startswith("qwen"): return 1000.0
+            if m in ALIBABA_MODELS: return 1000.0
             metrics = self.memory.get("coder_ratings", {}).get(m, {"files_generated": 0, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0})
             if isinstance(metrics, int): metrics = {"files_generated": metrics, "lint_passes": 0, "fix_attempts": 0, "fix_successes": 0}
             files = max(metrics.get("files_generated", 1), 1)
@@ -268,7 +269,7 @@ def call_openrouter(models_list, sys_prompt=None, user_prompt=None, temperature=
         if attempt == 0: increment_quota() 
         
         target_model = models_list[0]
-        is_qwen = target_model.startswith("qwen")
+        is_qwen = target_model in ALIBABA_MODELS
         
         if messages is None:
             msgs = [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}]
@@ -525,7 +526,17 @@ def check_dependencies(file_list, project_dir):
     req_path = os.path.join(project_dir, "requirements.txt")
     if os.path.exists(req_path):
         with open(req_path, "r") as f:
-            pkgs = [line.split("==")[0].strip() for line in f if line.strip() and not line.startswith("#")]
+            # Handle various version specifiers: ==, >=, >, <, <=, ~=, !=
+            pkgs = []
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # Split on any of the standard version specifiers
+                pkg = re.split(r'==|>=|>|<|<=|~=|!=', line)[0].strip()
+                if pkg:
+                    pkgs.append(pkg)
+                    
         for pkg in pkgs:
             if not pkg: continue
             try:

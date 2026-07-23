@@ -1,56 +1,71 @@
 {
     "plan": {
-        "chain_of_thought": "1. Scope & Dependencies: The plan contains 6 files, well within the 8-file limit, and relies solely on the Python standard library and pytest, avoiding any hidden paid-API dependencies. 2. Robustness & Missing Interfaces: The core logic (`zombie_auditor.py`) parses JSON but lacks handling for valid JSON objects that are missing required keys (e.g., `agent_id` or `compute_cost`), which would cause a `KeyError` and crash the single-pass loop. I will add a key-existence check. 3. Resource Management: The CLI (`cli.py`) instructions manually open and close files/mmaps. This is prone to resource leaks if an exception occurs during processing. I will update the instructions to use Python context managers (`with` statements) for guaranteed cleanup. 4. Test Coverage: I will add a new test case (`test_handles_incomplete_json`) to `test_auditor.py` to verify the new key-missing resilience.",
-        "project_name": "ZombieComputeAuditor",
-        "vision": "Spec Roadmap: 1. Core Logic (`zombie_auditor.py`): Implement a pure function to parse JSONL lines, aggregate compute cost and task completion per agent_id in a single pass, gracefully ignoring malformed or incomplete records, and flag 'zombies' based on configurable thresholds. 2. CLI & I/O (`cli.py`): Implement memory-mapped file reading using context managers for safe resource handling, with explicit win32 empty-file guards, injecting the line generator into the core logic. 3. Testing (`test_auditor.py`): Build a strict TDD suite validating anomaly detection, malformed/incomplete log resilience, and CLI file processing via `tmp_path`. 4. Documentation & Config: Provide `README.md`, `.gitignore`, and `requirements.txt`.",
+        "chain_of_thought": "Critique: The original plan is architecturally sound, strictly decoupled, avoids scope creep (6 files), and uses no paid APIs. However, it fails the 'missing test coverage' check. The interface contracts define `parse_knowledge_entry` and `cli.main`, but the test suite lacks coverage for both. Furthermore, the instructions for `audit_context_drift` do not explicitly mandate using the `parse_knowledge_entry` helper, risking duplicated parsing logic. Test names in the instructions also slightly mismatched the interface contracts. Changes made: 1. Added `test_parse_knowledge_entry_valid` and `test_cli_main_success` to both interface contracts and test instructions. 2. Updated `audit_context_drift` instructions to explicitly use `parse_knowledge_entry`. 3. Enhanced `test_audit_context_drift_detects_orphans` to assert all keys in the return dictionary (`total_docs`, `high_slop_docs`). 4. Aligned test function names between contracts and file generation instructions. 5. Clarified the lazy decoding generator expression in `cli.py`.",
+        "project_name": "ContextDriftAuditor",
+        "vision": "Spec Roadmap: 1. Define pure data structures and parsing logic for JSONL manifests and knowledge bases. 2. Implement O(N) drift detection by mapping declared code symbols against referenced symbols in text. 3. Implement deterministic 'slop scoring' using a dictionary of known LLM filler phrases. 4. Build a robust CLI using `mmap` for low-memory processing of massive repositories, with strict win32 empty-file guards. 5. Develop a comprehensive TDD suite validating all edge cases (empty streams, missing keys, high slop, zero drift, CLI execution) using in-memory streams and tmp_path. Atomic Milestones: Core Logic -> CLI Wrapper -> TDD Validation.",
         "interface_contracts": {
-            "zombie_auditor.py": "Provides `audit_agent_yield(log_lines: Iterable[str], cost_threshold: float, task_threshold: int) -> dict[str, dict]`. Accepts an iterable of JSON strings, gracefully ignoring malformed or incomplete records, and returns a dictionary mapping agent_ids to their aggregated metrics and zombie status.",
-            "cli.py": "Provides `process_file(filepath: str, cost_threshold: float, task_threshold: int) -> dict` and `main() -> None`. Handles `mmap` initialization via context managers, win32 guards, and invokes `zombie_auditor.audit_agent_yield`.",
-            "test_auditor.py": "Imports `audit_agent_yield` from `zombie_auditor` and `process_file` from `cli`. Validates logic using in-memory lists and `pytest`'s `tmp_path` fixture, including edge cases for missing JSON keys."
+            "context_drift.py": [
+                "def parse_manifest_entry(line: str) -> Optional[str]:",
+                "def parse_knowledge_entry(line: str) -> Optional[Dict[str, Any]]:",
+                "def calculate_slop_score(text: str) -> float:",
+                "def audit_context_drift(manifest_stream: Iterable[str], knowledge_stream: Iterable[str]) -> Dict[str, Any]:"
+            ],
+            "cli.py": [
+                "def safe_mmap_generator(filepath: str) -> Generator[str, None, None]:",
+                "def main(argv: List[str]) -> int:"
+            ],
+            "test_context_drift.py": [
+                "def test_parse_manifest_entry_valid():",
+                "def test_parse_knowledge_entry_valid():",
+                "def test_calculate_slop_score_high():",
+                "def test_audit_context_drift_detects_orphans():",
+                "def test_cli_empty_file_guard(tmp_path):",
+                "def test_cli_main_success(tmp_path, capsys):"
+            ]
         },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL compute logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates agent costs and task yields simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Furthermore, it enforces strict resource safety by utilizing context managers for file and mmap handling, and prevents `KeyError` crashes by validating JSON schema completeness per line.",
-        "commit_message": "Implement ZombieComputeAuditor to detect high-cost, zero-yield agent drift using single-pass mmap log parsing with robust error handling.",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL documentation dumps, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict two-stream execution model (one pass for manifest, one pass for knowledge). Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Slop detection uses O(N) algorithmic keyword frequency rather than heavy ML libraries. Comprehensive TDD ensures all pure functions and CLI entry points are verified.",
+        "commit_message": "Implement ContextDriftAuditor: a pure-Python, mmap-backed CLI agent that detects orphaned documentation references and algorithmic LLM slop in organizational knowledge bases.",
         "files_to_generate": [
             {
-                "filepath": "requirements.txt",
-                "instructions": "Create a minimal requirements file containing only `pytest` for the test suite. No heavy ML or external API libraries."
+                "filepath": ".gitignore",
+                "instructions": "Create a standard Python .gitignore file. Must explicitly ignore: __pycache__/, *.py[cod], *$py.class, .env, venv/, .pytest_cache/, and *.mmap."
             },
             {
-                "filepath": ".gitignore",
-                "instructions": "Standard Python gitignore. Must include: `__pycache__/`, `*.py[cod]`, `*$py.class`, `.env`, `venv/`, `.pytest_cache/`, and `*.log`."
+                "filepath": "requirements.txt",
+                "instructions": "List only the required testing dependency: pytest>=7.0.0. No other external packages are allowed."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Document the ZombieComputeAuditor. Explain the problem (agents consuming cloud compute/energy without producing tasks), the architecture (decoupled pure logic vs mmap I/O), the win32 safety features, and how to run the tests (`pytest`) and the CLI (`python cli.py <logfile>`)."
+                "instructions": "Write a concise README explaining the ContextDriftAuditor. Detail the problem (organizational knowledge drift and LLM slop), the architecture (pure functions, DI, mmap for win32), and how to run the tests (`pytest`) and the CLI (`python cli.py manifest.jsonl knowledge.jsonl`)."
             },
             {
-                "filepath": "zombie_auditor.py",
-                "instructions": "Implement the core pure logic. Import `json` and `typing.Iterable`. Define `audit_agent_yield(log_lines: Iterable[str], cost_threshold: float = 10.0, task_threshold: int = 0) -> dict`. Initialize an empty dictionary `stats`. Iterate through `log_lines`. For each line, attempt `json.loads`. If it fails, continue. Check if the keys `agent_id`, `compute_cost`, and `tasks_completed` exist in the parsed dictionary; if any are missing, continue. Extract `agent_id`, `compute_cost` (float), and `tasks_completed` (int). Accumulate these in `stats[agent_id]`. After the loop, iterate through `stats` and add a boolean `is_zombie` flag which is True if `total_cost >= cost_threshold` and `total_tasks <= task_threshold`. Return the `stats` dictionary. No file I/O or side effects allowed here."
+                "filepath": "context_drift.py",
+                "instructions": "Implement the core pure logic. NO file I/O, NO imports other than `json`, `re`, `typing`, `collections`. \n1. `parse_manifest_entry(line: str) -> Optional[str]`: Parse JSONL. Expect `{\"type\": \"code\", \"symbol\": \"ClassName\"}`. Return symbol or None.\n2. `parse_knowledge_entry(line: str) -> Optional[Dict[str, Any]]`: Parse JSONL. Expect `{\"id\": \"doc1\", \"text\": \"...\", \"author\": \"...\"}`. Return dict or None.\n3. `calculate_slop_score(text: str) -> float`: Count occurrences of LLM-isms ('delve', 'testament', 'tapestry', 'crucial', 'in conclusion', 'as an ai', 'foster'). Divide by total word count. Return float 0.0 to 1.0.\n4. `audit_context_drift(manifest_stream: Iterable[str], knowledge_stream: Iterable[str]) -> Dict[str, Any]`: Iterate manifest_stream, using `parse_manifest_entry` to build a `set` of valid symbols. Iterate knowledge_stream: use `parse_knowledge_entry` to get the text. Use regex `r'\\b[A-Z][a-zA-Z0-9_]*\\b'` to find referenced symbols in text. If a referenced symbol is not in the valid set, record it as 'drift'. Calculate slop score for each doc (threshold > 0.05 is 'high'). Return a summary dict: `{'total_docs': int, 'drifted_docs': int, 'high_slop_docs': int, 'orphaned_symbols': List[str]}`."
             },
             {
                 "filepath": "cli.py",
-                "instructions": "Implement the CLI and file I/O. Import `os`, `mmap`, `argparse`, `json`, and `audit_agent_yield` from `zombie_auditor`. Define `process_file(filepath: str, cost_threshold: float, task_threshold: int) -> dict`. First, check `if not os.path.exists(filepath) or os.path.getsize(filepath) == 0: return {}`. This is the critical win32 guard. Open the file using a context manager: `with open(filepath, 'rb') as f:`. Inside, use `with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:`. Create a generator: `lines = (line.decode('utf-8') for line in iter(mm.readline, b''))`. Pass this generator to `audit_agent_yield`. The context managers will automatically handle closing the mmap and file safely. Return the result. Define `main()` using `argparse` to accept `filepath`, `--cost-threshold`, and `--task-threshold`. Call `process_file` and print the resulting JSON to stdout."
+                "instructions": "Implement the CLI and file handling. Imports: `sys`, `os`, `mmap`, `json`, `contextlib`, `typing`, and `context_drift`. \n1. `safe_mmap_generator(filepath: str) -> Generator[str, None, None]`: CRITICAL: Check `os.path.getsize(filepath)`. If 0, yield nothing and return (prevents win32 crash). Otherwise, open file `rb`, create `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Decode lines lazily using a generator expression: `(line.decode('utf-8') for line in iter(mmap_obj.readline, b''))`. Ensure context managers close resources.\n2. `main(argv: List[str]) -> int`: Parse args (manifest_path, knowledge_path). Use `safe_mmap_generator` for both. Pass generators to `context_drift.audit_context_drift`. Print JSON report to stdout. Return 0 on success, 1 on error."
             },
             {
-                "filepath": "test_auditor.py",
-                "instructions": "Implement a strict TDD suite using `pytest`. Import `json`, `audit_agent_yield` from `zombie_auditor`, and `process_file` from `cli`. Test 1: `test_detects_zombie_agent` - pass a list of JSON strings where one agent has cost=15.0 and tasks=0. Assert `is_zombie` is True. Test 2: `test_ignores_healthy_agent` - pass logs where cost=15.0 and tasks=10. Assert `is_zombie` is False. Test 3: `test_handles_malformed_json` - include a non-JSON string in the iterable. Assert the function does not crash and processes valid lines. Test 4: `test_handles_incomplete_json` - pass a list containing a valid JSON string that is missing the `compute_cost` key. Assert the function does not crash and ignores the incomplete line. Test 5: `test_cli_process_file_integration` - use the `tmp_path` fixture. Write a sample JSONL file to `tmp_path / 'test.log'`. Call `process_file` with this path. Assert the returned dictionary matches expected aggregations. Test 6: `test_cli_empty_file_guard` - create an empty file in `tmp_path`, call `process_file`, and assert it returns `{}` without crashing."
+                "filepath": "test_context_drift.py",
+                "instructions": "Implement strict TDD using `pytest` and `io.StringIO`. NO `unittest.mock`. Import functions directly from `context_drift` and `cli`.\n1. `test_parse_manifest_entry_valid`: Test valid JSON, invalid JSON, missing keys.\n2. `test_parse_knowledge_entry_valid`: Test valid JSON, invalid JSON, missing keys.\n3. `test_calculate_slop_score_high`: Test string with high density of 'delve' and 'tapestry' (score > 0.0), and normal text (score == 0.0).\n4. `test_audit_context_drift_detects_orphans`: Create two `io.StringIO` objects. Manifest has `{'type':'code','symbol':'Auth'}`. Knowledge has `{'id':'1','text':'Use Auth and DBManager'}`. Assert report shows 'DBManager' in orphaned_symbols, drifted_docs == 1, total_docs == 1, and high_slop_docs == 0.\n5. `test_cli_empty_file_guard(tmp_path)`: Create an empty file using `tmp_path`. Call `list(cli.safe_mmap_generator(empty_file))`. Assert it returns an empty list without crashing.\n6. `test_cli_main_success(tmp_path, capsys)`: Create valid manifest and knowledge JSONL files in `tmp_path`. Call `cli.main([str(manifest), str(knowledge)])`. Assert it returns 0 and stdout contains valid JSON with expected keys."
             }
         ]
     },
     "files_created": [
-        "requirements.txt",
         ".gitignore",
+        "requirements.txt",
         "README.md",
-        "zombie_auditor.py",
+        "context_drift.py",
         "cli.py",
-        "test_auditor.py"
+        "test_context_drift.py"
     ],
     "blueprint": [
-        "File: requirements.txt (Static/Config)",
         "File: .gitignore (Static/Config)",
+        "File: requirements.txt (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: zombie_auditor.py provides: def audit_agent_yield",
-        "File: cli.py provides: def process_file, def main",
-        "File: test_auditor.py provides: def test_detects_zombie_agent, def test_ignores_healthy_agent, def test_handles_malformed_json, def test_handles_incomplete_json, def test_cli_process_file_integration, def test_cli_empty_file_guard"
+        "File: context_drift.py provides: def parse_manifest_entry, def parse_knowledge_entry, def calculate_slop_score, def audit_context_drift",
+        "File: cli.py provides: def safe_mmap_generator, def main",
+        "File: test_context_drift.py provides: def test_parse_manifest_entry_valid, def test_parse_knowledge_entry_valid, def test_calculate_slop_score_high, def test_audit_context_drift_detects_orphans, def test_cli_empty_file_guard, def test_cli_main_success"
     ]
 }
