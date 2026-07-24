@@ -1,54 +1,47 @@
 {
     "plan": {
-        "chain_of_thought": "Critique: The original plan is architecturally sound, strictly decoupled, avoids scope creep (6 files), and uses no paid APIs. However, it fails the 'missing test coverage' check. The interface contracts define `parse_knowledge_entry` and `cli.main`, but the test suite lacks coverage for both. Furthermore, the instructions for `audit_context_drift` do not explicitly mandate using the `parse_knowledge_entry` helper, risking duplicated parsing logic. Test names in the instructions also slightly mismatched the interface contracts. Changes made: 1. Added `test_parse_knowledge_entry_valid` and `test_cli_main_success` to both interface contracts and test instructions. 2. Updated `audit_context_drift` instructions to explicitly use `parse_knowledge_entry`. 3. Enhanced `test_audit_context_drift_detects_orphans` to assert all keys in the return dictionary (`total_docs`, `high_slop_docs`). 4. Aligned test function names between contracts and file generation instructions. 5. Clarified the lazy decoding generator expression in `cli.py`.",
-        "project_name": "ContextDriftAuditor",
-        "vision": "Spec Roadmap: 1. Define pure data structures and parsing logic for JSONL manifests and knowledge bases. 2. Implement O(N) drift detection by mapping declared code symbols against referenced symbols in text. 3. Implement deterministic 'slop scoring' using a dictionary of known LLM filler phrases. 4. Build a robust CLI using `mmap` for low-memory processing of massive repositories, with strict win32 empty-file guards. 5. Develop a comprehensive TDD suite validating all edge cases (empty streams, missing keys, high slop, zero drift, CLI execution) using in-memory streams and tmp_path. Atomic Milestones: Core Logic -> CLI Wrapper -> TDD Validation.",
+        "chain_of_thought": "Critique of the proposed plan:\n1. Scope Creep: The plan correctly limits the scope to exactly 8 files. No changes needed here.\n2. Hidden Paid-API Dependencies: The plan relies solely on the Python standard library and `pytest`. No external or paid APIs are used.\n3. Missing Interfaces & Edge Cases: \n   - In `core.py`, parsing JSON lines might raise a `KeyError` if 'pid' or 'bytes' are missing from a valid JSON object. The exception handling must include `KeyError`.\n   - In `cli.py`, the instructions mention returning 1 on `FileNotFoundError`, but do not explicitly instruct the developer to catch it. I will add a try-except block requirement.\n   - In `tests/test_disk_churn.py`, the CLI orchestration (`main` function) lacks test coverage. I will add tests using `pytest`'s `capsys` and `tmp_path` to verify end-to-end CLI behavior without using `unittest.mock`.\n4. Generator Resource Management: In `io_handler.py`, using context managers (`with`) inside a generator is safe in modern Python as `__exit__` is called upon garbage collection or closure, but I will explicitly mention ensuring the generator is properly closed to prevent file descriptor leaks if iteration is halted early.",
+        "project_name": "DiskChurnAuditor",
+        "vision": "Spec Roadmap:\n1. Core Aggregation Engine: Implement a pure, single-pass O(N) function to parse JSONL telemetry and calculate write amplification metrics per process, robustly handling missing keys.\n2. Safe I/O Layer: Build a generator-based file streamer using `mmap` with explicit `os.path.getsize` checks to prevent win32 crashes on empty files, ensuring strict resource cleanup.\n3. CLI Orchestration: Create an argparse-based entry point that wires the I/O layer to the Core Engine, catches file errors gracefully, and outputs a formatted report of high-churn processes.\n4. TDD Validation: Develop a strict test suite using `pytest`, `tmp_path`, and `capsys` to verify pure logic, I/O behavior, and CLI integration, ensuring zero reliance on mock objects.",
         "interface_contracts": {
-            "context_drift.py": [
-                "def parse_manifest_entry(line: str) -> Optional[str]:",
-                "def parse_knowledge_entry(line: str) -> Optional[Dict[str, Any]]:",
-                "def calculate_slop_score(text: str) -> float:",
-                "def audit_context_drift(manifest_stream: Iterable[str], knowledge_stream: Iterable[str]) -> Dict[str, Any]:"
-            ],
-            "cli.py": [
-                "def safe_mmap_generator(filepath: str) -> Generator[str, None, None]:",
-                "def main(argv: List[str]) -> int:"
-            ],
-            "test_context_drift.py": [
-                "def test_parse_manifest_entry_valid():",
-                "def test_parse_knowledge_entry_valid():",
-                "def test_calculate_slop_score_high():",
-                "def test_audit_context_drift_detects_orphans():",
-                "def test_cli_empty_file_guard(tmp_path):",
-                "def test_cli_main_success(tmp_path, capsys):"
-            ]
+            "disk_churn/core.py": "Provides `@dataclass ChurnMetrics` and `def analyze_write_churn(log_lines: Iterable[str]) -> Dict[str, ChurnMetrics]`",
+            "disk_churn/io_handler.py": "Provides `def stream_log_file(filepath: str) -> Generator[str, None, None]`",
+            "disk_churn/cli.py": "Provides `def main(argv: List[str]) -> int`"
         },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL documentation dumps, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict two-stream execution model (one pass for manifest, one pass for knowledge). Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Slop detection uses O(N) algorithmic keyword frequency rather than heavy ML libraries. Comprehensive TDD ensures all pure functions and CLI entry points are verified.",
-        "commit_message": "Implement ContextDriftAuditor: a pure-Python, mmap-backed CLI agent that detects orphaned documentation references and algorithmic LLM slop in organizational knowledge bases.",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL telemetry logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates write counts, total bytes, and micro-writes simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` for incomplete JSON payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
+        "commit_message": "Implement DiskChurnAuditor to detect excessive SSD write patterns in telemetry logs using memory-mapped single-pass analysis.",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Create a standard Python .gitignore file. Must explicitly ignore: __pycache__/, *.py[cod], *$py.class, .env, venv/, .pytest_cache/, and *.mmap."
+                "instructions": "Create a standard Python .gitignore file. Include entries for __pycache__/, *.py[cod], *$py.class, .env, venv/, ENV/, .pytest_cache/, and *.log."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "List only the required testing dependency: pytest>=7.0.0. No other external packages are allowed."
+                "instructions": "List exactly one dependency: pytest==8.0.0. No other third-party packages are allowed."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a concise README explaining the ContextDriftAuditor. Detail the problem (organizational knowledge drift and LLM slop), the architecture (pure functions, DI, mmap for win32), and how to run the tests (`pytest`) and the CLI (`python cli.py manifest.jsonl knowledge.jsonl`)."
+                "instructions": "Write a concise README explaining the DiskChurnAuditor. Detail the problem (tracking SSD wear from beta apps via telemetry logs), the architecture (pure functions, DI, mmap for low memory), and how to run the tests (`pytest`) and the CLI (`python -m disk_churn.cli <logfile>`)."
             },
             {
-                "filepath": "context_drift.py",
-                "instructions": "Implement the core pure logic. NO file I/O, NO imports other than `json`, `re`, `typing`, `collections`. \n1. `parse_manifest_entry(line: str) -> Optional[str]`: Parse JSONL. Expect `{\"type\": \"code\", \"symbol\": \"ClassName\"}`. Return symbol or None.\n2. `parse_knowledge_entry(line: str) -> Optional[Dict[str, Any]]`: Parse JSONL. Expect `{\"id\": \"doc1\", \"text\": \"...\", \"author\": \"...\"}`. Return dict or None.\n3. `calculate_slop_score(text: str) -> float`: Count occurrences of LLM-isms ('delve', 'testament', 'tapestry', 'crucial', 'in conclusion', 'as an ai', 'foster'). Divide by total word count. Return float 0.0 to 1.0.\n4. `audit_context_drift(manifest_stream: Iterable[str], knowledge_stream: Iterable[str]) -> Dict[str, Any]`: Iterate manifest_stream, using `parse_manifest_entry` to build a `set` of valid symbols. Iterate knowledge_stream: use `parse_knowledge_entry` to get the text. Use regex `r'\\b[A-Z][a-zA-Z0-9_]*\\b'` to find referenced symbols in text. If a referenced symbol is not in the valid set, record it as 'drift'. Calculate slop score for each doc (threshold > 0.05 is 'high'). Return a summary dict: `{'total_docs': int, 'drifted_docs': int, 'high_slop_docs': int, 'orphaned_symbols': List[str]}`."
+                "filepath": "disk_churn/__init__.py",
+                "instructions": "Create an empty __init__.py file to establish the disk_churn directory as a Python package."
             },
             {
-                "filepath": "cli.py",
-                "instructions": "Implement the CLI and file handling. Imports: `sys`, `os`, `mmap`, `json`, `contextlib`, `typing`, and `context_drift`. \n1. `safe_mmap_generator(filepath: str) -> Generator[str, None, None]`: CRITICAL: Check `os.path.getsize(filepath)`. If 0, yield nothing and return (prevents win32 crash). Otherwise, open file `rb`, create `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Decode lines lazily using a generator expression: `(line.decode('utf-8') for line in iter(mmap_obj.readline, b''))`. Ensure context managers close resources.\n2. `main(argv: List[str]) -> int`: Parse args (manifest_path, knowledge_path). Use `safe_mmap_generator` for both. Pass generators to `context_drift.audit_context_drift`. Print JSON report to stdout. Return 0 on success, 1 on error."
+                "filepath": "disk_churn/core.py",
+                "instructions": "Implement the pure core logic. Define a `@dataclass ChurnMetrics` with integer fields: `total_bytes`, `write_count`, and `micro_writes` (all defaulting to 0). Implement `def analyze_write_churn(log_lines: Iterable[str]) -> Dict[str, ChurnMetrics]`. This function must iterate through the lines exactly once (single-pass O(N)). For each line, attempt to parse it as JSON. Extract 'pid' (cast to string) and 'bytes' (cast to int). Accumulate the metrics in a dictionary keyed by 'pid'. If 'bytes' < 512, increment 'micro_writes'. Catch and ignore `json.JSONDecodeError`, `ValueError`, `TypeError`, and `KeyError` to handle malformed lines or missing keys gracefully. Do NOT use any external libraries, only standard `json` and `typing`."
             },
             {
-                "filepath": "test_context_drift.py",
-                "instructions": "Implement strict TDD using `pytest` and `io.StringIO`. NO `unittest.mock`. Import functions directly from `context_drift` and `cli`.\n1. `test_parse_manifest_entry_valid`: Test valid JSON, invalid JSON, missing keys.\n2. `test_parse_knowledge_entry_valid`: Test valid JSON, invalid JSON, missing keys.\n3. `test_calculate_slop_score_high`: Test string with high density of 'delve' and 'tapestry' (score > 0.0), and normal text (score == 0.0).\n4. `test_audit_context_drift_detects_orphans`: Create two `io.StringIO` objects. Manifest has `{'type':'code','symbol':'Auth'}`. Knowledge has `{'id':'1','text':'Use Auth and DBManager'}`. Assert report shows 'DBManager' in orphaned_symbols, drifted_docs == 1, total_docs == 1, and high_slop_docs == 0.\n5. `test_cli_empty_file_guard(tmp_path)`: Create an empty file using `tmp_path`. Call `list(cli.safe_mmap_generator(empty_file))`. Assert it returns an empty list without crashing.\n6. `test_cli_main_success(tmp_path, capsys)`: Create valid manifest and knowledge JSONL files in `tmp_path`. Call `cli.main([str(manifest), str(knowledge)])`. Assert it returns 0 and stdout contains valid JSON with expected keys."
+                "filepath": "disk_churn/io_handler.py",
+                "instructions": "Implement the file I/O layer. Define `def stream_log_file(filepath: str) -> Generator[str, None, None]`. First, check if the file exists; if not, raise FileNotFoundError. Second, CRITICAL WIN32 GUARD: check `os.path.getsize(filepath)`. If it is 0, immediately return (yield nothing) to prevent the `mmap` ValueError on Windows. If size > 0, open the file in 'rb' mode, create an `mmap.mmap` object with `access=mmap.ACCESS_READ`, and use `iter(mm.readline, b\"\")` to yield decoded UTF-8 strings line by line. Ensure both the file and mmap are properly closed using context managers (`with` statements). Note: Python guarantees `with` block cleanup when generators are closed or garbage collected."
+            },
+            {
+                "filepath": "disk_churn/cli.py",
+                "instructions": "Implement the CLI entry point. Use `argparse` to accept a single positional argument `logfile`. Define `def main(argv: List[str]) -> int`. Parse the arguments. Wrap the execution in a try-except block: call `stream_log_file` from `io_handler` and pass the resulting generator directly into `analyze_write_churn` from `core`. Catch `FileNotFoundError`, print an error to stderr, and return 1. Once processed, iterate through the resulting dictionary. Print a formatted report to stdout showing the PID, Total Bytes, Write Count, and Micro Writes. Sort the output by Micro Writes descending to highlight the worst SSD offenders. Return 0 on success."
+            },
+            {
+                "filepath": "tests/test_disk_churn.py",
+                "instructions": "Implement a strict TDD suite using `pytest`. Import the actual modules. Test 1: `test_analyze_write_churn_pure_logic` - pass a raw list of JSON strings (including malformed ones and ones missing keys) directly to `analyze_write_churn` and assert the returned `ChurnMetrics` dictionary has correct sums and micro-write counts. Test 2: `test_stream_log_file_valid` - use pytest's `tmp_path` fixture to write a sample JSONL file, pass its path to `stream_log_file`, and assert the yielded lines match the input. Test 3: `test_stream_log_file_empty_win32_guard` - use `tmp_path` to create an empty file (0 bytes), pass it to `stream_log_file`, and assert it yields nothing and does not crash. Test 4: `test_stream_log_file_missing` - assert FileNotFoundError is raised for a non-existent path. Test 5: `test_cli_main_success` - use `tmp_path` to create a valid log, call `main([str(filepath)])`, assert return code is 0, and use `capsys` to verify stdout contains the expected PID. Test 6: `test_cli_main_missing_file` - call `main(['nonexistent.log'])`, assert return code is 1, and verify stderr contains an error message. Do NOT use `unittest.mock` anywhere."
             }
         ]
     },
@@ -56,16 +49,20 @@
         ".gitignore",
         "requirements.txt",
         "README.md",
-        "context_drift.py",
-        "cli.py",
-        "test_context_drift.py"
+        "disk_churn/__init__.py",
+        "disk_churn/core.py",
+        "disk_churn/io_handler.py",
+        "disk_churn/cli.py",
+        "tests/test_disk_churn.py"
     ],
     "blueprint": [
         "File: .gitignore (Static/Config)",
         "File: requirements.txt (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: context_drift.py provides: def parse_manifest_entry, def parse_knowledge_entry, def calculate_slop_score, def audit_context_drift",
-        "File: cli.py provides: def safe_mmap_generator, def main",
-        "File: test_context_drift.py provides: def test_parse_manifest_entry_valid, def test_parse_knowledge_entry_valid, def test_calculate_slop_score_high, def test_audit_context_drift_detects_orphans, def test_cli_empty_file_guard, def test_cli_main_success"
+        "File: disk_churn/__init__.py provides: No public classes/functions",
+        "File: disk_churn/core.py provides: class ChurnMetrics, def analyze_write_churn",
+        "File: disk_churn/io_handler.py provides: def stream_log_file",
+        "File: disk_churn/cli.py provides: def main",
+        "File: tests/test_disk_churn.py provides: def test_analyze_write_churn_pure_logic, def test_stream_log_file_valid, def test_stream_log_file_empty_win32_guard, def test_stream_log_file_missing, def test_cli_main_success, def test_cli_main_missing_file"
     ]
 }
