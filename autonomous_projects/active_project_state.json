@@ -1,68 +1,76 @@
 {
     "plan": {
-        "chain_of_thought": "Critique of the proposed plan:\n1. Scope Creep: The plan correctly limits the scope to exactly 8 files. No changes needed here.\n2. Hidden Paid-API Dependencies: The plan relies solely on the Python standard library and `pytest`. No external or paid APIs are used.\n3. Missing Interfaces & Edge Cases: \n   - In `core.py`, parsing JSON lines might raise a `KeyError` if 'pid' or 'bytes' are missing from a valid JSON object. The exception handling must include `KeyError`.\n   - In `cli.py`, the instructions mention returning 1 on `FileNotFoundError`, but do not explicitly instruct the developer to catch it. I will add a try-except block requirement.\n   - In `tests/test_disk_churn.py`, the CLI orchestration (`main` function) lacks test coverage. I will add tests using `pytest`'s `capsys` and `tmp_path` to verify end-to-end CLI behavior without using `unittest.mock`.\n4. Generator Resource Management: In `io_handler.py`, using context managers (`with`) inside a generator is safe in modern Python as `__exit__` is called upon garbage collection or closure, but I will explicitly mention ensuring the generator is properly closed to prevent file descriptor leaks if iteration is halted early.",
-        "project_name": "DiskChurnAuditor",
-        "vision": "Spec Roadmap:\n1. Core Aggregation Engine: Implement a pure, single-pass O(N) function to parse JSONL telemetry and calculate write amplification metrics per process, robustly handling missing keys.\n2. Safe I/O Layer: Build a generator-based file streamer using `mmap` with explicit `os.path.getsize` checks to prevent win32 crashes on empty files, ensuring strict resource cleanup.\n3. CLI Orchestration: Create an argparse-based entry point that wires the I/O layer to the Core Engine, catches file errors gracefully, and outputs a formatted report of high-churn processes.\n4. TDD Validation: Develop a strict test suite using `pytest`, `tmp_path`, and `capsys` to verify pure logic, I/O behavior, and CLI integration, ensuring zero reliance on mock objects.",
+        "chain_of_thought": "1. **Scope & Dependencies**: The plan contains exactly 7 files, well within the 8-file limit. It relies solely on the Python standard library and `pytest`, with zero hidden paid-API dependencies.\n2. **Interface & Type Hinting**: The `cli.py` interface contract specifies `argv: Optional[List[str]]`, but the generation instructions missed importing `typing`. I have added `typing` to the `cli.py` imports to prevent `NameError`.\n3. **Logic Bug (Case Sensitivity)**: The `core.py` instructions dictate converting the generated code to uppercase before checking against `GPL_SIGNATURES`. However, the provided signatures list contained mixed-case strings (e.g., 'This program is free software'), which would result in false negatives. I updated the `GPL_SIGNATURES` constant to be strictly uppercase.\n4. **Unused Imports**: Removed the unnecessary `re` import from `core.py` instructions since simple substring matching (`in`) is sufficient, cleaner, and faster for this O(N) scan.\n5. **Test Coverage**: The TDD suite is excellent, covering pure logic, I/O edge cases (Win32 empty file), and CLI integration without mocks. No additional tests are needed.",
+        "project_name": "LicenseInfectionAuditor",
+        "vision": "Spec Roadmap: 1. Define pure O(N) scanning logic to detect GPL signatures in JSONL streams. 2. Implement memory-mapped file I/O with explicit win32 empty-file crash guards. 3. Build a CLI orchestrator to parse arguments and output JSON reports. 4. Develop a strict TDD suite using `tmp_path` and `io.StringIO` to validate all logic without mocks. Atomic Milestones: M1: Core scanning engine. M2: Safe I/O wrapper. M3: CLI integration. M4: Comprehensive TDD validation.",
         "interface_contracts": {
-            "disk_churn/core.py": "Provides `@dataclass ChurnMetrics` and `def analyze_write_churn(log_lines: Iterable[str]) -> Dict[str, ChurnMetrics]`",
-            "disk_churn/io_handler.py": "Provides `def stream_log_file(filepath: str) -> Generator[str, None, None]`",
-            "disk_churn/cli.py": "Provides `def main(argv: List[str]) -> int`"
+            "core.py": [
+                "def scan_stream(lines: Iterable[str]) -> Dict[str, Any]"
+            ],
+            "io_handler.py": [
+                "def yield_log_lines(filepath: str) -> Iterable[str]"
+            ],
+            "cli.py": [
+                "def main(argv: Optional[List[str]] = None) -> int"
+            ],
+            "test_auditor.py": [
+                "def test_scan_stream_clean()",
+                "def test_scan_stream_infected()",
+                "def test_scan_stream_malformed_json()",
+                "def test_yield_log_lines_empty_file(tmp_path)",
+                "def test_yield_log_lines_valid_file(tmp_path)",
+                "def test_cli_integration(tmp_path, capsys)"
+            ]
         },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL telemetry logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates write counts, total bytes, and micro-writes simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` for incomplete JSON payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
-        "commit_message": "Implement DiskChurnAuditor to detect excessive SSD write patterns in telemetry logs using memory-mapped single-pass analysis.",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL code-generation logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates line counts, generation counts, and license signature frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
+        "commit_message": "Implement LicenseInfectionAuditor to detect GPL regurgitation in LLM logs using O(N) single-pass mmap scanning.",
         "files_to_generate": [
             {
                 "filepath": ".gitignore",
-                "instructions": "Create a standard Python .gitignore file. Include entries for __pycache__/, *.py[cod], *$py.class, .env, venv/, ENV/, .pytest_cache/, and *.log."
-            },
-            {
-                "filepath": "requirements.txt",
-                "instructions": "List exactly one dependency: pytest==8.0.0. No other third-party packages are allowed."
+                "instructions": "Create a standard Python .gitignore file. Include entries for: __pycache__/, *.py[cod], *$py.class, .env, venv/, ENV/, .pytest_cache/, and *.log."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Write a concise README explaining the DiskChurnAuditor. Detail the problem (tracking SSD wear from beta apps via telemetry logs), the architecture (pure functions, DI, mmap for low memory), and how to run the tests (`pytest`) and the CLI (`python -m disk_churn.cli <logfile>`)."
+                "instructions": "Write a concise README explaining the `LicenseInfectionAuditor`. Detail the agentic gap it solves: detecting 'GPL Infection' when LLMs regurgitate copyleft licenses in proprietary code generation logs. Explain the architecture: memory-mapped I/O for massive files, single-pass O(N) algorithmic scanning, and strict Dependency Injection for testability. Include instructions on how to run the CLI (`python cli.py <logfile.jsonl>`) and how to run tests (`pytest`)."
             },
             {
-                "filepath": "disk_churn/__init__.py",
-                "instructions": "Create an empty __init__.py file to establish the disk_churn directory as a Python package."
+                "filepath": "requirements.txt",
+                "instructions": "Create a requirements file containing exactly one dependency: `pytest>=7.0.0`. No other external packages are allowed."
             },
             {
-                "filepath": "disk_churn/core.py",
-                "instructions": "Implement the pure core logic. Define a `@dataclass ChurnMetrics` with integer fields: `total_bytes`, `write_count`, and `micro_writes` (all defaulting to 0). Implement `def analyze_write_churn(log_lines: Iterable[str]) -> Dict[str, ChurnMetrics]`. This function must iterate through the lines exactly once (single-pass O(N)). For each line, attempt to parse it as JSON. Extract 'pid' (cast to string) and 'bytes' (cast to int). Accumulate the metrics in a dictionary keyed by 'pid'. If 'bytes' < 512, increment 'micro_writes'. Catch and ignore `json.JSONDecodeError`, `ValueError`, `TypeError`, and `KeyError` to handle malformed lines or missing keys gracefully. Do NOT use any external libraries, only standard `json` and `typing`."
+                "filepath": "core.py",
+                "instructions": "Implement the pure core logic for scanning logs. Import `json` and `typing` (Iterable, Dict, Any). Define a constant list of GPL signatures in UPPERCASE for case-insensitive matching: `GPL_SIGNATURES = ['GNU GENERAL PUBLIC LICENSE', 'GPLV2', 'GPLV3', 'THIS PROGRAM IS FREE SOFTWARE']`. Implement `def scan_stream(lines: Iterable[str]) -> Dict[str, Any]`. This function must iterate through the `lines` exactly once (single-pass). For each line, attempt `json.loads(line)`. Catch `json.JSONDecodeError` and skip. If valid, check if the key 'generated_code' exists; catch `KeyError` and skip. If it exists, convert the value to uppercase and check if any of the `GPL_SIGNATURES` are present as substrings. Maintain a state dictionary tracking: `total_lines_processed`, `valid_generations`, `infected_generations`, and a dictionary `signature_counts` mapping each found signature to its frequency. Return the state dictionary at the end. Do NOT use any file I/O here."
             },
             {
-                "filepath": "disk_churn/io_handler.py",
-                "instructions": "Implement the file I/O layer. Define `def stream_log_file(filepath: str) -> Generator[str, None, None]`. First, check if the file exists; if not, raise FileNotFoundError. Second, CRITICAL WIN32 GUARD: check `os.path.getsize(filepath)`. If it is 0, immediately return (yield nothing) to prevent the `mmap` ValueError on Windows. If size > 0, open the file in 'rb' mode, create an `mmap.mmap` object with `access=mmap.ACCESS_READ`, and use `iter(mm.readline, b\"\")` to yield decoded UTF-8 strings line by line. Ensure both the file and mmap are properly closed using context managers (`with` statements). Note: Python guarantees `with` block cleanup when generators are closed or garbage collected."
+                "filepath": "io_handler.py",
+                "instructions": "Implement the safe file I/O layer. Import `os`, `mmap`, and `typing` (Iterable). Implement `def yield_log_lines(filepath: str) -> Iterable[str]`. First, check `if os.path.getsize(filepath) == 0:` and if so, `return` immediately to prevent the win32 `mmap` empty-file crash. Otherwise, open the file in `rb` mode. Use a context manager for the file, and inside it, create an `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Use a context manager for the mmap object. Iterate over the mmap object, decoding each line using `.decode('utf-8', errors='ignore').strip()`. Yield non-empty lines. This generator pattern ensures low memory usage and avoids `itertools.tee`."
             },
             {
-                "filepath": "disk_churn/cli.py",
-                "instructions": "Implement the CLI entry point. Use `argparse` to accept a single positional argument `logfile`. Define `def main(argv: List[str]) -> int`. Parse the arguments. Wrap the execution in a try-except block: call `stream_log_file` from `io_handler` and pass the resulting generator directly into `analyze_write_churn` from `core`. Catch `FileNotFoundError`, print an error to stderr, and return 1. Once processed, iterate through the resulting dictionary. Print a formatted report to stdout showing the PID, Total Bytes, Write Count, and Micro Writes. Sort the output by Micro Writes descending to highlight the worst SSD offenders. Return 0 on success."
+                "filepath": "cli.py",
+                "instructions": "Implement the CLI entry point. Import `sys`, `argparse`, `json`, `typing` (Optional, List), and the local modules `core` and `io_handler`. Implement `def main(argv: Optional[List[str]] = None) -> int`. Setup argparse to accept a single positional argument `logfile`. Parse args using `argv` (defaulting to `sys.argv[1:]`). Wrap the execution in a try-except block. Call `io_handler.yield_log_lines(args.logfile)` and pass the resulting generator directly to `core.scan_stream()`. Print the resulting dictionary as formatted JSON to stdout. Return 0 on success. Catch `FileNotFoundError` and `PermissionError`, print to stderr, and return 1. Add the standard `if __name__ == '__main__': sys.exit(main())` block."
             },
             {
-                "filepath": "tests/test_disk_churn.py",
-                "instructions": "Implement a strict TDD suite using `pytest`. Import the actual modules. Test 1: `test_analyze_write_churn_pure_logic` - pass a raw list of JSON strings (including malformed ones and ones missing keys) directly to `analyze_write_churn` and assert the returned `ChurnMetrics` dictionary has correct sums and micro-write counts. Test 2: `test_stream_log_file_valid` - use pytest's `tmp_path` fixture to write a sample JSONL file, pass its path to `stream_log_file`, and assert the yielded lines match the input. Test 3: `test_stream_log_file_empty_win32_guard` - use `tmp_path` to create an empty file (0 bytes), pass it to `stream_log_file`, and assert it yields nothing and does not crash. Test 4: `test_stream_log_file_missing` - assert FileNotFoundError is raised for a non-existent path. Test 5: `test_cli_main_success` - use `tmp_path` to create a valid log, call `main([str(filepath)])`, assert return code is 0, and use `capsys` to verify stdout contains the expected PID. Test 6: `test_cli_main_missing_file` - call `main(['nonexistent.log'])`, assert return code is 1, and verify stderr contains an error message. Do NOT use `unittest.mock` anywhere."
+                "filepath": "test_auditor.py",
+                "instructions": "Implement a strict TDD suite using `pytest`. Import `io`, `json`, `pytest`, `core`, `io_handler`, and `cli`. Do NOT use `unittest.mock`. \n1. `test_scan_stream_clean`: Create an `io.StringIO` with 2 valid JSON lines containing 'generated_code' without GPL text. Assert `core.scan_stream` returns 0 infected.\n2. `test_scan_stream_infected`: Create an `io.StringIO` with 1 clean JSON line and 1 JSON line where 'generated_code' contains 'GNU GENERAL PUBLIC LICENSE'. Assert `infected_generations` is 1 and `signature_counts` tracks it.\n3. `test_scan_stream_malformed_json`: Pass an `io.StringIO` with invalid JSON and missing keys. Assert it processes without crashing and returns 0 valid generations.\n4. `test_yield_log_lines_empty_file(tmp_path)`: Create an empty file using `tmp_path`. Pass it to `io_handler.yield_log_lines`. Assert it returns an empty list/generator without crashing (validates win32 guard).\n5. `test_yield_log_lines_valid_file(tmp_path)`: Write 3 lines to a file in `tmp_path`. Assert `yield_log_lines` yields exactly those 3 decoded strings.\n6. `test_cli_integration(tmp_path, capsys)`: Write valid JSONL to a file in `tmp_path`. Call `cli.main([str(filepath)])`. Assert return code is 0 and `capsys.readouterr().out` contains valid JSON with the correct counts."
             }
         ]
     },
     "files_created": [
         ".gitignore",
-        "requirements.txt",
         "README.md",
-        "disk_churn/__init__.py",
-        "disk_churn/core.py",
-        "disk_churn/io_handler.py",
-        "disk_churn/cli.py",
-        "tests/test_disk_churn.py"
+        "requirements.txt",
+        "core.py",
+        "io_handler.py",
+        "cli.py",
+        "test_auditor.py"
     ],
     "blueprint": [
         "File: .gitignore (Static/Config)",
-        "File: requirements.txt (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: disk_churn/__init__.py provides: No public classes/functions",
-        "File: disk_churn/core.py provides: class ChurnMetrics, def analyze_write_churn",
-        "File: disk_churn/io_handler.py provides: def stream_log_file",
-        "File: disk_churn/cli.py provides: def main",
-        "File: tests/test_disk_churn.py provides: def test_analyze_write_churn_pure_logic, def test_stream_log_file_valid, def test_stream_log_file_empty_win32_guard, def test_stream_log_file_missing, def test_cli_main_success, def test_cli_main_missing_file"
+        "File: requirements.txt (Static/Config)",
+        "File: core.py provides: def scan_stream",
+        "File: io_handler.py provides: def yield_log_lines",
+        "File: cli.py provides: def main",
+        "File: test_auditor.py provides: def test_scan_stream_clean, def test_scan_stream_infected, def test_scan_stream_malformed_json, def test_yield_log_lines_empty_file, def test_yield_log_lines_valid_file, def test_cli_integration"
     ]
 }
