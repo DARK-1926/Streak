@@ -1,76 +1,62 @@
 {
     "plan": {
-        "chain_of_thought": "1. **Scope & Dependencies**: The plan contains exactly 7 files, well within the 8-file limit. It relies solely on the Python standard library and `pytest`, with zero hidden paid-API dependencies.\n2. **Interface & Type Hinting**: The `cli.py` interface contract specifies `argv: Optional[List[str]]`, but the generation instructions missed importing `typing`. I have added `typing` to the `cli.py` imports to prevent `NameError`.\n3. **Logic Bug (Case Sensitivity)**: The `core.py` instructions dictate converting the generated code to uppercase before checking against `GPL_SIGNATURES`. However, the provided signatures list contained mixed-case strings (e.g., 'This program is free software'), which would result in false negatives. I updated the `GPL_SIGNATURES` constant to be strictly uppercase.\n4. **Unused Imports**: Removed the unnecessary `re` import from `core.py` instructions since simple substring matching (`in`) is sufficient, cleaner, and faster for this O(N) scan.\n5. **Test Coverage**: The TDD suite is excellent, covering pure logic, I/O edge cases (Win32 empty file), and CLI integration without mocks. No additional tests are needed.",
-        "project_name": "LicenseInfectionAuditor",
-        "vision": "Spec Roadmap: 1. Define pure O(N) scanning logic to detect GPL signatures in JSONL streams. 2. Implement memory-mapped file I/O with explicit win32 empty-file crash guards. 3. Build a CLI orchestrator to parse arguments and output JSON reports. 4. Develop a strict TDD suite using `tmp_path` and `io.StringIO` to validate all logic without mocks. Atomic Milestones: M1: Core scanning engine. M2: Safe I/O wrapper. M3: CLI integration. M4: Comprehensive TDD validation.",
+        "chain_of_thought": "1. Scope Check: The plan proposes exactly 7 files, which is well within the 8-file limit. No scope creep detected. 2. Dependency Check: The project relies solely on the Python standard library and `pytest`. No hidden paid-API dependencies exist. 3. Interface & Logic Critique: The `engine.py` instructions lacked a deterministic formula for `stability_score`, which would make TDD difficult. I have defined a clear mathematical penalty based on `flap_count`. The `models.py` parser needed explicit validation for the `event_type` enum and protection against `TypeError` if the JSON payload is a list instead of an object. 4. Test Coverage Critique: The original test plan missed an end-to-end integration test for the CLI output. I added a test for `run_audit` utilizing pytest's `capsys` fixture to verify JSON formatting without relying on `unittest.mock`. 5. Win32 Safety: The `mmap` empty-file guard is correctly specified and retained.",
+        "project_name": "PresenceDriftAuditor",
+        "vision": "Spec Roadmap: 1. Define strict data contracts (`LogEvent`, `AuditReport`) in `models.py` alongside a pure JSONL parser that validates event types. 2. Implement an O(N) single-pass state machine in `engine.py` that tracks connection durations, detects process migrations, and calculates a deterministic stability score based on flap penalties. 3. Build a memory-mapped I/O handler in `cli.py` that streams parsed events into the engine, guarded against win32 empty-file crashes. 4. Develop a comprehensive `test_main.py` that validates the parser, the state machine's migration/flapping logic, and the mmap I/O using real temporary files and `capsys` for stdout verification. 5. Document the DI architecture and usage in `README.md`.",
         "interface_contracts": {
-            "core.py": [
-                "def scan_stream(lines: Iterable[str]) -> Dict[str, Any]"
-            ],
-            "io_handler.py": [
-                "def yield_log_lines(filepath: str) -> Iterable[str]"
-            ],
-            "cli.py": [
-                "def main(argv: Optional[List[str]] = None) -> int"
-            ],
-            "test_auditor.py": [
-                "def test_scan_stream_clean()",
-                "def test_scan_stream_infected()",
-                "def test_scan_stream_malformed_json()",
-                "def test_yield_log_lines_empty_file(tmp_path)",
-                "def test_yield_log_lines_valid_file(tmp_path)",
-                "def test_cli_integration(tmp_path, capsys)"
-            ]
+            "models.py": "class LogEvent(timestamp: float, agent_id: str, session_id: str, process_id: str, event_type: str); class AuditReport(agent_id: str, stability_score: float, is_flapping: bool, migrations: int); def parse_log_line(line: str) -> Optional[LogEvent]",
+            "engine.py": "def audit_presence(events: Iterable[LogEvent], flap_threshold_sec: float = 5.0) -> Dict[str, AuditReport]",
+            "cli.py": "def stream_log_events(filepath: str) -> Iterable[LogEvent]; def run_audit(filepath: str, flap_threshold: float) -> None; def main() -> None"
         },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL code-generation logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates line counts, generation counts, and license signature frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
-        "commit_message": "Implement LicenseInfectionAuditor to detect GPL regurgitation in LLM logs using O(N) single-pass mmap scanning.",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL connection logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates connection states, flap counts, and migration metrics simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[LogEvent]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError`, `TypeError`, and `json.JSONDecodeError` for incomplete or malformed payloads.",
+        "commit_message": "Implement PresenceDriftAuditor to track stateless agent connection stability and process migration via O(N) memory-mapped log analysis.",
         "files_to_generate": [
             {
-                "filepath": ".gitignore",
-                "instructions": "Create a standard Python .gitignore file. Include entries for: __pycache__/, *.py[cod], *$py.class, .env, venv/, ENV/, .pytest_cache/, and *.log."
+                "filepath": "models.py",
+                "instructions": "Define the core data structures and parsing logic. Use `dataclasses` and `typing`. 1. `LogEvent`: dataclass with fields `timestamp` (float), `agent_id` (str), `session_id` (str), `process_id` (str), `event_type` (str). 2. `AuditReport`: dataclass with fields `agent_id` (str), `stability_score` (float, 0.0 to 1.0), `is_flapping` (bool), `migrations` (int). 3. `parse_log_line(line: str) -> Optional[LogEvent]`: A pure function that takes a raw JSON string, parses it using `json.loads`, validates required keys, and ensures `event_type` is one of ['CONNECT', 'DISCONNECT', 'HEARTBEAT']. Catch `json.JSONDecodeError`, `KeyError`, and `TypeError` (if JSON is not a dict), returning `None` on failure. Do not print errors."
             },
             {
-                "filepath": "README.md",
-                "instructions": "Write a concise README explaining the `LicenseInfectionAuditor`. Detail the agentic gap it solves: detecting 'GPL Infection' when LLMs regurgitate copyleft licenses in proprietary code generation logs. Explain the architecture: memory-mapped I/O for massive files, single-pass O(N) algorithmic scanning, and strict Dependency Injection for testability. Include instructions on how to run the CLI (`python cli.py <logfile.jsonl>`) and how to run tests (`pytest`)."
-            },
-            {
-                "filepath": "requirements.txt",
-                "instructions": "Create a requirements file containing exactly one dependency: `pytest>=7.0.0`. No other external packages are allowed."
-            },
-            {
-                "filepath": "core.py",
-                "instructions": "Implement the pure core logic for scanning logs. Import `json` and `typing` (Iterable, Dict, Any). Define a constant list of GPL signatures in UPPERCASE for case-insensitive matching: `GPL_SIGNATURES = ['GNU GENERAL PUBLIC LICENSE', 'GPLV2', 'GPLV3', 'THIS PROGRAM IS FREE SOFTWARE']`. Implement `def scan_stream(lines: Iterable[str]) -> Dict[str, Any]`. This function must iterate through the `lines` exactly once (single-pass). For each line, attempt `json.loads(line)`. Catch `json.JSONDecodeError` and skip. If valid, check if the key 'generated_code' exists; catch `KeyError` and skip. If it exists, convert the value to uppercase and check if any of the `GPL_SIGNATURES` are present as substrings. Maintain a state dictionary tracking: `total_lines_processed`, `valid_generations`, `infected_generations`, and a dictionary `signature_counts` mapping each found signature to its frequency. Return the state dictionary at the end. Do NOT use any file I/O here."
-            },
-            {
-                "filepath": "io_handler.py",
-                "instructions": "Implement the safe file I/O layer. Import `os`, `mmap`, and `typing` (Iterable). Implement `def yield_log_lines(filepath: str) -> Iterable[str]`. First, check `if os.path.getsize(filepath) == 0:` and if so, `return` immediately to prevent the win32 `mmap` empty-file crash. Otherwise, open the file in `rb` mode. Use a context manager for the file, and inside it, create an `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Use a context manager for the mmap object. Iterate over the mmap object, decoding each line using `.decode('utf-8', errors='ignore').strip()`. Yield non-empty lines. This generator pattern ensures low memory usage and avoids `itertools.tee`."
+                "filepath": "engine.py",
+                "instructions": "Implement the core O(N) state machine. 1. Import `LogEvent` and `AuditReport` from `models`. 2. Define a private helper dataclass `_AgentState` to track `last_seen` (float), `is_connected` (bool), `current_process_id` (str), `flap_count` (int), and `migration_count` (int). 3. Implement `audit_presence(events: Iterable[LogEvent], flap_threshold_sec: float = 5.0) -> Dict[str, AuditReport]`. Iterate through `events` exactly once. For each event: update `_AgentState`. If 'CONNECT' and previously disconnected within `flap_threshold_sec`, increment `flap_count` but maintain `is_connected`. If 'CONNECT' or 'HEARTBEAT' and `process_id` differs from `current_process_id`, increment `migration_count` and update `current_process_id`. After the loop, calculate `stability_score` deterministically as `max(0.0, 1.0 - (flap_count * 0.1))`. Set `is_flapping` to `True` if `flap_count > 0`. Construct and return the final `Dict[str, AuditReport]`. This function must be entirely pure with no I/O."
             },
             {
                 "filepath": "cli.py",
-                "instructions": "Implement the CLI entry point. Import `sys`, `argparse`, `json`, `typing` (Optional, List), and the local modules `core` and `io_handler`. Implement `def main(argv: Optional[List[str]] = None) -> int`. Setup argparse to accept a single positional argument `logfile`. Parse args using `argv` (defaulting to `sys.argv[1:]`). Wrap the execution in a try-except block. Call `io_handler.yield_log_lines(args.logfile)` and pass the resulting generator directly to `core.scan_stream()`. Print the resulting dictionary as formatted JSON to stdout. Return 0 on success. Catch `FileNotFoundError` and `PermissionError`, print to stderr, and return 1. Add the standard `if __name__ == '__main__': sys.exit(main())` block."
+                "instructions": "Implement the memory-mapped I/O and CLI entrypoint. 1. Import `mmap`, `os`, `sys`, `json`, `argparse`, `LogEvent`, `parse_log_line` from `models`, and `audit_presence` from `engine`. 2. `stream_log_events(filepath: str) -> Iterable[LogEvent]`: Check `os.path.getsize(filepath)`. If 0, return immediately (yield nothing) to prevent win32 `mmap` crash. Otherwise, open file in binary mode ('rb'), create `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`. Iterate over the mmap object line by line, decode using `.decode('utf-8', errors='ignore')`, pass to `parse_log_line`, and yield valid `LogEvent`s. Use context managers for both file and mmap. 3. `run_audit(filepath: str, flap_threshold: float) -> None`: Call `stream_log_events`, pass the generator to `audit_presence`. Convert the resulting dict of dataclasses to a JSON-serializable format (e.g., using `dataclasses.asdict`) and print the formatted JSON array to stdout. 4. `main() -> None`: Setup `argparse` for `filepath` and `--flap-threshold` (default 5.0). Wrap execution in try/except to catch `FileNotFoundError` and print to stderr, exiting with code 1."
             },
             {
-                "filepath": "test_auditor.py",
-                "instructions": "Implement a strict TDD suite using `pytest`. Import `io`, `json`, `pytest`, `core`, `io_handler`, and `cli`. Do NOT use `unittest.mock`. \n1. `test_scan_stream_clean`: Create an `io.StringIO` with 2 valid JSON lines containing 'generated_code' without GPL text. Assert `core.scan_stream` returns 0 infected.\n2. `test_scan_stream_infected`: Create an `io.StringIO` with 1 clean JSON line and 1 JSON line where 'generated_code' contains 'GNU GENERAL PUBLIC LICENSE'. Assert `infected_generations` is 1 and `signature_counts` tracks it.\n3. `test_scan_stream_malformed_json`: Pass an `io.StringIO` with invalid JSON and missing keys. Assert it processes without crashing and returns 0 valid generations.\n4. `test_yield_log_lines_empty_file(tmp_path)`: Create an empty file using `tmp_path`. Pass it to `io_handler.yield_log_lines`. Assert it returns an empty list/generator without crashing (validates win32 guard).\n5. `test_yield_log_lines_valid_file(tmp_path)`: Write 3 lines to a file in `tmp_path`. Assert `yield_log_lines` yields exactly those 3 decoded strings.\n6. `test_cli_integration(tmp_path, capsys)`: Write valid JSONL to a file in `tmp_path`. Call `cli.main([str(filepath)])`. Assert return code is 0 and `capsys.readouterr().out` contains valid JSON with the correct counts."
+                "filepath": "test_main.py",
+                "instructions": "Implement strict TDD using `pytest`. DO NOT use `unittest.mock`. 1. Test `parse_log_line`: Assert it correctly parses a valid JSON string into a `LogEvent`. Assert it returns `None` for malformed JSON, missing keys, invalid `event_type`, or non-dict JSON (e.g., a list). 2. Test `audit_presence` (Pure Logic): Create a list of `LogEvent` objects in memory. Scenario A: Agent connects, stays connected, verify stability_score is 1.0 and migrations is 0. Scenario B: Agent connects, disconnects, reconnects 2 seconds later (under default 5.0 threshold), verify `is_flapping` is True and `stability_score` is exactly 0.9. Scenario C: Agent sends HEARTBEAT from process_A, then HEARTBEAT from process_B, verify `migrations` is 1. 3. Test `stream_log_events` (I/O): Use `pytest`'s `tmp_path` fixture. Write a temporary JSONL file with 3 valid lines and 1 invalid line. Call `stream_log_events(tmp_file)` and assert it yields exactly 3 `LogEvent` objects. 4. Test empty file safety: Create an empty file using `tmp_path`, call `stream_log_events`, and assert it yields nothing and does not crash. 5. Test `run_audit` (End-to-End): Use `tmp_path` to create a valid log file, call `run_audit`, and use `capsys.readouterr()` to assert stdout contains valid JSON with the expected `agent_id`."
+            },
+            {
+                "filepath": ".gitignore",
+                "instructions": "Standard Python gitignore. Include: __pycache__/, *.py[cod], *$py.class, .env, venv/, ENV/, .pytest_cache/, .mypy_cache/."
+            },
+            {
+                "filepath": "README.md",
+                "instructions": "Write a concise README. Title: PresenceDriftAuditor. Description: A stateless, O(N) log auditor that tracks agent presence stability, detects process migrations, and filters connection flapping without relying on sticky sessions. Architecture: Highlight the strict Dependency Injection where `engine.py` operates purely on `Iterable[LogEvent]`, decoupled from the `mmap` I/O in `cli.py`. Usage: `python cli.py logs.jsonl --flap-threshold 5.0`. Testing: `pytest test_main.py`."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "List the single external dependency required for testing: pytest>=7.0.0"
             }
         ]
     },
     "files_created": [
+        "models.py",
+        "engine.py",
+        "cli.py",
+        "test_main.py",
         ".gitignore",
         "README.md",
-        "requirements.txt",
-        "core.py",
-        "io_handler.py",
-        "cli.py",
-        "test_auditor.py"
+        "requirements.txt"
     ],
     "blueprint": [
+        "File: models.py provides: class LogEvent, class AuditReport, def parse_log_line",
+        "File: engine.py provides: class _AgentState, def audit_presence",
+        "File: cli.py provides: def stream_log_events, def run_audit, def main",
+        "File: test_main.py provides: def test_parse_log_line_valid, def test_parse_log_line_malformed_json, def test_parse_log_line_missing_keys, def test_parse_log_line_invalid_event_type, def test_parse_log_line_non_dict, def test_audit_presence_scenario_a, def test_audit_presence_scenario_b, def test_audit_presence_scenario_c, def test_stream_log_events, def test_stream_log_events_empty_file, def test_run_audit",
         "File: .gitignore (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: requirements.txt (Static/Config)",
-        "File: core.py provides: def scan_stream",
-        "File: io_handler.py provides: def yield_log_lines",
-        "File: cli.py provides: def main",
-        "File: test_auditor.py provides: def test_scan_stream_clean, def test_scan_stream_infected, def test_scan_stream_malformed_json, def test_yield_log_lines_empty_file, def test_yield_log_lines_valid_file, def test_cli_integration"
+        "File: requirements.txt (Static/Config)"
     ]
 }
