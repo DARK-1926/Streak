@@ -1,5 +1,5 @@
 {
-    "score": 56,
+    "score": 57,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -356,6 +356,11 @@
             "date": "2026-07-27T12:17:26.798887",
             "project": "BatchingStarvationAuditor",
             "model": "qwen3.7-max-preview"
+        },
+        {
+            "date": "2026-07-31T12:07:30.524222",
+            "project": "DeployContractAuditor",
+            "model": "qwen3.7-max-preview"
         }
     ],
     "model_ratings": {
@@ -384,7 +389,6 @@
         "cohere/north-mini-code:free": -2
     },
     "past_projects": [
-        "PersonalFinanceAdvisor",
         "CodeFlowSecurityAgent",
         "LeapSecondHandler",
         "HNContentFilterAgent",
@@ -403,10 +407,10 @@
         "DiskChurnAuditor",
         "LicenseInfectionAuditor",
         "PresenceDriftAuditor",
-        "BatchingStarvationAuditor"
+        "BatchingStarvationAuditor",
+        "DeployContractAuditor"
     ],
     "lessons_learned": [
-        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
@@ -425,7 +429,8 @@
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL telemetry logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates write counts, total bytes, and micro-writes simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` for incomplete JSON payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL code-generation logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates line counts, generation counts, and license signature frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL connection logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates connection states, flap counts, and migration metrics simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[LogEvent]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError`, `TypeError`, and `json.JSONDecodeError` for incomplete or malformed payloads.",
-        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL inference logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates request counts, total wait times, and starvation frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[Dict[str, Any]]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes."
+        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL inference logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates request counts, total wait times, and starvation frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[Dict[str, Any]]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
+        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL inference logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model. The state machine enforces strict sequential compliance: any deviation (unlisted or out-of-order) is immediately flagged as unauthorized. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[Dict[str, Any]]` to allow pure in-memory unit testing without `unittest.mock`. CLI testing is achieved via `subprocess` to verify exit codes natively."
     ],
     "planner_ratings": {
         "cohere/north-mini-code-20260617:free": {
@@ -436,7 +441,7 @@
         "nvidia/nemotron-nano-12b-v2-vl:free": {
             "plans_created": 1,
             "critique_survivals": 1,
-            "test_stages_reached": 59
+            "test_stages_reached": 62
         },
         "poolside/laguna-xs.2-20260421:free": {
             "plans_created": 1,
@@ -451,7 +456,7 @@
         "qwen-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 43
+            "test_stages_reached": 44
         },
         "qwen-coder-32b-instruct": {
             "plans_created": 0,
@@ -461,12 +466,12 @@
         "qwen3-coder-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 29
+            "test_stages_reached": 30
         },
         "qwen3-coder-flash": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 22
+            "test_stages_reached": 24
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {
             "plans_created": 0,
@@ -479,14 +484,14 @@
             "test_stages_reached": 15
         },
         "qwen3.7-max-preview": {
-            "plans_created": 13,
+            "plans_created": 14,
             "critique_survivals": 1,
-            "test_stages_reached": 15
+            "test_stages_reached": 18
         },
         "qwen3-max": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 2
+            "test_stages_reached": 4
         }
     },
     "coder_ratings": {
@@ -539,15 +544,15 @@
             "fix_successes": 9
         },
         "qwen3-coder-plus": {
-            "files_generated": 0,
-            "lint_passes": 0,
-            "fix_attempts": 128,
+            "files_generated": 4,
+            "lint_passes": 3,
+            "fix_attempts": 132,
             "fix_successes": 6
         },
         "qwen3-coder-flash": {
-            "files_generated": 0,
-            "lint_passes": 0,
-            "fix_attempts": 91,
+            "files_generated": 1,
+            "lint_passes": 1,
+            "fix_attempts": 97,
             "fix_successes": 3
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {
@@ -575,15 +580,15 @@
             "fix_successes": 1
         },
         "qwen3.7-max-preview": {
-            "files_generated": 90,
+            "files_generated": 92,
             "lint_passes": 51,
-            "fix_attempts": 11,
-            "fix_successes": 13
+            "fix_attempts": 21,
+            "fix_successes": 14
         },
         "qwen3-max": {
             "files_generated": 0,
             "lint_passes": 0,
-            "fix_attempts": 6,
+            "fix_attempts": 13,
             "fix_successes": 0
         }
     }

@@ -1,0 +1,3 @@
+# DeployContractAuditor - No external dependencies required
+# This project relies exclusively on the Python standard library
+# All functionality implemented with built-in modules: json, mmap, os, sys, unittest, tempfile, argparse, subprocess
