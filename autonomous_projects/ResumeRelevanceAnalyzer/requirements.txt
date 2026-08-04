@@ -1,0 +1,7 @@
+# ResumeRelevanceAnalyzer - Requirements
+#
+# This project uses only Python standard library components.
+# No external dependencies are required.
+
+# Base requirements: Python 3.8+ standard library only
+# No pip-installable packages needed

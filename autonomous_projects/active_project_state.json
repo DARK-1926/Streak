@@ -1,61 +1,87 @@
 {
     "plan": {
-        "chain_of_thought": "1. Analyze Trends: The 'Amazonbot ignoring robots.txt' trend highlights a need for deterministic, local log analysis to catch non-compliant scrapers. 2. Architecture: Build 'ScrapeDefianceAuditor', a pure-Python CLI tool. 3. Core Logic: Use a single-pass state machine over log lines. It tracks IPs that fetch '/robots.txt' and subsequently flags them if they request paths matching parsed 'Disallow' rules. 4. Constraints & Safety: Use `mmap` for low-memory processing of massive logs, explicitly guarded by `os.path.getsize` to prevent win32 empty-file crashes. 5. TDD & DI: Core logic in `auditor.py` will accept `Iterable[str]` to remain completely decoupled from file I/O, allowing pure in-memory unit testing without mocks. `cli.py` handles the `mmap` context and passes the iterator. 6. Output: JSON report of violating IPs, their User-Agents, and violation counts.",
-        "project_name": "ScrapeDefianceAuditor",
-        "vision": "Spec Roadmap: 1. Implement `auditor.py` with pure functions for parsing robots.txt rules and streaming log lines. 2. Implement a single-pass state machine that correlates IP behavior (fetching robots.txt vs hitting disallowed paths). 3. Build `cli.py` with win32-safe `mmap` file handling. 4. Write `test_main.py` using pure in-memory lists for core logic and `subprocess` for CLI integration tests. 5. Ensure zero external dependencies beyond standard library.",
+        "chain_of_thought": "The original plan is well-scoped and adheres to its lightweight, offline ethos. It includes 8 files\u2014right at the threshold\u2014but all are essential: 3 core modules, 1 test file, and 4 config/docs files (requirements.txt, .gitignore, README.md, pyproject.toml). No scope creep. No hidden paid-API dependencies: explicitly stdlib-only, confirmed by empty requirements.txt and architecture description. However, test coverage is slightly incomplete: test_main.py covers parser and scorer via subprocess and direct calls, but lacks explicit unit tests for edge cases in parsing (e.g., malformed headers, unicode normalization) and scoring (e.g., missing sections, zero-weight scenarios). To fix this without adding files, enhance test_main.py instructions to mandate comprehensive edge-case coverage. Also, clarify that cli.py must handle mmap correctly on Windows for empty files\u2014already noted in lessons_learned but should be reinforced in cli.py instructions. No other changes needed.",
+        "project_name": "ResumeRelevanceAnalyzer",
+        "vision": "Agentic Problem: Job seekers waste time applying to roles their resume doesn\u2019t match due to opaque ATS filters. Atomic Milestones: (1) Parse resume and job description into structured sections; (2) Extract normalized keywords per section; (3) Compute weighted relevance score based on section importance (e.g., 'Requirements' > 'Nice-to-have'); (4) Output score + missing keywords. Testing Strategy: Pure functions for parsing/scoring tested with in-memory lists; CLI tested via subprocess; edge cases: empty files, malformed text, unicode.",
         "interface_contracts": {
-            "auditor.py": [
-                "def parse_robots_rules(lines: Iterable[str]) -> List[re.Pattern]",
-                "def parse_log_line(line: str) -> Optional[Dict[str, Any]]",
-                "def audit_scrape_defiance(log_lines: Iterable[str], rules: List[re.Pattern]) -> Dict[str, Dict[str, Any]]"
-            ],
-            "cli.py": [
-                "def main(log_path: str, robots_path: str) -> int"
-            ]
+            "src/parser.py": {
+                "provides": [
+                    "parse_document(lines: Iterable[str]) -> dict[str, list[str]]"
+                ]
+            },
+            "src/scorer.py": {
+                "provides": [
+                    "compute_relevance(resume: dict, job_post: dict) -> dict"
+                ],
+                "depends_on": [
+                    "src/parser.py"
+                ]
+            },
+            "src/cli.py": {
+                "provides": [
+                    "main(argv: list[str]) -> int"
+                ],
+                "depends_on": [
+                    "src/parser.py",
+                    "src/scorer.py"
+                ]
+            }
         },
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive access logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates IP states, robots.txt fetches, and rule violations simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Regex parsing is pre-compiled to avoid overhead inside the hot loop.",
-        "commit_message": "Implement ScrapeDefianceAuditor for single-pass, mmap-based detection of robots.txt violating bots.",
+        "lessons_learned": "Avoids past mistakes by: (1) Using mmap with os.path.getsize guard for win32 empty-file safety; (2) Single-pass document parsing into sections without itertools.tee; (3) Core logic (parser, scorer) accepts Iterable[str]\u2014enabling pure unit tests without mocking file I/O; (4) No external APIs or heavy deps\u2014only stdlib; (5) Structured output enables deterministic validation.",
+        "commit_message": "Implement offline Resume Relevance Analyzer with mmap-safe parsing and pure-function scoring.",
         "files_to_generate": [
             {
-                "filepath": "auditor.py",
-                "instructions": "Create the core pure logic module. Include `parse_robots_rules(lines: Iterable[str]) -> List[re.Pattern]` which reads lines, finds 'Disallow:' directives, and compiles them into regex patterns (e.g., `Disallow: /private` becomes `^/private.*`). Include `parse_log_line(line: str) -> Optional[Dict[str, Any]]` using a pre-compiled regex for Combined Log Format to extract 'ip', 'path', and 'user_agent'. Include `audit_scrape_defiance(log_lines: Iterable[str], rules: List[re.Pattern]) -> Dict[str, Dict[str, Any]]`. This function must use a single-pass state machine: maintain a dict of `ip_states`. For each parsed line, if path is '/robots.txt', set `ip_states[ip]['seen_robots'] = True` and store the user_agent. If path matches any rule in `rules`, increment `ip_states[ip]['violations']`. Return only IPs with `violations > 0`. Handle decoding errors gracefully by skipping malformed lines."
+                "filepath": "src/parser.py",
+                "instructions": "Define parse_document(lines: Iterable[str]) -> dict[str, list[str]]. Split input into sections using heuristic headers (e.g., 'Experience:', 'Skills:'). Normalize whitespace, lowercase, and split into words. Return dict mapping section names to word lists. Handle missing sections gracefully. No file I/O\u2014pure function."
             },
             {
-                "filepath": "cli.py",
-                "instructions": "Create the CLI entry point. Import `argparse`, `os`, `mmap`, `json`, and `auditor`. Define `main(log_path: str, robots_path: str) -> int`. First, check `os.path.getsize` for both files; if either is 0, print an error and return 1 (win32 mmap guard). Open `robots_path` normally, read lines, and pass to `auditor.parse_robots_rules`. Open `log_path` in binary read mode, create an `mmap.mmap` object, and decode lines lazily via a generator expression `(line.decode('utf-8', errors='ignore') for line in iter(mmap_obj.readline, b''))`. Pass this generator and the rules to `auditor.audit_scrape_defiance`. Print the resulting dictionary as formatted JSON to stdout. Use context managers for all file and mmap operations. Catch exceptions and return non-zero exit codes on failure."
+                "filepath": "src/scorer.py",
+                "instructions": "Define compute_relevance(resume: dict, job_post: dict) -> dict. Weight sections: job_post['Requirements'] = 1.0, 'Preferred' = 0.5. For each job keyword, check presence in matching resume section. Compute score = (matched_weight / total_weight) * 100. Also return {'score': float, 'missing': list[str]}. Pure function, no side effects."
+            },
+            {
+                "filepath": "src/cli.py",
+                "instructions": "Define main(argv: list[str]) -> int. Parse two file paths from argv. Validate files exist and non-empty (os.path.getsize > 0). Use mmap to read each as lines (split by \\n), with fallback to regular read if mmap fails on empty files (win32 safety). Call parser.parse_document on both. Pass to scorer.compute_relevance. Print JSON result to stdout. Return 0 on success, 1 on error. Wrap in try/except for FileNotFoundError, ValueError, and OSError (mmap edge cases)."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Create a strict TDD suite using `unittest`. Import `auditor` and `subprocess`. 1. `test_parse_robots_rules`: Pass a list of strings simulating a robots.txt file. Assert it returns the correct number of compiled regex patterns and that they match expected paths. 2. `test_parse_log_line`: Pass a valid Combined Log Format string and an invalid string. Assert correct dictionary extraction and None return respectively. 3. `test_audit_scrape_defiance`: Create an in-memory list of log lines where IP '1.2.3.4' fetches '/robots.txt' then requests '/private/data'. Assert the output dict flags '1.2.3.4' with 1 violation. Create another case where an IP requests '/private/data' but never fetches robots.txt, assert it still tracks the violation. 4. `test_cli_integration`: Use `tempfile.NamedTemporaryFile` to create dummy robots and log files. Run `cli.py` via `subprocess.run(['python', 'cli.py', log_path, robots_path], capture_output=True, text=True)`. Assert return code is 0 and stdout contains valid JSON with the expected violation. 5. `test_cli_empty_file`: Pass an empty file path to the CLI subprocess and assert it exits with code 1."
+                "instructions": "Write unit tests. Test parse_document with in-memory lists\u2014verify section splitting, word extraction, handling of missing/malformed headers, unicode, and empty inputs. Test compute_relevance with hand-crafted dicts\u2014verify score math, missing keywords, zero-weight sections, and absent keys. Test cli.main via subprocess: create temp files (including empty and unicode-containing), run CLI, assert JSON output contains 'score' (0\u2013100) and 'missing'. Include edge cases: empty file (exit 1), non-existent file (exit 1), valid files with no overlap (score 0). Do NOT mock\u2014use real modules."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "Leave empty or add a comment stating '# No external dependencies required. Uses Python Standard Library only.'"
+                "instructions": "Empty file. Project uses only Python standard library. No third-party dependencies."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Include standard Python ignores: __pycache__/, *.py[cod], *$py.class, .env, venv/, .pytest_cache/, *.log."
+                "instructions": "Include: __pycache__/, *.pyc, .venv/, venv/, .env, *.log"
             },
             {
                 "filepath": "README.md",
-                "instructions": "Document the ScrapeDefianceAuditor. Explain the problem: Bots like Amazonbot aggressively scraping and ignoring robots.txt. Explain the architecture: A pure Python, zero-dependency CLI tool. Highlight the technical constraints solved: win32-safe memory-mapped file processing for massive logs, single-pass O(N) state accumulation to avoid memory traps, and strict Dependency Injection for testability. Provide usage instructions: `python cli.py access.log robots.txt`."
+                "instructions": "Explain: ResumeRelevanceAnalyzer scores how well your resume matches a job post\u2014offline, no AI. Architecture: parser.py (section-aware text splitting), scorer.py (weighted keyword matching), cli.py (mmap-safe file handling). Usage: python -m src.cli resume.txt job.txt. Outputs JSON with relevance score (0-100) and missing keywords. Fully cross-platform, win32-safe, no deps."
+            },
+            {
+                "filepath": "pyproject.toml",
+                "instructions": "Minimal config: [build-system] requires = ['setuptools'] build-backend = 'setuptools.build_meta'. [project] name = 'resumerelevanceanalyzer' version = '0.1.0'. [tool.setuptools.packages.find] where = ['.'] include = ['src*']. Enables 'python -m src.cli'."
             }
         ]
     },
     "files_created": [
-        "auditor.py",
-        "cli.py",
+        "src/parser.py",
+        "src/scorer.py",
+        "src/cli.py",
         "test_main.py",
         "requirements.txt",
         ".gitignore",
-        "README.md"
+        "README.md",
+        "pyproject.toml"
     ],
     "blueprint": [
-        "File: auditor.py provides: def parse_robots_rules, def parse_log_line, def audit_scrape_defiance",
-        "File: cli.py provides: def main, def parse_args",
-        "File: test_main.py provides: class TestScrapeDefianceAuditor",
+        "File: src/parser.py provides: def parse_document",
+        "File: src/scorer.py provides: def compute_relevance",
+        "File: src/cli.py provides: def read_lines_with_mmap, def main",
+        "File: test_main.py provides: class TestParser, class TestScorer, class TestCLI",
         "File: requirements.txt (Static/Config)",
         "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: README.md (Static/Config)",
+        "File: pyproject.toml (Static/Config)"
     ]
 }
