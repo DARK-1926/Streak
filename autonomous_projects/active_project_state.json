@@ -1,87 +1,79 @@
 {
     "plan": {
-        "chain_of_thought": "The original plan is well-scoped and adheres to its lightweight, offline ethos. It includes 8 files\u2014right at the threshold\u2014but all are essential: 3 core modules, 1 test file, and 4 config/docs files (requirements.txt, .gitignore, README.md, pyproject.toml). No scope creep. No hidden paid-API dependencies: explicitly stdlib-only, confirmed by empty requirements.txt and architecture description. However, test coverage is slightly incomplete: test_main.py covers parser and scorer via subprocess and direct calls, but lacks explicit unit tests for edge cases in parsing (e.g., malformed headers, unicode normalization) and scoring (e.g., missing sections, zero-weight scenarios). To fix this without adding files, enhance test_main.py instructions to mandate comprehensive edge-case coverage. Also, clarify that cli.py must handle mmap correctly on Windows for empty files\u2014already noted in lessons_learned but should be reinforced in cli.py instructions. No other changes needed.",
-        "project_name": "ResumeRelevanceAnalyzer",
-        "vision": "Agentic Problem: Job seekers waste time applying to roles their resume doesn\u2019t match due to opaque ATS filters. Atomic Milestones: (1) Parse resume and job description into structured sections; (2) Extract normalized keywords per section; (3) Compute weighted relevance score based on section importance (e.g., 'Requirements' > 'Nice-to-have'); (4) Output score + missing keywords. Testing Strategy: Pure functions for parsing/scoring tested with in-memory lists; CLI tested via subprocess; edge cases: empty files, malformed text, unicode.",
+        "chain_of_thought": "The original plan is well-scoped and adheres to its constraints, but has two subtle issues: (1) The file count is exactly 8, which is acceptable per the 'under 8 files' guideline only if interpreted as 'no more than 8'\u2014however, the phrase 'under 8' strictly means \u22647. To comply conservatively, we must reduce by one file. The empty __init__.py is technically optional for a CLI-only tool run via python -m if the directory contains __main__.py, but the current structure uses cli.py with a main() and relies on -m hireme.cli, which does require __init__.py. Alternatively, we can merge test files\u2014but that harms modularity. Better: recognize that .gitignore and requirements.txt are not part of the core architecture (they\u2019re dev metadata), so the 'under 8 files' likely refers to source/test code. However, to eliminate ambiguity, I note the plan already complies if we count only logic-bearing files (parser.py, cli.py, test_parser.py, test_cli.py = 4). Thus, no scope creep. (2) No hidden API dependencies\u2014stdlib only, as stated. (3) Interface contracts are complete: parser provides core function, CLI consumes it, tests cover both. However, the interface_contracts section omits test_cli.py\u2019s dependency on the CLI entry point\u2014it should depend on hireme.cli.main or the module\u2019s behavior. But since test_cli.py uses subprocess, it doesn\u2019t import main(), so no direct Python dependency. Therefore, contracts are accurate. Final check: all core logic is pure, tested with real strings, win32-safe, no mocks. Plan is sound. No changes needed beyond clarifying that 8 files is acceptable because .gitignore and requirements.txt are non-logic support files, and the vision allows 'under 8' to mean 'small, \u22648'. To be safe, I confirm the count: 8 files listed, but the constraint was architectural simplicity\u2014not a hard file cap excluding config/docs. Original author included docs/configs in the 8, so it's borderline. However, the chain_of_thought says 'Architecture stays under 8 files: main parser, CLI, tests, docs, configs'\u2014listing 5 categories, implying total <8. Actual files: 8. This is a minor violation. Fix: remove the empty __init__.py by making the package executable via __main__.py instead. But that adds a file. Alternatively, drop README.md from 'files_to_generate'? No\u2014docs are essential. Best fix: acknowledge that 'under 8' was aspirational and 8 is acceptable for clarity. Since the instructions say 'respond ONLY with the completely fixed, valid JSON plan', and the only potential flaw is ambiguous file count, but all other criteria pass, and removing any file would hurt correctness, I conclude the plan is acceptable as-is. However, upon re-reading: 'Architecture stays under 8 files' and they list 8 files. That\u2019s scope creep. So I will remove the empty __init__.py and adjust the CLI invocation to work without it. But Python requires __init__.py for -m hireme.cli. Alternative: change the CLI to be runnable as python hireme/cli.py, but that breaks the -m pattern. Instead, keep __init__.py and accept 8 files as within spirit\u2014'under 8' likely meant 'not bloated'. Given the trade-off, and that the problem statement includes configs/docs in the count, I will reduce by merging test files. Combine test_parser.py and test_cli.py into test_hireme.py. This brings total logic files to 7, satisfying 'under 8'. Updated files_to_generate now has 7 entries. All functionality preserved.",
+        "project_name": "HireMeParser",
+        "vision": "Agentic Problem: Recruiters and job seekers waste time manually parsing/validating 'Who wants to be hired?' HN posts. Atomic Milestones: (1) Define strict schema for expected fields; (2) Build pure-function parser using regex with exhaustive validation; (3) Create CLI that reads from stdin/file and outputs JSON; (4) Write 100% coverage unit tests using real HN post examples; (5) Ensure win32 compatibility via pathlib and no curses. Testing Strategy: All core logic tested via parameterized pytest cases with valid/invalid inputs. CLI tested via subprocess. No mocks used\u2014core accepts str, returns dict.",
         "interface_contracts": {
-            "src/parser.py": {
+            "hireme/parser.py": {
                 "provides": [
-                    "parse_document(lines: Iterable[str]) -> dict[str, list[str]]"
+                    "parse_hn_hireme_post(content: str) -> dict",
+                    "ValidationError"
                 ]
             },
-            "src/scorer.py": {
-                "provides": [
-                    "compute_relevance(resume: dict, job_post: dict) -> dict"
-                ],
+            "hireme/cli.py": {
                 "depends_on": [
-                    "src/parser.py"
+                    "hireme.parser.parse_hn_hireme_post"
+                ],
+                "provides": [
+                    "main()"
                 ]
             },
-            "src/cli.py": {
-                "provides": [
-                    "main(argv: list[str]) -> int"
-                ],
+            "test_hireme.py": {
                 "depends_on": [
-                    "src/parser.py",
-                    "src/scorer.py"
+                    "hireme.parser.parse_hn_hireme_post",
+                    "hireme.parser.ValidationError"
                 ]
             }
         },
-        "lessons_learned": "Avoids past mistakes by: (1) Using mmap with os.path.getsize guard for win32 empty-file safety; (2) Single-pass document parsing into sections without itertools.tee; (3) Core logic (parser, scorer) accepts Iterable[str]\u2014enabling pure unit tests without mocking file I/O; (4) No external APIs or heavy deps\u2014only stdlib; (5) Structured output enables deterministic validation.",
-        "commit_message": "Implement offline Resume Relevance Analyzer with mmap-safe parsing and pure-function scoring.",
+        "lessons_learned": "Avoids past mistakes by: (1) Core parser is pure function accepting str\u2014zero file I/O or side effects; (2) Uses pre-compiled regex for performance in hot loop; (3) Explicit field validation prevents KeyError; (4) CLI uses context-managed file reading with win32-safe pathlib; (5) Tests use real HN post strings\u2014no mocks\u2014ensuring deterministic validation.",
+        "commit_message": "Implement HireMeParser: CLI tool to validate and parse HN 'Who wants to be hired?' posts into structured JSON.",
         "files_to_generate": [
             {
-                "filepath": "src/parser.py",
-                "instructions": "Define parse_document(lines: Iterable[str]) -> dict[str, list[str]]. Split input into sections using heuristic headers (e.g., 'Experience:', 'Skills:'). Normalize whitespace, lowercase, and split into words. Return dict mapping section names to word lists. Handle missing sections gracefully. No file I/O\u2014pure function."
+                "filepath": "hireme/__init__.py",
+                "instructions": "Empty file to make hireme a Python package."
             },
             {
-                "filepath": "src/scorer.py",
-                "instructions": "Define compute_relevance(resume: dict, job_post: dict) -> dict. Weight sections: job_post['Requirements'] = 1.0, 'Preferred' = 0.5. For each job keyword, check presence in matching resume section. Compute score = (matched_weight / total_weight) * 100. Also return {'score': float, 'missing': list[str]}. Pure function, no side effects."
+                "filepath": "hireme/parser.py",
+                "instructions": "Define ValidationError as subclass of ValueError. Implement parse_hn_hireme_post(content: str) -> dict. Use pre-compiled regex patterns to extract: Location, Remote, Willing to relocate, Technologies, R\u00e9sum\u00e9/CV, Email. Validate each field: Email must match RFC5322-lite regex; Technologies must be non-empty; all fields required. Return dict with normalized keys (e.g., 'resume_cv'). Raise ValidationError with specific message on any failure. Use only stdlib re, typing."
             },
             {
-                "filepath": "src/cli.py",
-                "instructions": "Define main(argv: list[str]) -> int. Parse two file paths from argv. Validate files exist and non-empty (os.path.getsize > 0). Use mmap to read each as lines (split by \\n), with fallback to regular read if mmap fails on empty files (win32 safety). Call parser.parse_document on both. Pass to scorer.compute_relevance. Print JSON result to stdout. Return 0 on success, 1 on error. Wrap in try/except for FileNotFoundError, ValueError, and OSError (mmap edge cases)."
+                "filepath": "hireme/cli.py",
+                "instructions": "Implement main(). Use argparse to accept optional --input file path (default: stdin). Read content safely using pathlib.Path if file given, else sys.stdin.read(). Call parse_hn_hireme_post. Print result as JSON to stdout. On ValidationError or file error, print error to stderr and exit(1). Wrap in if __name__ == '__main__': block."
             },
             {
-                "filepath": "test_main.py",
-                "instructions": "Write unit tests. Test parse_document with in-memory lists\u2014verify section splitting, word extraction, handling of missing/malformed headers, unicode, and empty inputs. Test compute_relevance with hand-crafted dicts\u2014verify score math, missing keywords, zero-weight sections, and absent keys. Test cli.main via subprocess: create temp files (including empty and unicode-containing), run CLI, assert JSON output contains 'score' (0\u2013100) and 'missing'. Include edge cases: empty file (exit 1), non-existent file (exit 1), valid files with no overlap (score 0). Do NOT mock\u2014use real modules."
+                "filepath": "test_hireme.py",
+                "instructions": "Write pytest functions. Part 1: Test parser directly with parameterized cases: (1) Valid full post; (2) Missing field; (3) Invalid email; (4) Empty technologies; (5) Extra whitespace handling. Assert exact dict output or ValidationError. Part 2: Test CLI via subprocess. Create temp file with valid post. Run 'python -m hireme.cli --input <tempfile>'. Assert stdout is valid JSON matching expected dict. Repeat with invalid post\u2014assert stderr contains error and exit code 1. Use pathlib for temp file cleanup. Do NOT mock anything."
             },
             {
                 "filepath": "requirements.txt",
-                "instructions": "Empty file. Project uses only Python standard library. No third-party dependencies."
-            },
-            {
-                "filepath": ".gitignore",
-                "instructions": "Include: __pycache__/, *.pyc, .venv/, venv/, .env, *.log"
+                "instructions": "Empty file\u2014only stdlib used. But include comment: '# No dependencies required'"
             },
             {
                 "filepath": "README.md",
-                "instructions": "Explain: ResumeRelevanceAnalyzer scores how well your resume matches a job post\u2014offline, no AI. Architecture: parser.py (section-aware text splitting), scorer.py (weighted keyword matching), cli.py (mmap-safe file handling). Usage: python -m src.cli resume.txt job.txt. Outputs JSON with relevance score (0-100) and missing keywords. Fully cross-platform, win32-safe, no deps."
+                "instructions": "Explain: Parses HN 'Who wants to be hired?' posts. Usage: echo '<post>' | python -m hireme.cli or python -m hireme.cli --input post.txt. Output: JSON. Architecture: Pure parser in parser.py, CLI in cli.py. Testing: Full coverage with real examples. Win32 safe. No deps."
             },
             {
-                "filepath": "pyproject.toml",
-                "instructions": "Minimal config: [build-system] requires = ['setuptools'] build-backend = 'setuptools.build_meta'. [project] name = 'resumerelevanceanalyzer' version = '0.1.0'. [tool.setuptools.packages.find] where = ['.'] include = ['src*']. Enables 'python -m src.cli'."
+                "filepath": ".gitignore",
+                "instructions": "Include: __pycache__/, *.pyc, .venv/, venv/, env/, .env, .pytest_cache/, .mypy_cache/"
             }
         ]
     },
     "files_created": [
-        "src/parser.py",
-        "src/scorer.py",
-        "src/cli.py",
-        "test_main.py",
+        "hireme/__init__.py",
+        "hireme/parser.py",
+        "hireme/cli.py",
+        "test_hireme.py",
         "requirements.txt",
-        ".gitignore",
         "README.md",
-        "pyproject.toml"
+        ".gitignore"
     ],
     "blueprint": [
-        "File: src/parser.py provides: def parse_document",
-        "File: src/scorer.py provides: def compute_relevance",
-        "File: src/cli.py provides: def read_lines_with_mmap, def main",
-        "File: test_main.py provides: class TestParser, class TestScorer, class TestCLI",
+        "File: hireme/__init__.py provides: No public classes/functions",
+        "File: hireme/parser.py provides: class ValidationError, def parse_hn_hireme_post",
+        "File: hireme/cli.py provides: def main",
+        "File: test_hireme.py provides: def test_parse_valid_full_post, def test_parse_missing_field_raises_validation_error, def test_parse_invalid_email_raises_validation_error, def test_parse_empty_technologies_raises_validation_error, def test_parse_handles_extra_whitespace, def test_cli_with_valid_input_file, def test_cli_with_invalid_input_file, def test_cli_reads_from_stdin_when_no_input_specified, def test_cli_stdin_invalid_input",
         "File: requirements.txt (Static/Config)",
-        "File: .gitignore (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: pyproject.toml (Static/Config)"
+        "File: .gitignore (Static/Config)"
     ]
 }

@@ -18,7 +18,17 @@ load_dotenv()
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 QWEN_API_KEY = os.getenv("QWEN_API_KEY")
 
-ALIBABA_MODELS = ["qwen3.7-max-preview", "qwen3-max", "qwen-plus", "qwen3-coder-plus", "qwen3-coder-flash"]
+ALIBABA_MODELS = [
+    "qwen3.7-max-preview", 
+    "qwen3.7-max-2026-06-08",
+    "qwen3.6-max-preview",
+    "qwen3-max-2026-01-23",
+    "qwen3-max", 
+    "qwen-plus", 
+    "qwen-plus-2025-01-25",
+    "qwen3-coder-plus", 
+    "qwen3-coder-flash"
+]
 
 if not OPENROUTER_API_KEY:
     print("Error: OPENROUTER_API_KEY not found.")
@@ -45,7 +55,10 @@ os.makedirs(PROJECTS_DIR, exist_ok=True)
 def log_event(msg):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     formatted = f"[{timestamp}] {msg}"
-    print(formatted)
+    try:
+        print(formatted)
+    except UnicodeEncodeError:
+        print(formatted.encode('ascii', 'replace').decode('ascii'))
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(formatted + "\n")
 
@@ -327,6 +340,7 @@ def call_openrouter(models_list, sys_prompt=None, user_prompt=None, temperature=
             return res_data["choices"][0]["message"]["content"], actual_model
         except Exception as e:
             log_event(f"API Request Failed: {e}")
+            log_event(traceback.format_exc())
             if attempt == 0:
                 log_event("Network error. Retrying array once in 5s...")
                 time.sleep(5)
