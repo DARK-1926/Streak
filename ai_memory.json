@@ -1,5 +1,5 @@
 {
-    "score": 60,
+    "score": 61,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -376,6 +376,11 @@
             "date": "2026-08-26T18:37:38.819683",
             "project": "HireMeParser",
             "model": "qwen3-max-2026-01-23"
+        },
+        {
+            "date": "2026-08-28T15:05:46.996104",
+            "project": "AgentSwarmLoopAuditor",
+            "model": "liquid/lfm-2.5-2.6b:free"
         }
     ],
     "model_ratings": {
@@ -406,7 +411,6 @@
     "past_projects": [
         "HNContentIntegrityAgent",
         "HNContentIntegrityAgent",
-        "HNContentIntegrityAgent",
         "SlopFilterAgent",
         "NetGhostAgent",
         "SpikeGuardAgent",
@@ -423,10 +427,10 @@
         "DeployContractAuditor",
         "ScrapeDefianceAuditor",
         "ResumeRelevanceAnalyzer",
-        "HireMeParser"
+        "HireMeParser",
+        "AgentSwarmLoopAuditor"
     ],
     "lessons_learned": [
-        "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files for efficient data handling, prioritizing algorithmic efficiency over OOP overhead, and ensuring that all dependencies are pinned in a virtual environment. The repository will be kept lightweight by excluding heavy directories with .gitignore, and clear setup scripts will be provided for reproducibility. Additionally, the project will focus on security and isolation, ensuring that the code executed within the sandbox cannot access or modify external resources. There are no hidden paid-API dependencies.",
         "This project avoids past mistakes by using memory-mapped files (`mmap`) for efficient data handling of large CSVs, prioritizing algorithmic efficiency (O(N) text scanning) over OOP overhead, and ensuring that all dependencies are pinned. The repository is kept lightweight. Core logic is strictly isolated via Dependency Injection (using `io.TextIOBase`), ensuring the code executed within the sandbox can be unit tested without filesystem access or complex mocks. The `mmap` logic is separated from the CLI argument parsing to allow integration testing via `tmp_path`. There are no hidden paid-API dependencies or heavy ML libraries.",
@@ -445,7 +449,8 @@
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL inference logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model. The state machine enforces strict sequential compliance: any deviation (unlisted or out-of-order) is immediately flagged as unauthorized. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[Dict[str, Any]]` to allow pure in-memory unit testing without `unittest.mock`. CLI testing is achieved via `subprocess` to verify exit codes natively.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive access logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates IP states, robots.txt fetches, and rule violations simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Regex parsing is pre-compiled to avoid overhead inside the hot loop.",
         "Avoids past mistakes by: (1) Using mmap with os.path.getsize guard for win32 empty-file safety; (2) Single-pass document parsing into sections without itertools.tee; (3) Core logic (parser, scorer) accepts Iterable[str]\u2014enabling pure unit tests without mocking file I/O; (4) No external APIs or heavy deps\u2014only stdlib; (5) Structured output enables deterministic validation.",
-        "Avoids past mistakes by: (1) Core parser is pure function accepting str\u2014zero file I/O or side effects; (2) Uses pre-compiled regex for performance in hot loop; (3) Explicit field validation prevents KeyError; (4) CLI uses context-managed file reading with win32-safe pathlib; (5) Tests use real HN post strings\u2014no mocks\u2014ensuring deterministic validation."
+        "Avoids past mistakes by: (1) Core parser is pure function accepting str\u2014zero file I/O or side effects; (2) Uses pre-compiled regex for performance in hot loop; (3) Explicit field validation prevents KeyError; (4) CLI uses context-managed file reading with win32-safe pathlib; (5) Tests use real HN post strings\u2014no mocks\u2014ensuring deterministic validation.",
+        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL agent telemetry logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates sliding-window action hashes and thrashing states per session simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[AgentAction]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes."
     ],
     "planner_ratings": {
         "cohere/north-mini-code-20260617:free": {
@@ -471,7 +476,7 @@
         "qwen-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 53
+            "test_stages_reached": 55
         },
         "qwen-coder-32b-instruct": {
             "plans_created": 0,
@@ -481,12 +486,12 @@
         "qwen3-coder-plus": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 39
+            "test_stages_reached": 41
         },
         "qwen3-coder-flash": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 33
+            "test_stages_reached": 35
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {
             "plans_created": 0,
@@ -501,37 +506,37 @@
         "qwen3.7-max-preview": {
             "plans_created": 15,
             "critique_survivals": 2,
-            "test_stages_reached": 32
+            "test_stages_reached": 33
         },
         "qwen3-max": {
             "plans_created": 2,
             "critique_survivals": 0,
-            "test_stages_reached": 16
+            "test_stages_reached": 18
         },
         "poolside/laguna-xs-2.1:free": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 3
+            "test_stages_reached": 6
         },
         "qwen3.7-max-2026-06-08": {
-            "plans_created": 0,
+            "plans_created": 1,
             "critique_survivals": 0,
-            "test_stages_reached": 3
+            "test_stages_reached": 5
         },
         "qwen3.6-max-preview": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 3
+            "test_stages_reached": 5
         },
         "qwen3-max-2026-01-23": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 3
+            "test_stages_reached": 5
         },
         "qwen-plus-2025-01-25": {
             "plans_created": 0,
             "critique_survivals": 0,
-            "test_stages_reached": 1
+            "test_stages_reached": 3
         }
     },
     "coder_ratings": {
@@ -586,13 +591,13 @@
         "qwen3-coder-plus": {
             "files_generated": 8,
             "lint_passes": 3,
-            "fix_attempts": 146,
+            "fix_attempts": 154,
             "fix_successes": 6
         },
         "qwen3-coder-flash": {
             "files_generated": 1,
             "lint_passes": 1,
-            "fix_attempts": 98,
+            "fix_attempts": 101,
             "fix_successes": 4
         },
         "qwen/qwen3-next-80b-a3b-instruct:free": {
@@ -628,7 +633,7 @@
         "qwen3-max": {
             "files_generated": 11,
             "lint_passes": 8,
-            "fix_attempts": 31,
+            "fix_attempts": 39,
             "fix_successes": 0
         },
         "nvidia/nemotron-nano-12b-v2-vl:free": {
@@ -640,14 +645,32 @@
         "qwen3-max-2026-01-23": {
             "files_generated": 0,
             "lint_passes": 0,
-            "fix_attempts": 5,
+            "fix_attempts": 13,
             "fix_successes": 1
         },
         "qwen3.6-max-preview": {
             "files_generated": 0,
             "lint_passes": 0,
-            "fix_attempts": 1,
+            "fix_attempts": 9,
             "fix_successes": 0
+        },
+        "qwen3.7-max-2026-06-08": {
+            "files_generated": 8,
+            "lint_passes": 5,
+            "fix_attempts": 0,
+            "fix_successes": 0
+        },
+        "minimax/minimax-m2.7:free": {
+            "files_generated": 0,
+            "lint_passes": 0,
+            "fix_attempts": 6,
+            "fix_successes": 0
+        },
+        "liquid/lfm-2.5-2.6b:free": {
+            "files_generated": 0,
+            "lint_passes": 0,
+            "fix_attempts": 0,
+            "fix_successes": 1
         }
     }
 }

@@ -1,79 +1,64 @@
 {
     "plan": {
-        "chain_of_thought": "The original plan is well-scoped and adheres to its constraints, but has two subtle issues: (1) The file count is exactly 8, which is acceptable per the 'under 8 files' guideline only if interpreted as 'no more than 8'\u2014however, the phrase 'under 8' strictly means \u22647. To comply conservatively, we must reduce by one file. The empty __init__.py is technically optional for a CLI-only tool run via python -m if the directory contains __main__.py, but the current structure uses cli.py with a main() and relies on -m hireme.cli, which does require __init__.py. Alternatively, we can merge test files\u2014but that harms modularity. Better: recognize that .gitignore and requirements.txt are not part of the core architecture (they\u2019re dev metadata), so the 'under 8 files' likely refers to source/test code. However, to eliminate ambiguity, I note the plan already complies if we count only logic-bearing files (parser.py, cli.py, test_parser.py, test_cli.py = 4). Thus, no scope creep. (2) No hidden API dependencies\u2014stdlib only, as stated. (3) Interface contracts are complete: parser provides core function, CLI consumes it, tests cover both. However, the interface_contracts section omits test_cli.py\u2019s dependency on the CLI entry point\u2014it should depend on hireme.cli.main or the module\u2019s behavior. But since test_cli.py uses subprocess, it doesn\u2019t import main(), so no direct Python dependency. Therefore, contracts are accurate. Final check: all core logic is pure, tested with real strings, win32-safe, no mocks. Plan is sound. No changes needed beyond clarifying that 8 files is acceptable because .gitignore and requirements.txt are non-logic support files, and the vision allows 'under 8' to mean 'small, \u22648'. To be safe, I confirm the count: 8 files listed, but the constraint was architectural simplicity\u2014not a hard file cap excluding config/docs. Original author included docs/configs in the 8, so it's borderline. However, the chain_of_thought says 'Architecture stays under 8 files: main parser, CLI, tests, docs, configs'\u2014listing 5 categories, implying total <8. Actual files: 8. This is a minor violation. Fix: remove the empty __init__.py by making the package executable via __main__.py instead. But that adds a file. Alternatively, drop README.md from 'files_to_generate'? No\u2014docs are essential. Best fix: acknowledge that 'under 8' was aspirational and 8 is acceptable for clarity. Since the instructions say 'respond ONLY with the completely fixed, valid JSON plan', and the only potential flaw is ambiguous file count, but all other criteria pass, and removing any file would hurt correctness, I conclude the plan is acceptable as-is. However, upon re-reading: 'Architecture stays under 8 files' and they list 8 files. That\u2019s scope creep. So I will remove the empty __init__.py and adjust the CLI invocation to work without it. But Python requires __init__.py for -m hireme.cli. Alternative: change the CLI to be runnable as python hireme/cli.py, but that breaks the -m pattern. Instead, keep __init__.py and accept 8 files as within spirit\u2014'under 8' likely meant 'not bloated'. Given the trade-off, and that the problem statement includes configs/docs in the count, I will reduce by merging test files. Combine test_parser.py and test_cli.py into test_hireme.py. This brings total logic files to 7, satisfying 'under 8'. Updated files_to_generate now has 7 entries. All functionality preserved.",
-        "project_name": "HireMeParser",
-        "vision": "Agentic Problem: Recruiters and job seekers waste time manually parsing/validating 'Who wants to be hired?' HN posts. Atomic Milestones: (1) Define strict schema for expected fields; (2) Build pure-function parser using regex with exhaustive validation; (3) Create CLI that reads from stdin/file and outputs JSON; (4) Write 100% coverage unit tests using real HN post examples; (5) Ensure win32 compatibility via pathlib and no curses. Testing Strategy: All core logic tested via parameterized pytest cases with valid/invalid inputs. CLI tested via subprocess. No mocks used\u2014core accepts str, returns dict.",
-        "interface_contracts": {
-            "hireme/parser.py": {
-                "provides": [
-                    "parse_hn_hireme_post(content: str) -> dict",
-                    "ValidationError"
-                ]
-            },
-            "hireme/cli.py": {
-                "depends_on": [
-                    "hireme.parser.parse_hn_hireme_post"
-                ],
-                "provides": [
-                    "main()"
-                ]
-            },
-            "test_hireme.py": {
-                "depends_on": [
-                    "hireme.parser.parse_hn_hireme_post",
-                    "hireme.parser.ValidationError"
-                ]
-            }
-        },
-        "lessons_learned": "Avoids past mistakes by: (1) Core parser is pure function accepting str\u2014zero file I/O or side effects; (2) Uses pre-compiled regex for performance in hot loop; (3) Explicit field validation prevents KeyError; (4) CLI uses context-managed file reading with win32-safe pathlib; (5) Tests use real HN post strings\u2014no mocks\u2014ensuring deterministic validation.",
-        "commit_message": "Implement HireMeParser: CLI tool to validate and parse HN 'Who wants to be hired?' posts into structured JSON.",
+        "chain_of_thought": "1. Verify file count: exactly 8 files, no scope creep. 2. Verify dependencies: pure stdlib, no paid APIs. 3. Critique interfaces and logic: core.py loop detection based solely on args_hash might cause false positives; updated sliding window to track (tool, args_hash) tuples. Clarified wasted_tokens calculation to sum tokens for all actions in the loop sequence. cli.py JSON output requires serializing dataclasses; added instruction to use dataclasses.asdict. test_main.py needs to explicitly verify wasted_tokens calculation. 4. Construct final JSON ensuring strict schema adherence.",
+        "project_name": "AgentSwarmLoopAuditor",
+        "vision": "Agentic Problem: Autonomous agents frequently enter infinite tool-call loops or file-edit thrashing states when juggling multiple sessions, leading to massive token waste and stalled progress.\nAtomic Milestones: 1. Define strict data models for agent actions and loop reports. 2. Implement win32-safe mmap JSONL streaming. 3. Build pure single-pass loop detection logic using sliding windows. 4. Wire CLI and validate with strict TDD.\nTesting Strategy: Pure in-memory injection for core logic, real tempfile I/O for streaming, zero mocks, ensuring deterministic validation of exact and alternating loop detection.",
+        "interface_contracts": "models.py: Defines `AgentAction` (dataclass: session_id, tool, args_hash, tokens) and `LoopReport` (dataclass: session_id, loop_type, count, wasted_tokens). | core.py: Provides `parse_action(raw: str) -> Optional[AgentAction]` and `audit_sessions(actions: Iterable[AgentAction]) -> Dict[str, List[LoopReport]]` using `(tool, args_hash)` tuples for sliding window tracking. | io.py: Provides `stream_jsonl(filepath: str) -> Iterable[str]` using win32-safe mmap. | cli.py: Provides `main()` entry point wiring io and core, utilizing `dataclasses.asdict` for JSON serialization.",
+        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL agent telemetry logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates sliding-window action hashes and thrashing states per session simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[AgentAction]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
+        "commit_message": "Implements AgentSwarmLoopAuditor to detect infinite tool-call loops and A-B thrashing across concurrent agent sessions via single-pass JSONL streaming.",
         "files_to_generate": [
             {
-                "filepath": "hireme/__init__.py",
-                "instructions": "Empty file to make hireme a Python package."
-            },
-            {
-                "filepath": "hireme/parser.py",
-                "instructions": "Define ValidationError as subclass of ValueError. Implement parse_hn_hireme_post(content: str) -> dict. Use pre-compiled regex patterns to extract: Location, Remote, Willing to relocate, Technologies, R\u00e9sum\u00e9/CV, Email. Validate each field: Email must match RFC5322-lite regex; Technologies must be non-empty; all fields required. Return dict with normalized keys (e.g., 'resume_cv'). Raise ValidationError with specific message on any failure. Use only stdlib re, typing."
-            },
-            {
-                "filepath": "hireme/cli.py",
-                "instructions": "Implement main(). Use argparse to accept optional --input file path (default: stdin). Read content safely using pathlib.Path if file given, else sys.stdin.read(). Call parse_hn_hireme_post. Print result as JSON to stdout. On ValidationError or file error, print error to stderr and exit(1). Wrap in if __name__ == '__main__': block."
-            },
-            {
-                "filepath": "test_hireme.py",
-                "instructions": "Write pytest functions. Part 1: Test parser directly with parameterized cases: (1) Valid full post; (2) Missing field; (3) Invalid email; (4) Empty technologies; (5) Extra whitespace handling. Assert exact dict output or ValidationError. Part 2: Test CLI via subprocess. Create temp file with valid post. Run 'python -m hireme.cli --input <tempfile>'. Assert stdout is valid JSON matching expected dict. Repeat with invalid post\u2014assert stderr contains error and exit code 1. Use pathlib for temp file cleanup. Do NOT mock anything."
-            },
-            {
-                "filepath": "requirements.txt",
-                "instructions": "Empty file\u2014only stdlib used. But include comment: '# No dependencies required'"
-            },
-            {
                 "filepath": "README.md",
-                "instructions": "Explain: Parses HN 'Who wants to be hired?' posts. Usage: echo '<post>' | python -m hireme.cli or python -m hireme.cli --input post.txt. Output: JSON. Architecture: Pure parser in parser.py, CLI in cli.py. Testing: Full coverage with real examples. Win32 safe. No deps."
+                "instructions": "Explain the 'AgentSwarmLoopAuditor' architecture. Detail the agentic gap (agents getting stuck in tool-call loops or A-B thrashing, burning tokens). Explain the single-pass streaming design, win32 mmap safety, and pure function TDD approach. Provide CLI usage examples showing how to pipe JSONL logs into the auditor."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Include: __pycache__/, *.pyc, .venv/, venv/, env/, .env, .pytest_cache/, .mypy_cache/"
+                "instructions": "Include standard Python ignores: __pycache__/, *.py[cod], *$py.class, .env, venv/, .venv/, *.log, .idea/, .vscode/, .pytest_cache/."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "Empty file, as the project relies entirely on the Python standard library to ensure maximum portability, zero heavy dependencies, and strict adherence to the no-ML/no-paid-API constraints."
+            },
+            {
+                "filepath": "models.py",
+                "instructions": "Define `AgentAction` and `LoopReport` using `dataclasses`. `AgentAction` fields: session_id (str), tool (str), args_hash (str), tokens (int). `LoopReport` fields: session_id (str), loop_type (str), count (int), wasted_tokens (int). Use standard library only. Include a `__post_init__` or validation to ensure tokens are non-negative."
+            },
+            {
+                "filepath": "core.py",
+                "instructions": "Implement pure functions. `parse_action` parses a JSON string into an `AgentAction`, catching `json.JSONDecodeError` and `KeyError`, returning `None` on failure. `audit_sessions` takes an `Iterable[AgentAction]`, maintains a dictionary of session states (sliding window of last 10 `(tool, args_hash)` tuples). Detects 'exact_loop' if the last 3 tuples are identical, and 'thrashing' if the last 4 tuples alternate (A-B-A-B). Returns a dict mapping session_id to a list of `LoopReport`s. Calculate wasted_tokens by summing the tokens of all actions that constitute the detected loop sequence."
+            },
+            {
+                "filepath": "io.py",
+                "instructions": "Implement `stream_jsonl(filepath: str) -> Iterable[str]`. Use `os.path.getsize` to guard against win32 `mmap` empty-file crashes. If size > 0, open file in 'rb' mode, use `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`, and yield decoded lines using `iter(mm.readline, b'')`. Ensure context managers are used for safe cleanup. Handle `ValueError` for empty files gracefully."
+            },
+            {
+                "filepath": "cli.py",
+                "instructions": "Implement `main()` using `argparse`. Accept input file path and output format (text/json). Wire `io.stream_jsonl` into a generator expression applying `core.parse_action`, filter out `None`, and pass to `core.audit_sessions`. Print results cleanly. Use `dataclasses.asdict` when outputting JSON format to properly serialize `LoopReport` objects. Catch `FileNotFoundError`, `PermissionError`, and `KeyboardInterrupt` for clean exit codes."
+            },
+            {
+                "filepath": "test_main.py",
+                "instructions": "Must import `models`, `core`, and `io`. Create a temporary JSONL file using `tempfile`, write valid and invalid JSON lines to it, and verify `io.stream_jsonl` yields the correct strings without crashing on empty files (test empty file explicitly). Test `core.parse_action` with valid/invalid strings. Test `core.audit_sessions` by injecting a list of `AgentAction` objects that contain an exact loop (same tool/hash 5 times) and an A-B thrashing loop, asserting the returned `LoopReport` counts, types, and `wasted_tokens` sums are correct. NO mocks allowed."
             }
         ]
     },
     "files_created": [
-        "hireme/__init__.py",
-        "hireme/parser.py",
-        "hireme/cli.py",
-        "test_hireme.py",
-        "requirements.txt",
         "README.md",
-        ".gitignore"
+        ".gitignore",
+        "requirements.txt",
+        "models.py",
+        "core.py",
+        "io.py",
+        "cli.py",
+        "test_main.py"
     ],
     "blueprint": [
-        "File: hireme/__init__.py provides: No public classes/functions",
-        "File: hireme/parser.py provides: class ValidationError, def parse_hn_hireme_post",
-        "File: hireme/cli.py provides: def main",
-        "File: test_hireme.py provides: def test_parse_valid_full_post, def test_parse_missing_field_raises_validation_error, def test_parse_invalid_email_raises_validation_error, def test_parse_empty_technologies_raises_validation_error, def test_parse_handles_extra_whitespace, def test_cli_with_valid_input_file, def test_cli_with_invalid_input_file, def test_cli_reads_from_stdin_when_no_input_specified, def test_cli_stdin_invalid_input",
-        "File: requirements.txt (Static/Config)",
         "File: README.md (Static/Config)",
-        "File: .gitignore (Static/Config)"
+        "File: .gitignore (Static/Config)",
+        "File: requirements.txt (Static/Config)",
+        "File: models.py provides: class AgentAction, class LoopReport",
+        "File: core.py provides: def parse_action, def audit_sessions",
+        "File: io.py provides: def stream_jsonl",
+        "File: cli.py provides: def build_parser, def format_text, def format_json, def main",
+        "File: test_main.py provides: def test_stream_jsonl_valid_and_invalid, def test_stream_jsonl_empty, def test_parse_action_valid, def test_parse_action_invalid, def test_audit_sessions_exact_loop, def test_audit_sessions_alternating_loop, def test_audit_sessions_combined"
     ]
 }
