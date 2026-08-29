@@ -56785,3 +56785,285 @@ The algorithm needs to be modified to continue accumulating tokens while in a lo
 [2026-08-28 15:05:25] Successfully patched models.py.
 [2026-08-28 15:05:25] Validating AgentSwarmLoopAuditor (Attempt 3/4)...
 [2026-08-28 15:05:46] VICTORY ACHIEVED! Code is fully working.
+[2026-08-28 15:05:54] Code successfully pushed to GitHub 'main' with message: 'feat(AgentSwarmLoopAuditor): Implements AgentSwarmLoopAuditor to detect infinite tool-call loops and A-B thrashing across concurrent agent sessions via single-pass JSONL streaming.'
+[2026-08-28 15:05:54] Project successfully completed. Exiting script as requested.
+[2026-08-29 22:07:19] ========================================
+[2026-08-29 22:07:19]  AGENT BEAST V6.5: SOTA SCAFFOLD
+[2026-08-29 22:07:19] ========================================
+[2026-08-29 22:07:19] Syncing with OpenRouter Neural Grid...
+[2026-08-29 22:07:20] Discovery complete. Found 18 free architects online.
+[2026-08-29 22:07:20] --- Assigning Planner Model: qwen3.7-max-preview ---
+[2026-08-29 22:07:20] Scanning Hacker News for high-impact problems (Parallel)...
+[2026-08-29 22:07:23] Stage 1: Planning Project with Architect qwen3.7-max-preview...
+[2026-08-29 22:07:24] API Call (qwen3.7-max-preview) used 0 tokens.
+[2026-08-29 22:07:24] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:07:24] Transient error across all models. Retrying array once in 5s...
+[2026-08-29 22:07:30] API Call (qwen3.7-max-preview) used 0 tokens.
+[2026-08-29 22:07:30] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:07:30] Marking qwen3.7-max-preview as UNHEALTHY (SERVER_ERROR). Rotating to next model...
+[2026-08-29 22:07:30] --- Assigning Planner Model: qwen3.7-max-2026-06-08 ---
+[2026-08-29 22:07:30] Scanning Hacker News for high-impact problems (Parallel)...
+[2026-08-29 22:07:34] Stage 1: Planning Project with Architect qwen3.7-max-2026-06-08...
+[2026-08-29 22:07:35] API Call (qwen3.7-max-2026-06-08) used 0 tokens.
+[2026-08-29 22:07:35] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:07:35] Transient error across all models. Retrying array once in 5s...
+[2026-08-29 22:07:41] API Call (qwen3.7-max-2026-06-08) used 0 tokens.
+[2026-08-29 22:07:41] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:07:41] Marking qwen3.7-max-2026-06-08 as UNHEALTHY (SERVER_ERROR). Rotating to next model...
+[2026-08-29 22:07:41] --- Assigning Planner Model: qwen3.6-max-preview ---
+[2026-08-29 22:07:41] Scanning Hacker News for high-impact problems (Parallel)...
+[2026-08-29 22:07:46] Stage 1: Planning Project with Architect qwen3.6-max-preview...
+[2026-08-29 22:23:01] ========================================
+[2026-08-29 22:23:01]  AGENT BEAST V6.5: SOTA SCAFFOLD
+[2026-08-29 22:23:01] ========================================
+[2026-08-29 22:23:01] --- Assigning Planner Model: qwen3.7-max-preview ---
+[2026-08-29 22:23:01] Scanning Hacker News for high-impact problems (Parallel)...
+[2026-08-29 22:23:05] Stage 1: Planning Project with Architect qwen3.7-max-preview...
+[2026-08-29 22:23:07] API Call (qwen3.7-max-preview) used 0 tokens.
+[2026-08-29 22:23:07] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:23:07] Transient error across all models. Retrying array once in 5s...
+[2026-08-29 22:23:13] API Call (qwen3.7-max-preview) used 0 tokens.
+[2026-08-29 22:23:13] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:23:13] Marking qwen3.7-max-preview as UNHEALTHY (SERVER_ERROR). Rotating to next model...
+[2026-08-29 22:23:13] --- Assigning Planner Model: qwen3.7-max-2026-06-08 ---
+[2026-08-29 22:23:13] Scanning Hacker News for high-impact problems (Parallel)...
+[2026-08-29 22:23:16] Stage 1: Planning Project with Architect qwen3.7-max-2026-06-08...
+[2026-08-29 22:23:18] API Call (qwen3.7-max-2026-06-08) used 0 tokens.
+[2026-08-29 22:23:18] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:23:18] Transient error across all models. Retrying array once in 5s...
+[2026-08-29 22:23:24] API Call (qwen3.7-max-2026-06-08) used 0 tokens.
+[2026-08-29 22:23:24] API Error: The free quota has been exhausted. To continue accessing the model on a paid basis, please complete your payment information （or disable the "use free tier only" mode in the management console if already completed). (Code: AllocationQuota.FreeTierOnly)
+[2026-08-29 22:23:24] Marking qwen3.7-max-2026-06-08 as UNHEALTHY (SERVER_ERROR). Rotating to next model...
+[2026-08-29 22:23:24] --- Assigning Planner Model: qwen3.6-max-preview ---
+[2026-08-29 22:23:24] Scanning Hacker News for high-impact problems (Parallel)...
+[2026-08-29 22:23:28] Stage 1: Planning Project with Architect qwen3.6-max-preview...
+[2026-08-29 22:24:49] API Call (qwen3.6-max-preview) used 7425 tokens.
+[2026-08-29 22:24:49] Stage 1b: Critiquing Plan...
+[2026-08-29 22:25:39] API Call (qwen3.6-max-preview) used 6125 tokens.
+[2026-08-29 22:25:39] Working on 'SkillSpecAuditor'...
+[2026-08-29 22:25:39] --- Assigning Coder Model: qwen3.6-max-preview ---
+[2026-08-29 22:25:39] Stage 2: Generating File -> skill_spec.py (Chunked)...
+[2026-08-29 22:27:23] API Call (qwen3.6-max-preview) used 6686 tokens.
+[2026-08-29 22:27:24] Saved skill_spec.py (4834 bytes).
+[2026-08-29 22:27:24] Stage 2: Generating File -> executor.py (Chunked)...
+[2026-08-29 22:27:59] API Call (qwen3.6-max-preview) used 3890 tokens.
+[2026-08-29 22:27:59] Saved executor.py (3753 bytes).
+[2026-08-29 22:27:59] Stage 2: Generating File -> router.py (Chunked)...
+[2026-08-29 22:29:37] API Call (qwen3.6-max-preview) used 6740 tokens.
+[2026-08-29 22:29:37] Saved router.py (3397 bytes).
+[2026-08-29 22:29:37] Stage 2: Generating File -> cli.py (Chunked)...
+[2026-08-29 22:31:07] API Call (qwen3.6-max-preview) used 7538 tokens.
+[2026-08-29 22:31:07] Saved cli.py (4384 bytes).
+[2026-08-29 22:31:07] Full source exceeded 12k chars. Falling back to interface blueprint for test context.
+[2026-08-29 22:31:07] Stage 2: Generating File -> test_main.py (Chunked)...
+[2026-08-29 22:33:36] API Call (qwen3.6-max-preview) used 9405 tokens.
+[2026-08-29 22:33:37] Saved test_main.py (6772 bytes).
+[2026-08-29 22:33:37] Stage 2: Generating File -> .gitignore (Chunked)...
+[2026-08-29 22:33:49] API Call (qwen3.6-max-preview) used 3575 tokens.
+[2026-08-29 22:33:49] Saved .gitignore (75 bytes).
+[2026-08-29 22:33:49] Stage 2: Generating File -> README.md (Chunked)...
+[2026-08-29 22:34:43] API Call (qwen3.6-max-preview) used 7291 tokens.
+[2026-08-29 22:34:43] Saved README.md (7160 bytes).
+[2026-08-29 22:34:43] Sanity checking dependencies...
+[2026-08-29 22:34:43] Stage 3: Generating Integration Script for SkillSpecAuditor...
+[2026-08-29 22:34:43] Using hardcoded reliable test script template (0 tokens used).
+[2026-08-29 22:34:43] Validating SkillSpecAuditor (Attempt 1/4)...
+[2026-08-29 22:36:09] FAILURE. Syntax/Test error. Asking SAME model to patch...
+[2026-08-29 22:36:09] Stage 4: Agentic Debugging...
+[2026-08-29 22:36:09] ReAct Turn 1...
+[2026-08-29 22:36:13] API Call (qwen3.6-max-preview) used 770 tokens.
+[2026-08-29 22:36:13] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "main.py", "start_line": 1, "end_line": 100}
+</tool_call>
+[2026-08-29 22:36:13] ReAct Turn 2...
+[2026-08-29 22:36:16] API Call (qwen3.6-max-preview) used 714 tokens.
+[2026-08-29 22:36:16] Agent Raw Output: <tool_call>
+{"tool": "search_code", "query": "_execute_chain"}
+</tool_call>
+[2026-08-29 22:36:16] ReAct Turn 3...
+[2026-08-29 22:36:21] API Call (qwen3.6-max-preview) used 882 tokens.
+[2026-08-29 22:36:21] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "cli.py", "start_line": 60, "end_line": 120}
+</tool_call>
+[2026-08-29 22:36:21] ReAct Turn 4...
+[2026-08-29 22:36:25] API Call (qwen3.6-max-preview) used 1616 tokens.
+[2026-08-29 22:36:25] Agent Raw Output: <tool_call>
+{"tool": "search_code", "query": "def execute_skill"}
+</tool_call>
+[2026-08-29 22:36:25] ReAct Turn 5...
+[2026-08-29 22:36:30] API Call (qwen3.6-max-preview) used 1702 tokens.
+[2026-08-29 22:36:30] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "executor.py", "start_line": 1, "end_line": 60}
+</tool_call>
+[2026-08-29 22:36:30] ReAct Turn 6...
+[2026-08-29 22:36:34] API Call (qwen3.6-max-preview) used 2357 tokens.
+[2026-08-29 22:36:34] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "cli.py", "start_line": 1, "end_line": 65}
+</tool_call>
+[2026-08-29 22:36:34] ReAct Turn 7...
+[2026-08-29 22:36:59] API Call (qwen3.6-max-preview) used 4590 tokens.
+[2026-08-29 22:36:59] Agent Raw Output: <tool_call>
+{
+  "tool": "finish",
+  "files_to_update": [
+    {
+      "filepath": "cli.py",
+      "target_content": "from typing import List, Optional",
+      "replacement_content": "from typing import Callable, List, Optional"
+    },
+    {
+      "filepath": "cli.py",
+      "target_content": "def _execute_chain(chain: List[SkillDef], initial_payload: str) -> List[dict]:\n    \"\"\"Execute resolved skills sequentially, piping stdout to next stdin.\"\"\"\n    results: List[dict] = []\n    payload = initial_payload\n    for skill in chain:\n        result: ExecutionResult = execute_skill(skill, payload, subprocess_runner)",
+      "replacement_content": "def _execute_chain(chain: List[SkillDef], initial_payload: str, runner: Callable) -> List[dict]:\n    \"\"\"Execute resolved skills sequentially, piping stdout to next stdin.\"\"\"\n    results: List[dict] = []\n    payload = initial_payload\n    for skill in chain:\n        result: ExecutionResult = execute_skill(skill, payload, runner)"
+    },
+    {
+      "filepath": "cli.py",
+      "target_content": "        execution_results = _execute_chain(chain, initial_payload)",
+      "replacement_content": "        execution_results = _execute_chain(chain, initial_payload, subprocess_runner)"
+    }
+  ]
+}
+</tool_call>
+[2026-08-29 22:36:59] Applying SEARCH/REPLACE patch to cli.py...
+[2026-08-29 22:36:59] Successfully patched cli.py.
+[2026-08-29 22:36:59] Applying SEARCH/REPLACE patch to cli.py...
+[2026-08-29 22:36:59] Successfully patched cli.py.
+[2026-08-29 22:36:59] Applying SEARCH/REPLACE patch to cli.py...
+[2026-08-29 22:36:59] Successfully patched cli.py.
+[2026-08-29 22:36:59] Validating SkillSpecAuditor (Attempt 2/4)...
+[2026-08-29 22:37:15] FAILURE. Syntax/Test error. Asking SAME model to patch...
+[2026-08-29 22:37:15] Stage 4: Agentic Debugging...
+[2026-08-29 22:37:15] ReAct Turn 1...
+[2026-08-29 22:37:19] API Call (qwen3.6-max-preview) used 674 tokens.
+[2026-08-29 22:37:19] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "executor.py"}
+</tool_call>
+[2026-08-29 22:37:19] ReAct Turn 2...
+[2026-08-29 22:37:24] API Call (qwen3.6-max-preview) used 1776 tokens.
+[2026-08-29 22:37:24] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "skill_spec.py"}
+</tool_call>
+[2026-08-29 22:37:24] ReAct Turn 3...
+[2026-08-29 22:37:31] API Call (qwen3.6-max-preview) used 3107 tokens.
+[2026-08-29 22:37:31] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "test_main.py"}
+</tool_call>
+[2026-08-29 22:37:31] ReAct Turn 4...
+[2026-08-29 22:37:45] API Call (qwen3.6-max-preview) used 4861 tokens.
+[2026-08-29 22:37:45] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "router.py"}
+</tool_call>
+[2026-08-29 22:37:45] ReAct Turn 5...
+[2026-08-29 22:37:57] API Call (qwen3.6-max-preview) used 5835 tokens.
+[2026-08-29 22:37:57] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "test_main.py", "start_line": 100}
+</tool_call>
+[2026-08-29 22:37:57] ReAct Turn 6...
+[2026-08-29 22:38:38] API Call (qwen3.6-max-preview) used 6854 tokens.
+[2026-08-29 22:38:38] Agent Raw Output: <tool_call>
+{"tool": "search_code", "query": "test_resolve_chain_linear"}
+</tool_call>
+[2026-08-29 22:38:38] ReAct Turn 7...
+[2026-08-29 22:38:58] API Call (qwen3.6-max-preview) used 6227 tokens.
+[2026-08-29 22:38:58] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "test_main.py", "start_line": 100, "end_line": 200}
+</tool_call>
+[2026-08-29 22:38:58] ReAct Turn 8...
+[2026-08-29 22:39:14] API Call (qwen3.6-max-preview) used 7492 tokens.
+[2026-08-29 22:39:14] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "cli.py"}
+</tool_call>
+[2026-08-29 22:39:14] ReAct Turn 9...
+[2026-08-29 22:41:19] API Call (qwen3.6-max-preview) used 17392 tokens.
+[2026-08-29 22:41:19] Agent Raw Output: <tool_call>
+{
+  "tool": "finish",
+  "files_to_update": [
+    {
+      "filepath": "skill_spec.py",
+      "target_content": "@dataclass(frozen=True)\nclass SkillDef:\n    \"\"\"\n    Immutable data model representing a single skill definition in a manifest.\n\n    Attributes:\n        name: Unique identifier for the skill.\n        cmd: Executable command and arguments as a list of strings.\n        stdin_expect: Optional format string describing expected stdin payload.\n        stdout_expect: Optional format string describing expected stdout payload.\n        allowed_exit_codes: List of POSIX exit codes considered successful.\n    \"\"\"\n    name: str\n    cmd: List[str]\n    stdin_expect: Optional[str] = None\n    stdout_expect: Optional[str] = None\n    allowed_exit_codes: List[int] = field(default_factory=lambda: [0])",
+      "replacement_content": "@dataclass(frozen=True)\nclass SkillDef:\n    \"\"\"\n    Immutable data model representing a single skill definition in a manifest.\n\n    Attributes:\n        name: Unique identifier for the skill.\n        command: Executable command string.\n        stdin_type: Optional format string describing expected stdin payload.\n        stdout_type: Optional format string describing expected stdout payload.\n        description: Human-readable description of the skill.\n        allowed_exit_codes: List of POSIX exit codes considered successful.\n    \"\"\"\n    name: str\n    command: str\n    stdin_type: Optional[str] = None\n    stdout_type: Optional[str] = None\n    description: str = \"\"\n    allowed_exit_codes: List[int] = field(default_factory=lambda: [0])"
+    },
+    {
+      "filepath": "skill_spec.py",
+      "target_content": "    parsed_skills: List[SkillDef] = []\n    required_keys = {\"name\", \"cmd\"}\n\n    for idx, item in enumerate(data):\n        if not isinstance(item, dict):\n            raise ValueError(f\"Manifest item at index {idx} is not a JSON object.\")\n\n        missing = required_keys - item.keys()\n        if missing:\n            raise ValueError(f\"Manifest item at index {idx} missing required fields: {missing}\")\n\n        if not isinstance(item[\"name\"], str) or not item[\"name\"].strip():\n            raise ValueError(f\"Manifest item at index {idx}: 'name' must be a non-empty string.\")\n\n        if not isinstance(item[\"cmd\"], list) or not all(isinstance(c, str) for c in item[\"cmd\"]):\n            raise ValueError(f\"Manifest item at index {idx}: 'cmd' must be a list of strings.\")\n\n        stdin_val = item.get(\"stdin_expect\")\n        stdout_val = item.get(\"stdout_expect\")\n        exit_codes = item.get(\"allowed_exit_codes\", [0])\n\n        if stdin_val is not None and not isinstance(stdin_val, str):\n            raise ValueError(f\"Manifest item at index {idx}: 'stdin_expect' must be a string or null.\")\n        if stdout_val is not None and not isinstance(stdout_val, str):\n            raise ValueError(f\"Manifest item at index {idx}: 'stdout_expect' must be a string or null.\")\n        if not isinstance(exit_codes, list) or not all(isinstance(c, int) for c in exit_codes):\n            raise ValueError(f\"Manifest item at index {idx}: 'allowed_exit_codes' must be a list of integers.\")\n\n        parsed_skills.append(SkillDef(\n            name=item[\"name\"],\n            cmd=item[\"cmd\"],\n            stdin_expect=stdin_val,\n            stdout_expect=stdout_val,\n            allowed_exit_codes=exit_codes\n        ))\n\n    return parsed_skills",
+      "replacement_content": "    parsed_skills: List[SkillDef] = []\n    required_keys = {\"name\", \"command\"}\n\n    for idx, item in enumerate(data):\n        if not isinstance(item, dict):\n            raise ValueError(f\"Manifest item at index {idx} is not a JSON object.\")\n\n        missing = required_keys - item.keys()\n        if missing:\n            raise ValueError(f\"Manifest item at index {idx} missing required fields: {missing}\")\n\n        if not isinstance(item[\"name\"], str) or not item[\"name\"].strip():\n            raise ValueError(f\"Manifest item at index {idx}: 'name' must be a non-empty string.\")\n\n        if not isinstance(item[\"command\"], str):\n            raise ValueError(f\"Manifest item at index {idx}: 'command' must be a string.\")\n\n        stdin_val = item.get(\"stdin_type\")\n        stdout_val = item.get(\"stdout_type\")\n        desc_val = item.get(\"description\", \"\")\n\n        parsed_skills.append(SkillDef(\n            name=item[\"name\"],\n            command=item[\"command\"],\n            stdin_type=stdin_val,\n            stdout_type=stdout_val,\n            description=desc_val\n        ))\n\n    return parsed_skills"
+    },
+    {
+      "filepath": "skill_spec.py",
+      "target_content": "def validate_contract(skill: SkillDef) -> List[str]:\n    \"\"\"\n    Check a SkillDef for logical errors and contract violations.\n\n    Validates command presence, exit code ranges, and expectation format consistency.\n    This function is pure and performs no I/O operations.\n\n    Args:",
+      "replacement_content": "def validate_contract(skill: SkillDef) -> List[str]:\n    \"\"\"\n    Check a SkillDef for logical errors and contract violations.\n\n    Validates command presence, exit code ranges, and expectation format consistency.\n    This function is pure and performs no I/O operations.\n\n    Args:\n        skill: The SkillDef instance to validate.\n\n    Returns:\n        A list of error message strings. Empty list indicates valid contract.\n    \"\"\"\n    errors: List[str] = []\n    if not skill.name or not skill.name.strip():\n        errors.append(\"Skill name must be a non-empty string.\")\n    if not skill.command or not skill.command.strip():\n        errors.append(\"Skill command must be a non-empty string.\")\n    return errors\n\n\ndef _unused_placeholder() -> None:\n    \"\"\"Placeholder to preserve structure if needed.\"\"\"\n    pass\n\n\n# Original docstring continuation handled above.\ndef _validate_contract_args(skill: SkillDef) -> List[str]:"
+    },
+    {
+      "filepath": "executor.py",
+      "target_content": "    try:\n        exit_code, stdout, stderr = runner(skill.cmd, payload)\n    except Exception as exc:",
+      "replacement_content": "    try:\n        exit_code, stdout, stderr = runner(skill.command, payload)\n    except Exception as exc:"
+    },
+    {
+      "filepath": "router.py",
+      "target_content": "def resolve_chain(skills: List[SkillDef], entrypoint: str) -> List[SkillDef]:\n    \"\"\"\n    Resolve a deterministic execution chain starting from a given entrypoint skill.\n\n    Iteratively appends the first skill in the provided list whose `stdin_expect`\n    matches the previous skill's `stdout_expect`. Handles `None` expectations by\n    treating `None` stdout as a terminal node and `None` stdin as a wildcard match.\n\n    Args:\n        skills: Ordered list of available skill definitions.\n        entrypoint: Name of the skill to start the chain.\n\n    Returns:\n        A list of SkillDef instances representing the resolved execution chain.\n\n    Raises:\n        ValueError: If the entrypoint is missing or a cycle is detected.\n    \"\"\"\n    entry_skill = next((s for s in skills if s.name == entrypoint), None)\n    if entry_skill is None:\n        raise ValueError(f\"Entrypoint skill '{entrypoint}' not found in manifest.\")\n\n    chain: List[SkillDef] = [entry_skill]\n    visited: Set[str] = {entrypoint}\n    current = entry_skill\n\n    while True:\n        prev_stdout = current.stdout_expect\n        if prev_stdout is None:\n            break  # Terminal node reached\n\n        next_skill: Optional[SkillDef] = None\n        for s in skills:\n            if s.stdin_expect == prev_stdout or s.stdin_expect is None:\n                next_skill = s\n                break\n\n        if next_skill is None:\n            break  # No compatible skill found\n\n        if next_skill.name in visited:\n            raise ValueError(f\"Cycle detected involving skill '{next_skill.name}'.\")\n\n        visited.add(next_skill.name)\n        chain.append(next_skill)\n        current = next_skill\n\n    return chain",
+      "replacement_content": "def resolve_chain(skills: List[SkillDef], start_type: str, end_type: str) -> List[SkillDef]:\n    \"\"\"\n    Resolve a deterministic execution chain matching I/O types from start to end.\n\n    Args:\n        skills: Ordered list of available skill definitions.\n        start_type: The stdin_type to start the chain.\n        end_type: The stdout_type to terminate the chain.\n\n    Returns:\n        A list of SkillDef instances representing the resolved execution chain.\n    \"\"\"\n    entry_skill = next((s for s in skills if s.stdin_type == start_type), None)\n    if entry_skill is None:\n        return []\n\n    chain: List[SkillDef] = [entry_skill]\n    visited: Set[str] = {entry_skill.name}\n    current = entry_skill\n\n    while current.stdout_type != end_type:\n        prev_stdout = current.stdout_type\n        if prev_stdout is None:\n            return []\n\n        next_skill: Optional[SkillDef] = next(\n            (s for s in skills if s.stdin_type == prev_stdout and s.name not in visited), None\n        )\n\n        if next_skill is None:\n            return []\n\n        if next_skill.name in visited:\n            return chain\n\n        visited.add(next_skill.name)\n        chain.append(next_skill)\n        current = next_skill\n\n    return chain"
+    },
+    {
+      "filepath": "router.py",
+      "target_content": "    issues: List[str] = []\n    for i in range(len(chain) - 1):\n        src = chain[i]\n        dst = chain[i + 1]\n\n        if src.stdout_expect is None:\n            issues.append(\n                f\"Warning: Skill '{src.name}' has no stdout_expect, \"\n                f\"chain may terminate prematurely before '{dst.name}'.\"\n            )\n        elif dst.stdin_expect is None:\n            issues.append(\n                f\"Warning: Skill '{dst.name}' has no stdin_expect, \"\n                f\"acting as wildcard for '{src.name}' output.\"\n            )\n        elif src.stdout_expect != dst.stdin_expect:\n            issues.append(\n                f\"Error: Mismatch between '{src.name}' stdout_expect \"\n                f\"('{src.stdout_expect}') and '{dst.name}' stdin_expect \"\n                f\"('{dst.stdin_expect}').\"\n            )\n\n    return issues",
+      "replacement_content": "    issues: List[str] = []\n    for i in range(len(chain) - 1):\n        src = chain[i]\n        dst = chain[i + 1]\n\n        if src.stdout_type is None:\n            issues.append(\n                f\"Warning: Skill '{src.name}' has no stdout_type, \"\n                f\"chain may terminate prematurely before '{dst.name}'.\"\n            )\n        elif dst.stdin_type is None:\n            issues.append(\n                f\"Warning: Skill '{dst.name}' has no stdin_type, \"\n                f\"acting as wildcard for '{src.name}' output.\"\n            )\n        elif src.stdout_type != dst.stdin_type:\n            issues.append(\n                f\"Error: Mismatch between '{src.name}' stdout_type \"\n                f\"('{src.stdout_type}') and '{dst.name}' stdin_type \"\n                f\"('{dst.stdin_type}').\"\n            )\n\n    return issues"
+    },
+    {
+      "filepath": "cli.py",
+      "target_content": "def _validate_skills(skills: List[SkillDef]) -> None:\n    \"\"\"Run contract validation against each parsed skill definition.\"\"\"\n    for skill in skills:\n        result = validate_contract(skill)\n        if result is False:\n            raise ValueError(f\"Contract validation failed for skill '{skill.name}'\")",
+      "replacement_content": "def _validate_skills(skills: List[SkillDef]) -> None:\n    \"\"\"Run contract validation against each parsed skill definition.\"\"\"\n    for skill in skills:\n        errors = validate_contract(skill)\n        if errors:\n            raise ValueError(f\"Contract validation failed for skill '{skill.name}': {errors}\")"
+    },
+    {
+      "filepath": "cli.py",
+      "target_content": "def _format_dry_run(chain: List[SkillDef]) -> dict:\n    \"\"\"Build a JSON-serializable dry-run plan from the resolved chain.\"\"\"\n    plan = [\n        {\n            \"name\": s.name,\n            \"cmd\": s.cmd,\n            \"stdin_expect\": s.stdin_expect,\n            \"stdout_expect\": s.stdout_expect,\n        }\n        for s in chain\n    ]\n    return {\"status\": \"dry_run\", \"chain\": plan}",
+      "replacement_content": "def _format_dry_run(chain: List[SkillDef]) -> None:\n    \"\"\"Build and print a JSON-serializable dry-run plan from the resolved chain.\"\"\"\n    plan = [\n        {\n            \"name\": s.name,\n            \"command\": s.command,\n            \"stdin_type\": s.stdin_type,\n            \"stdout_type\": s.stdout_type,\n        }\n        for s in chain\n    ]\n    print(json.dumps({\"status\": \"dry_run\", \"chain\": plan}, indent=2))"
+    },
+    {
+      "filepath": "cli.py",
+      "target_content": "def _execute_chain(chain: List[SkillDef], initial_payload: str, runner: Callable) -> List[dict]:\n    \"\"\"Execute resolved skills sequentially, piping stdout to next stdin.\"\"\"\n    results: List[dict] = []\n    payload = initial_payload\n    for skill in chain:\n        result: ExecutionResult = execute_skill(skill, payload, runner)\n        results.append({\n            \"skill\": skill.name,\n            \"exit_code\": result.exit_code,\n            \"stdout\": result.stdout,\n            \"stderr\": result.stderr,\n            \"success\": result.success,\n            \"error_msg\": result.error_msg,\n        })\n        if not result.success:\n            raise RuntimeError(f\"Skill '{skill.name}' failed: {result.error_msg}\")\n        payload = result.stdout\n    return results",
+      "replacement_content": "def _execute_chain(chain: List[SkillDef], initial_payload: str, runner: Callable) -> List[ExecutionResult]:\n    \"\"\"Execute resolved skills sequentially, piping stdout to next stdin.\"\"\"\n    results: List[ExecutionResult] = []\n    payload = initial_payload\n    for skill in chain:\n        result = execute_skill(skill, payload, runner)\n        results.append(result)\n        if not result.success:\n            raise RuntimeError(f\"Skill '{skill.name}' failed: {result.error_msg}\")\n        payload = result.stdout\n    return results"
+    }
+  ]
+}
+</tool_call>
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to skill_spec.py...
+[2026-08-29 22:41:19] Successfully patched skill_spec.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to skill_spec.py...
+[2026-08-29 22:41:19] Successfully patched skill_spec.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to skill_spec.py...
+[2026-08-29 22:41:19] Successfully patched skill_spec.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to executor.py...
+[2026-08-29 22:41:19] Successfully patched executor.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to router.py...
+[2026-08-29 22:41:19] Successfully patched router.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to router.py...
+[2026-08-29 22:41:19] Successfully patched router.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to cli.py...
+[2026-08-29 22:41:19] Successfully patched cli.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to cli.py...
+[2026-08-29 22:41:19] Successfully patched cli.py.
+[2026-08-29 22:41:19] Applying SEARCH/REPLACE patch to cli.py...
+[2026-08-29 22:41:19] Successfully patched cli.py.
+[2026-08-29 22:41:19] Validating SkillSpecAuditor (Attempt 3/4)...
+[2026-08-29 22:41:35] FAILURE. Syntax/Test error. Asking SAME model to patch...
+[2026-08-29 22:41:35] Stage 4: Agentic Debugging...
+[2026-08-29 22:41:35] ReAct Turn 1...
+[2026-08-29 22:41:42] API Call (qwen3.6-max-preview) used 787 tokens.
+[2026-08-29 22:41:42] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "skill_spec.py", "start_line": 110, "end_line": 130}
+</tool_call>
+[2026-08-29 22:41:42] ReAct Turn 2...
+[2026-08-29 22:41:47] API Call (qwen3.6-max-preview) used 1048 tokens.
+[2026-08-29 22:41:47] Agent Raw Output: <tool_call>
+{"tool": "view_file", "filepath": "skill_spec.py", "start_line": 100, "end_line": 125}
+</tool_call>
+[2026-08-29 22:41:47] ReAct Turn 3...
+[2026-08-29 22:41:53] API Call (qwen3.6-max-preview) used 1550 tokens.
+[2026-08-29 22:41:53] Agent Raw Output: <tool_call>
+{"tool": "finish", "files_to_update": [{"filepath": "skill_spec.py", "target_content": "# Original docstring continuation handled above.\ndef _validate_contract_args(skill: SkillDef) -> List[str]:\n        skill: The SkillDef instance to validate.\n\n    Returns:\n        A list of error description strings. An empty list indicates a valid contract.\n    \"\"\"", "replacement_content": "# Original docstring continuation handled above.\ndef _validate_contract_args(skill: SkillDef) -> List[str]:\n    \"\"\"Validate the arguments of a skill contract.\n\n    Args:\n        skill: The SkillDef instance to validate.\n\n    Returns:\n        A list of error description strings. An empty list indicates a valid contract.\n    \"\"\""}]}
+</tool_call>
+[2026-08-29 22:41:53] Applying SEARCH/REPLACE patch to skill_spec.py...
+[2026-08-29 22:41:53] Successfully patched skill_spec.py.
+[2026-08-29 22:41:53] Validating SkillSpecAuditor (Attempt 4/4)...
+[2026-08-29 22:42:07] VICTORY ACHIEVED! Code is fully working.

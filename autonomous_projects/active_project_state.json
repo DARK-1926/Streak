@@ -1,64 +1,58 @@
 {
     "plan": {
-        "chain_of_thought": "1. Verify file count: exactly 8 files, no scope creep. 2. Verify dependencies: pure stdlib, no paid APIs. 3. Critique interfaces and logic: core.py loop detection based solely on args_hash might cause false positives; updated sliding window to track (tool, args_hash) tuples. Clarified wasted_tokens calculation to sum tokens for all actions in the loop sequence. cli.py JSON output requires serializing dataclasses; added instruction to use dataclasses.asdict. test_main.py needs to explicitly verify wasted_tokens calculation. 4. Construct final JSON ensuring strict schema adherence.",
-        "project_name": "AgentSwarmLoopAuditor",
-        "vision": "Agentic Problem: Autonomous agents frequently enter infinite tool-call loops or file-edit thrashing states when juggling multiple sessions, leading to massive token waste and stalled progress.\nAtomic Milestones: 1. Define strict data models for agent actions and loop reports. 2. Implement win32-safe mmap JSONL streaming. 3. Build pure single-pass loop detection logic using sliding windows. 4. Wire CLI and validate with strict TDD.\nTesting Strategy: Pure in-memory injection for core logic, real tempfile I/O for streaming, zero mocks, ensuring deterministic validation of exact and alternating loop detection.",
-        "interface_contracts": "models.py: Defines `AgentAction` (dataclass: session_id, tool, args_hash, tokens) and `LoopReport` (dataclass: session_id, loop_type, count, wasted_tokens). | core.py: Provides `parse_action(raw: str) -> Optional[AgentAction]` and `audit_sessions(actions: Iterable[AgentAction]) -> Dict[str, List[LoopReport]]` using `(tool, args_hash)` tuples for sliding window tracking. | io.py: Provides `stream_jsonl(filepath: str) -> Iterable[str]` using win32-safe mmap. | cli.py: Provides `main()` entry point wiring io and core, utilizing `dataclasses.asdict` for JSON serialization.",
-        "lessons_learned": "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL agent telemetry logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates sliding-window action hashes and thrashing states per session simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[AgentAction]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
-        "commit_message": "Implements AgentSwarmLoopAuditor to detect infinite tool-call loops and A-B thrashing across concurrent agent sessions via single-pass JSONL streaming.",
+        "chain_of_thought": "1. SCOPE CHECK: Plan contains exactly 7 files, well within the \u22648 limit. No scope creep detected.\n2. DEPENDENCY CHECK: Explicitly stdlib-only. Zero paid APIs, zero external packages. Reinforced win32 subprocess safety and strict DI isolation.\n3. INTERFACE & TEST COVERAGE GAP: Original plan missed test coverage for `cli.py` wiring and the inter-skill execution loop. Router lacked a deterministic tie-breaking rule when multiple skills match an output contract, risking non-deterministic agent behavior. None-type expectations were not explicitly handled.\n4. FIXES APPLIED: (a) Added deterministic first-match routing rule and explicit None-expectation handling to `router.py`. (b) Enhanced `cli.py` instructions to clearly define the execution loop payload flow (initial stdin -> chain stdout piping) and structured error reporting. (c) Expanded `test_main.py` to include CLI dry-run testing via `io.StringIO`, full chain execution testing with `fake_runner`, and explicit prohibition of `unittest.mock`. (d) Updated `interface_contracts` and `vision` to reflect these hardening changes. All constraints preserved.",
+        "project_name": "SkillSpecAuditor",
+        "vision": "Solves the 'unified skill/MCP description' gap by providing a lightweight, repo-local manifest compiler and validator for agent toolchaining. Atomic Milestones: (1) Parse & validate JSON skill manifests with strict schema enforcement. (2) Build pure I/O router that matches stdout expectations to stdin requirements with deterministic tie-breaking. (3) Implement DI-based execution engine that runs skills safely. (4) Wire CLI with safe file I/O, stdin payload ingestion, and structured JSON reporting. Testing Strategy: Pure unit tests in `test_main.py` importing actual modules. Uses injected pure-Python runner functions instead of mocks. Validates parsing, contract matching, chain routing, CLI dry-run wiring, and full chain execution deterministically. All tests run in-memory with zero file/network side-effects.",
+        "interface_contracts": "skill_spec.py -> parse_manifest(raw_json: str) -> List[SkillDef]; validate_contract(skill: SkillDef) -> List[str]\nexecutor.py -> execute_skill(skill: SkillDef, payload: str, runner: Callable[[List[str], str], Tuple[int, str, str]]) -> ExecutionResult\nrouter.py -> resolve_chain(skills: List[SkillDef], entrypoint: str) -> List[SkillDef]; verify_chain_compatibility(chain: List[SkillDef]) -> List[str]\ncli.py -> main(argv: Optional[List[str]] = None) -> int\nData Models (skill_spec.py) -> SkillDef(name, cmd, args, stdin_expect, stdout_expect, allowed_exit_codes); ExecutionResult(exit_code, stdout, stderr, success, error_msg)",
+        "lessons_learned": "Avoids past mistakes by: (1) Strictly decoupling core logic from side-effects via Dependency Injection; the executor accepts a `runner` callable, enabling pure in-memory unit tests without `unittest.mock`. (2) Using a single-pass validation model for manifests and chain routing, avoiding `itertools.tee` memory traps. (3) Explicitly guarding file reads with `os.path.getsize` checks to prevent win32 empty-file crashes, though manifests are small, the pattern is hardened. (4) Zero external dependencies or heavy ML libraries; relies entirely on stdlib `json`, `dataclasses`, `typing`, `subprocess`, and `io`. (5) Deterministic structured outputs (dataclasses -> dicts) ensure tests validate exact contract states rather than string parsing. (6) Explicit None-handling in routing prevents AttributeError crashes when skills lack I/O expectations.",
+        "commit_message": "Implement lightweight skill manifest parser, validator, and deterministic I/O router for mock-free agent toolchaining.",
         "files_to_generate": [
             {
-                "filepath": "README.md",
-                "instructions": "Explain the 'AgentSwarmLoopAuditor' architecture. Detail the agentic gap (agents getting stuck in tool-call loops or A-B thrashing, burning tokens). Explain the single-pass streaming design, win32 mmap safety, and pure function TDD approach. Provide CLI usage examples showing how to pipe JSONL logs into the auditor."
+                "filepath": "skill_spec.py",
+                "instructions": "Define pure data models and parsing/validation logic. Use `dataclasses` and `typing`. Create `SkillDef` dataclass with fields: `name: str`, `cmd: List[str]`, `stdin_expect: Optional[str]`, `stdout_expect: Optional[str]`, `allowed_exit_codes: List[int]`. Create `parse_manifest(raw_json: str) -> List[SkillDef]` that safely decodes JSON, validates required keys, and returns a list of SkillDefs. Raise `ValueError` on malformed JSON or missing fields. Create `validate_contract(skill: SkillDef) -> List[str]` that checks for logical errors (e.g., empty cmd, invalid exit codes, mismatched expect formats) and returns a list of error strings (empty list means valid). NO file I/O, NO network calls, PURE functions only."
             },
             {
-                "filepath": ".gitignore",
-                "instructions": "Include standard Python ignores: __pycache__/, *.py[cod], *$py.class, .env, venv/, .venv/, *.log, .idea/, .vscode/, .pytest_cache/."
+                "filepath": "executor.py",
+                "instructions": "Define the execution engine using Dependency Injection. Create `ExecutionResult` dataclass: `exit_code: int`, `stdout: str`, `stderr: str`, `success: bool`, `error_msg: str`. Implement `execute_skill(skill: SkillDef, payload: str, runner: Callable[[List[str], str], Tuple[int, str, str]]) -> ExecutionResult`. The function must call `runner(skill.cmd, payload)`, catch exceptions, validate the exit code against `skill.allowed_exit_codes`, and return a structured `ExecutionResult`. Provide a default `subprocess_runner(cmd: List[str], payload: str) -> Tuple[int, str, str]` that uses `subprocess.run` with `capture_output=True`, `text=True`, `timeout=30`, and `check=False`. Ensure win32 compatibility by passing `cmd` as a list, never `shell=True`. PURE core logic; side-effects isolated to the injected runner."
             },
             {
-                "filepath": "requirements.txt",
-                "instructions": "Empty file, as the project relies entirely on the Python standard library to ensure maximum portability, zero heavy dependencies, and strict adherence to the no-ML/no-paid-API constraints."
-            },
-            {
-                "filepath": "models.py",
-                "instructions": "Define `AgentAction` and `LoopReport` using `dataclasses`. `AgentAction` fields: session_id (str), tool (str), args_hash (str), tokens (int). `LoopReport` fields: session_id (str), loop_type (str), count (int), wasted_tokens (int). Use standard library only. Include a `__post_init__` or validation to ensure tokens are non-negative."
-            },
-            {
-                "filepath": "core.py",
-                "instructions": "Implement pure functions. `parse_action` parses a JSON string into an `AgentAction`, catching `json.JSONDecodeError` and `KeyError`, returning `None` on failure. `audit_sessions` takes an `Iterable[AgentAction]`, maintains a dictionary of session states (sliding window of last 10 `(tool, args_hash)` tuples). Detects 'exact_loop' if the last 3 tuples are identical, and 'thrashing' if the last 4 tuples alternate (A-B-A-B). Returns a dict mapping session_id to a list of `LoopReport`s. Calculate wasted_tokens by summing the tokens of all actions that constitute the detected loop sequence."
-            },
-            {
-                "filepath": "io.py",
-                "instructions": "Implement `stream_jsonl(filepath: str) -> Iterable[str]`. Use `os.path.getsize` to guard against win32 `mmap` empty-file crashes. If size > 0, open file in 'rb' mode, use `mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)`, and yield decoded lines using `iter(mm.readline, b'')`. Ensure context managers are used for safe cleanup. Handle `ValueError` for empty files gracefully."
+                "filepath": "router.py",
+                "instructions": "Implement deterministic I/O chain routing. Create `resolve_chain(skills: List[SkillDef], entrypoint: str) -> List[SkillDef]` that finds the entrypoint skill by name, then iteratively appends the first skill in the list whose `stdin_expect` matches the previous skill's `stdout_expect`. Gracefully handle `None` expectations by treating them as wildcards or terminal nodes. Stop when no match is found or a cycle is detected. Raise `ValueError` if entrypoint missing or cycle detected. Create `verify_chain_compatibility(chain: List[SkillDef]) -> List[str]` that performs a single-pass validation of the entire chain, returning a list of incompatibility warnings/errors. PURE functions, NO side-effects, O(N) routing complexity, strictly deterministic tie-breaking."
             },
             {
                 "filepath": "cli.py",
-                "instructions": "Implement `main()` using `argparse`. Accept input file path and output format (text/json). Wire `io.stream_jsonl` into a generator expression applying `core.parse_action`, filter out `None`, and pass to `core.audit_sessions`. Print results cleanly. Use `dataclasses.asdict` when outputting JSON format to properly serialize `LoopReport` objects. Catch `FileNotFoundError`, `PermissionError`, and `KeyboardInterrupt` for clean exit codes."
+                "instructions": "CLI entry point isolating all I/O. Use `argparse` to accept `--manifest <path>`, `--entrypoint <name>`, and `--dry-run`. Implement `main(argv: Optional[List[str]] = None) -> int`. Safely read the manifest file: check `os.path.exists`, guard with `os.path.getsize` to avoid win32 empty-file crashes, read content as string. Call `parse_manifest`, `validate_contract` for each skill, `resolve_chain`, and `verify_chain_compatibility`. If `--dry-run` is passed, print the chain plan as JSON and exit 0. Otherwise, execute the chain: read initial payload from `sys.stdin.read()`, loop through resolved skills passing each `ExecutionResult.stdout` as the next payload, and collect results. Catch all exceptions, print a structured JSON report to stdout, and return appropriate exit codes (0 success, 1 validation error, 2 execution error). NO core logic here; only wiring, I/O, and loop orchestration."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Must import `models`, `core`, and `io`. Create a temporary JSONL file using `tempfile`, write valid and invalid JSON lines to it, and verify `io.stream_jsonl` yields the correct strings without crashing on empty files (test empty file explicitly). Test `core.parse_action` with valid/invalid strings. Test `core.audit_sessions` by injecting a list of `AgentAction` objects that contain an exact loop (same tool/hash 5 times) and an A-B thrashing loop, asserting the returned `LoopReport` counts, types, and `wasted_tokens` sums are correct. NO mocks allowed."
+                "instructions": "Strict unit test suite using `unittest`. MUST import actual modules (`skill_spec`, `executor`, `router`, `cli`). DO NOT use `unittest.mock` or stub classes. Define a pure Python fake runner: `def fake_runner(cmd, payload): return (0, f'processed:{payload}', '')`. Test cases: (1) `test_parse_manifest_valid` & `test_parse_manifest_invalid` using raw JSON strings. (2) `test_validate_contract` checking error detection. (3) `test_execute_skill_success` & `test_execute_skill_failure` using `fake_runner`. (4) `test_resolve_chain_linear`, `test_resolve_chain_none_handling`, & `test_resolve_chain_cycle_detection`. (5) `test_verify_chain_compatibility`. (6) `test_cli_dry_run` capturing stdout via `io.StringIO` and asserting JSON structure. (7) `test_full_chain_execution` verifying payload piping across multiple skills using `fake_runner`. All tests must use in-memory data, assert exact dataclass fields or list contents, and run deterministically. Include `if __name__ == '__main__': unittest.main()`."
+            },
+            {
+                "filepath": ".gitignore",
+                "instructions": "Standard Python gitignore. Include exactly: `__pycache__/`, `*.pyc`, `.venv/`, `venv/`, `.env`, `*.egg-info/`, `dist/`, `build/`, `.pytest_cache/`. Keep it minimal."
+            },
+            {
+                "filepath": "README.md",
+                "instructions": "Document the architecture. Explain the Agentic Gap solved (lightweight MCP alternative via deterministic manifests). Detail the 4 core modules and their interface contracts. Explain the DI pattern and how it enables mock-free testing. Provide usage examples: `python cli.py --manifest skills.json --entrypoint fetch_data --dry-run` and piping data: `echo '{\"id\":1}' | python cli.py --manifest skills.json --entrypoint fetch_data`. Explain how to run tests: `python test_main.py`. Emphasize win32 safety, zero dependencies, deterministic routing, and spec-driven validation."
             }
         ]
     },
     "files_created": [
-        "README.md",
-        ".gitignore",
-        "requirements.txt",
-        "models.py",
-        "core.py",
-        "io.py",
+        "skill_spec.py",
+        "executor.py",
+        "router.py",
         "cli.py",
-        "test_main.py"
+        "test_main.py",
+        ".gitignore",
+        "README.md"
     ],
     "blueprint": [
-        "File: README.md (Static/Config)",
+        "File: skill_spec.py provides: class SkillDef, def parse_manifest, def validate_contract",
+        "File: executor.py provides: class ExecutionResult, def execute_skill, def subprocess_runner",
+        "File: router.py provides: def resolve_chain, def verify_chain_compatibility",
+        "File: cli.py provides: def _parse_args, def _load_manifest, def _validate_skills, def _format_dry_run, def _execute_chain, def _print_report, def main",
+        "File: test_main.py provides: def fake_runner, def failing_runner, class TestSkillSpecParsing, class TestExecutor, class TestRouter, class TestCLI",
         "File: .gitignore (Static/Config)",
-        "File: requirements.txt (Static/Config)",
-        "File: models.py provides: class AgentAction, class LoopReport",
-        "File: core.py provides: def parse_action, def audit_sessions",
-        "File: io.py provides: def stream_jsonl",
-        "File: cli.py provides: def build_parser, def format_text, def format_json, def main",
-        "File: test_main.py provides: def test_stream_jsonl_valid_and_invalid, def test_stream_jsonl_empty, def test_parse_action_valid, def test_parse_action_invalid, def test_audit_sessions_exact_loop, def test_audit_sessions_alternating_loop, def test_audit_sessions_combined"
+        "File: README.md (Static/Config)"
     ]
 }
