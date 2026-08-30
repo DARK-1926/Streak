@@ -1,5 +1,5 @@
 {
-    "score": 63,
+    "score": 64,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -391,6 +391,11 @@
             "date": "2026-08-30T15:29:16.309821",
             "project": "ToolchainContractAuditor",
             "model": "qwen3.6-max-preview"
+        },
+        {
+            "date": "2026-08-30T22:17:47.999100",
+            "project": "ContextLeakAuditor",
+            "model": "qwen3.6-max-preview"
         }
     ],
     "model_ratings": {
@@ -419,7 +424,6 @@
         "cohere/north-mini-code:free": -2
     },
     "past_projects": [
-        "SlopFilterAgent",
         "NetGhostAgent",
         "SpikeGuardAgent",
         "AgentSpendDriftAuditor",
@@ -438,10 +442,10 @@
         "HireMeParser",
         "AgentSwarmLoopAuditor",
         "SkillSpecAuditor",
-        "ToolchainContractAuditor"
+        "ToolchainContractAuditor",
+        "ContextLeakAuditor"
     ],
     "lessons_learned": [
-        "This project avoids past mistakes by using memory-mapped files (`mmap`) for efficient data handling of large CSVs, prioritizing algorithmic efficiency (O(N) text scanning) over OOP overhead, and ensuring that all dependencies are pinned. The repository is kept lightweight. Core logic is strictly isolated via Dependency Injection (using `io.TextIOBase`), ensuring the code executed within the sandbox can be unit tested without filesystem access or complex mocks. The `mmap` logic is separated from the CLI argument parsing to allow integration testing via `tmp_path`. There are no hidden paid-API dependencies or heavy ML libraries.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for efficient, low-memory handling of massive router log exports. It prioritizes algorithmic O(N) state-tracking efficiency over heavy OOP overhead. Core logic is strictly decoupled via Dependency Injection (accepting `Iterable[LogEvent]`), ensuring the engine can be unit tested purely in-memory. To prevent runtime crashes on win32, explicit file-size checks are implemented before invoking `mmap`, and line decoding is handled via a robust generator rather than `io.TextIOWrapper`. The repository remains lightweight with zero external dependencies beyond testing.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing, explicitly guarding against the win32 `mmap` empty-file crash. Crucially, it avoids the `itertools.tee` memory trap on large generators by using a two-pass execution model (re-reading files or seeking streams). Core logic is strictly decoupled via Dependency Injection, allowing the test suite to validate actual file I/O using pytest's `tmp_path` and in-memory streams, completely eliminating the need for `unittest.mock`.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive agent logs, explicitly guarding against the win32 `mmap` empty-file crash and enforcing `ACCESS_READ` for cross-platform safety. Crucially, it avoids the `itertools.tee` memory trap on large generators by using a strict two-pass execution model (seeking the mmap stream back to 0). Core logic is decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. No heavy OOP or external APIs are used.",
@@ -460,7 +464,8 @@
         "Avoids past mistakes by: (1) Core parser is pure function accepting str\u2014zero file I/O or side effects; (2) Uses pre-compiled regex for performance in hot loop; (3) Explicit field validation prevents KeyError; (4) CLI uses context-managed file reading with win32-safe pathlib; (5) Tests use real HN post strings\u2014no mocks\u2014ensuring deterministic validation.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL agent telemetry logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates sliding-window action hashes and thrashing states per session simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[AgentAction]` to allow pure in-memory unit testing without `unittest.mock`. Exception handling is hardened against `KeyError` and `json.JSONDecodeError` for incomplete payloads, and CLI errors are caught explicitly to ensure correct exit codes.",
         "Avoids past mistakes by: (1) Strictly decoupling core logic from side-effects via Dependency Injection; the executor accepts a `runner` callable, enabling pure in-memory unit tests without `unittest.mock`. (2) Using a single-pass validation model for manifests and chain routing, avoiding `itertools.tee` memory traps. (3) Explicitly guarding file reads with `os.path.getsize` checks to prevent win32 empty-file crashes, though manifests are small, the pattern is hardened. (4) Zero external dependencies or heavy ML libraries; relies entirely on stdlib `json`, `dataclasses`, `typing`, `subprocess`, and `io`. (5) Deterministic structured outputs (dataclasses -> dicts) ensure tests validate exact contract states rather than string parsing. (6) Explicit None-handling in routing prevents AttributeError crashes when skills lack I/O expectations.",
-        "This project avoids past mistakes by: (1) Strictly decoupling core logic from side-effects via Dependency Injection; parser and simulator accept Iterable[str]/Iterable[Tuple] enabling pure in-memory unit tests without unittest.mock. (2) Using a single-pass chain simulation model that tracks visited nodes, accumulates I/O mismatches, and detects circular dependencies simultaneously, avoiding itertools.tee memory traps. (3) Explicitly guarding file reads with pathlib stat size checks to prevent win32 empty-file crashes. (4) Hardening JSON parsing against KeyError and json.JSONDecodeError with explicit fallbacks and strict field validation. (5) Zero external dependencies or heavy ML libraries; relies entirely on stdlib json, dataclasses, typing, pathlib, and sys. (6) Deterministic structured outputs (dataclasses -> dicts) ensure tests validate exact contract states rather than fragile string parsing."
+        "This project avoids past mistakes by: (1) Strictly decoupling core logic from side-effects via Dependency Injection; parser and simulator accept Iterable[str]/Iterable[Tuple] enabling pure in-memory unit tests without unittest.mock. (2) Using a single-pass chain simulation model that tracks visited nodes, accumulates I/O mismatches, and detects circular dependencies simultaneously, avoiding itertools.tee memory traps. (3) Explicitly guarding file reads with pathlib stat size checks to prevent win32 empty-file crashes. (4) Hardening JSON parsing against KeyError and json.JSONDecodeError with explicit fallbacks and strict field validation. (5) Zero external dependencies or heavy ML libraries; relies entirely on stdlib json, dataclasses, typing, pathlib, and sys. (6) Deterministic structured outputs (dataclasses -> dicts) ensure tests validate exact contract states rather than fragile string parsing.",
+        "Avoids past mistakes by: (1) Strictly decoupling core logic from I/O via Dependency Injection; all detectors/parsers accept Iterable[str]/Iterable[Dict], enabling pure in-memory unit tests without unittest.mock. (2) Enforcing a single-pass execution model in the leak detector that accumulates rolling context size, shingle hashes, and leak signatures simultaneously, completely avoiding itertools.tee memory traps. (3) Hardening CLI file reads with os.path.getsize guards before mmap initialization to prevent win32 empty-file crashes. (4) Using lightweight n-gram shingling and rolling counters instead of heavy ML/embeddings, keeping dependencies at zero. (5) Returning strict dataclasses (LeakReport, SimulationResult) for deterministic test assertions rather than fragile string parsing. (6) Explicitly catching json.JSONDecodeError and KeyError in the parser to gracefully skip malformed agentic log lines without crashing the pipeline."
     ],
     "planner_ratings": {
         "cohere/north-mini-code-20260617:free": {
@@ -534,9 +539,9 @@
             "test_stages_reached": 5
         },
         "qwen3.6-max-preview": {
-            "plans_created": 2,
+            "plans_created": 3,
             "critique_survivals": 0,
-            "test_stages_reached": 7
+            "test_stages_reached": 8
         },
         "qwen3-max-2026-01-23": {
             "plans_created": 0,
@@ -659,10 +664,10 @@
             "fix_successes": 1
         },
         "qwen3.6-max-preview": {
-            "files_generated": 15,
-            "lint_passes": 10,
+            "files_generated": 23,
+            "lint_passes": 16,
             "fix_attempts": 12,
-            "fix_successes": 2
+            "fix_successes": 3
         },
         "qwen3.7-max-2026-06-08": {
             "files_generated": 8,
