@@ -1,0 +1,5 @@
+# TokenDriftAuditor - Requirements
+# Project uses Python standard library only for zero-install portability
+
+# No external dependencies required
+# All functionality implemented with built-in Python modules

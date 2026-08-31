@@ -1,63 +1,75 @@
 {
     "plan": {
-        "chain_of_thought": "CRITIQUE: (1) Scope: Exactly 8 files. No creep. Maintained. (2) Dependencies: Strictly stdlib. Zero paid/external APIs. Maintained. (3) Architecture Gap: The original plan feeds a single generator/iterable to three separate analysis functions in cli.py. Generators exhaust after one consumption, causing silent failures for the 2nd/3rd analyzers. The plan also forbids itertools.tee. FIX: Explicitly instruct cli.py to safely materialize the parsed stream into a list once, then fan-out to the three pure functions. This avoids tee memory traps while preventing exhaustion. (4) Interface Gap: patterns.py returns LeakSignature but doesn't specify importing it from core.py, risking circular/missing references. FIX: Added explicit import instruction. (5) Test Coverage Gap: Missing edge-case validation for empty streams, zero budget, and malformed JSON. FIX: Expanded test_main.py instructions to mandate exact edge-case assertions. (6) Platform Safety: Windows mmap requires explicit access flags and context management. FIX: Hardened cli.py instructions with access=mmap.ACCESS_READ and strict context manager usage. All constraints preserved, architectural robustness improved.",
-        "project_name": "ContextLeakAuditor",
-        "vision": "PROBLEM: Agentic toolchains silently leak context budget via redundant injections and unbounded tool outputs, causing window starvation and reasoning collapse. SOLUTION: A deterministic, single-pass auditor that parses JSONL agent logs, identifies leak signatures, simulates budget impact, and recommends compression strategies. MILESTONES: (1) Implement pure parser & pattern scanner accepting Iterables. (2) Build single-pass leak detector accumulating state without itertools.tee. (3) Create budget simulator projecting token trajectories with/without leaks. (4) Wire CLI with win32-safe mmap and strict error handling. (5) Deliver comprehensive test suite using real module imports and in-memory data. TESTING STRATEGY: Pure function validation via synthetic Iterable[Dict] payloads. Exact dataclass assertions for leak counts, types, and token waste. CLI tested via subprocess for exit codes and JSON output structure. Zero mocks, zero side-effects in core logic.",
-        "interface_contracts": "parser.py -> parse_log_stream(lines: Iterable[str]) -> Iterable[Dict[str, Any]] | patterns.py -> compute_text_signature(text: str) -> int; scan_redundancy(events: Iterable[Dict[str, Any]]) -> List[LeakSignature] (imports LeakSignature from core) | core.py -> detect_leaks(events: Iterable[Dict[str, Any]], budget_limit: int) -> LeakReport | simulator.py -> run_budget_simulation(events: Iterable[Dict[str, Any]], cap: int) -> SimulationResult | cli.py -> main() -> None (argparse, mmap I/O, safe list materialization for fan-out, JSON stdout) | test_main.py -> test_parser_stream(), test_pattern_scanner(), test_leak_detector_single_pass(), test_budget_simulator(), test_cli_exit_codes() | All core functions are pure, accept Iterables, return dataclasses, and raise explicit ValueError/TypeError on contract violation.",
-        "lessons_learned": "Avoids past mistakes by: (1) Strictly decoupling core logic from I/O via Dependency Injection; all detectors/parsers accept Iterable[str]/Iterable[Dict], enabling pure in-memory unit tests without unittest.mock. (2) Enforcing a single-pass execution model in the leak detector that accumulates rolling context size, shingle hashes, and leak signatures simultaneously, completely avoiding itertools.tee memory traps. (3) Hardening CLI file reads with os.path.getsize guards before mmap initialization to prevent win32 empty-file crashes. (4) Using lightweight n-gram shingling and rolling counters instead of heavy ML/embeddings, keeping dependencies at zero. (5) Returning strict dataclasses (LeakReport, SimulationResult) for deterministic test assertions rather than fragile string parsing. (6) Explicitly catching json.JSONDecodeError and KeyError in the parser to gracefully skip malformed agentic log lines without crashing the pipeline.",
-        "commit_message": "Implement ContextLeakAuditor for deterministic agentic context budget analysis and leak detection",
+        "chain_of_thought": "Critique: 1. Scope: 7 files proposed, well under the 8-file limit. No scope creep. 2. Dependencies: Explicitly stdlib-only with empty requirements.txt. Zero hidden paid-API or external dependencies. 3. Interfaces & Coverage: Core logic and CLI contracts are well-defined, but the drift_score calculation lacked a deterministic formula for 'inefficiency_token_waste', and the AuditReport.to_dict() method was untested. Fixes applied: (a) Explicitly defined inefficiency_token_waste accumulation in core.py instructions to guarantee deterministic drift_score math. (b) Added test_report_serialization to test_main.py to cover the to_dict() interface contract. (c) Hardened cli.py mmap instructions with explicit context-manager cleanup and byte-decoding steps to prevent cross-platform resource leaks. All interfaces now have 1:1 test coverage, DI remains mock-free, and architecture stays strictly single-pass and offline.",
+        "project_name": "TokenDriftAuditor",
+        "vision": "SPEC ROADMAP: Problem: Agentic workflows suffer from silent token burn due to prompt duplication, unbounded context growth, and retry storms. Milestone 1: Define strict data models (LogEvent, InefficiencyPattern, AuditReport). Milestone 2: Implement pure core logic (parse_log_line, run_audit_stream) using a single-pass state machine that tracks prompt hashes, rolling token counts, cost drift, and error retries. Milestone 3: Build CLI with win32-safe mmap streaming, DI wiring, and structured JSON output. Milestone 4: Deterministic test suite using in-memory iterables, validating exact report fields, edge cases (empty logs, malformed JSON, zero-cost baselines), and CLI exit codes. Testing Strategy: Pure function injection enables 100% coverage without mocking I/O. Tests assert mathematical correctness of cost drift calculations and pattern detection thresholds.",
+        "interface_contracts": {
+            "models.py": [
+                "@dataclass class LogEvent(session_id: str, prompt_tokens: int, completion_tokens: int, prompt_text: str, status: str, timestamp: float)",
+                "@dataclass class InefficiencyPattern(pattern_type: str, session_id: str, count: int, details: str)",
+                "@dataclass class AuditReport(total_sessions: int, total_tokens: int, estimated_cost: float, inefficiencies: List[InefficiencyPattern], drift_score: float)",
+                "def to_dict(self) -> dict: # On AuditReport. Returns JSON-serializable dict."
+            ],
+            "core.py": [
+                "def parse_log_line(raw_line: str) -> Optional[Dict[str, Any]]: # Handles JSONDecodeError/KeyError, returns normalized dict or None",
+                "def run_audit_stream(events: Iterable[Dict[str, Any]], cost_per_1k: float = 0.005) -> AuditReport: # Single-pass pure function. Accepts iterable, returns deterministic report."
+            ],
+            "cli.py": [
+                "def stream_jsonl_file(filepath: str) -> Iterable[Dict[str, Any]]: # Handles file I/O, win32 mmap guard, yields parsed dicts",
+                "def main() -> None: # Argparse setup, DI wiring, JSON output, sys.exit codes"
+            ],
+            "test_main.py": [
+                "class TestTokenDriftAuditor(unittest.TestCase): # Imports core & models. Uses in-memory lists. Asserts exact dataclass states. Zero mocks."
+            ]
+        },
+        "lessons_learned": "This project avoids past mistakes by: (1) Using mmap with explicit os.path.getsize guard to prevent win32 empty-file crashes; (2) Enforcing a strict single-pass execution model in run_audit_stream that simultaneously accumulates prompt hashes, rolling token counts, cost drift, and retry states, completely avoiding itertools.tee memory traps; (3) Decoupling core logic via Dependency Injection\u2014core accepts Iterable[Dict] enabling pure in-memory unit tests without unittest.mock; (4) Hardening parsing against KeyError, TypeError, and json.JSONDecodeError with explicit fallbacks; (5) Returning strict dataclasses for deterministic test assertions instead of fragile string parsing; (6) Zero external dependencies or heavy ML libraries, relying entirely on Python stdlib for maximum portability and speed.",
+        "commit_message": "Implement single-pass offline LLM token drift and inefficiency auditor with pure DI core and win32-safe CLI.",
         "files_to_generate": [
             {
+                "filepath": "models.py",
+                "instructions": "Define strict dataclasses for the audit pipeline. Use `from dataclasses import dataclass, field` and `from typing import List, Optional`. Create: `LogEvent(session_id: str, prompt_tokens: int, completion_tokens: int, prompt_text: str, status: str, timestamp: float)`, `InefficiencyPattern(pattern_type: str, session_id: str, count: int, details: str)`, and `AuditReport(total_sessions: int, total_tokens: int, estimated_cost: float, inefficiencies: List[InefficiencyPattern], drift_score: float)`. Include a `to_dict(self) -> dict` method on `AuditReport` that recursively converts nested dataclasses to dicts for JSON serialization. No I/O, no external deps. Keep it under 45 lines."
+            },
+            {
                 "filepath": "core.py",
-                "instructions": "Define dataclasses: LeakSignature(type: str, step: int, severity: str, tokens_wasted: int), LeakReport(total_events: int, total_leaks: int, signatures: List[LeakSignature], recommendation: str). Implement detect_leaks(events: Iterable[Dict[str, Any]], budget_limit: int) -> LeakReport. MUST be a pure function. MUST execute in a single pass over the iterable. Track rolling context size, detect monotonic growth without truncation, and flag steps exceeding budget_limit thresholds. Accumulate LeakSignatures inline. Return deterministic LeakReport. Handle missing keys gracefully with .get() defaults. NO file I/O, NO external calls, NO itertools.tee."
-            },
-            {
-                "filepath": "patterns.py",
-                "instructions": "Import LeakSignature from core. Implement compute_text_signature(text: str) -> int using a lightweight rolling hash or sorted n-gram shingle approach (stdlib only). Implement scan_redundancy(events: Iterable[Dict[str, Any]]) -> List[LeakSignature]. MUST be pure. Iterate once, compute signatures for 'system' or 'tool_output' fields, track seen hashes in a set, and flag duplicates as redundant injections. Assign severity based on repetition count. Return list of LeakSignatures. NO heavy ML, NO numpy, NO external deps. Hardened against TypeError/KeyError."
-            },
-            {
-                "filepath": "simulator.py",
-                "instructions": "Define dataclass: SimulationResult(steps: int, peak_tokens: int, projected_savings: int, would_overflow: bool). Implement run_budget_simulation(events: Iterable[Dict[str, Any]], cap: int) -> SimulationResult. MUST be pure. Single-pass simulation of context accumulation. Track current window size, apply a mock truncation strategy when cap is approached, and calculate theoretical token savings if leaks were removed. Return deterministic SimulationResult. Accepts Iterable[Dict], zero side-effects."
-            },
-            {
-                "filepath": "parser.py",
-                "instructions": "Implement parse_log_stream(lines: Iterable[str]) -> Iterable[Dict[str, Any]]. MUST be pure. Iterate over lines, strip whitespace, skip empty lines. Use json.loads() inside a try/except block catching json.JSONDecodeError. Yield valid dicts. If a line fails parsing, skip it silently or log to stderr (do not crash). Ensure function returns a generator/iterable. Zero file I/O. Zero external dependencies."
+                "instructions": "Implement pure core logic. Imports: `json`, `hashlib`, `typing`, `collections.defaultdict`, `models`. Function 1: `parse_log_line(raw_line: str) -> Optional[dict]`. Strip whitespace, skip empty. Try `json.loads`. Catch `json.JSONDecodeError`, `TypeError`. Validate required keys (`session_id`, `prompt_tokens`, `completion_tokens`, `prompt_text`, `status`). Return normalized dict or None. Function 2: `run_audit_stream(events: Iterable[dict], cost_per_1k: float = 0.005) -> models.AuditReport`. SINGLE-PASS ONLY. Initialize state trackers: `sessions = set()`, `total_tokens = 0`, `prompt_hashes = defaultdict(int)`, `session_context = defaultdict(int)`, `retry_tracker = defaultdict(lambda: {'last_hash': '', 'count': 0})`, `inefficiencies = []`, `waste_tokens = 0`. Loop once over `events`. For each: add to sessions, accumulate tokens, hash prompt_text (sha256 first 16 chars), track hash frequency, accumulate session context size, detect retry storms (status=='error' and same prompt hash consecutively). After loop: identify patterns (hash freq > 3 -> 'prompt_duplication', session context > 8000 -> 'context_bloat', retry count > 2 -> 'retry_storm'). For each detected pattern, add its associated tokens to `waste_tokens`. Calculate cost: `(total_tokens / 1000) * cost_per_1k`. Calculate `drift_score` as `(waste_tokens / total_tokens) if total_tokens > 0 else 0.0`. Return `AuditReport`. Zero I/O. Zero mocks needed. Hardened against missing keys."
             },
             {
                 "filepath": "cli.py",
-                "instructions": "Implement main() -> None. Use argparse to accept --input (JSONL file path), --budget (int), --output (optional JSON path). CRITICAL WIN32 GUARD: Check os.path.getsize(input_path) == 0 before opening. If empty, print empty report and exit 0. Use mmap.mmap with access=mmap.ACCESS_READ inside a context manager for safe cross-platform reading. Decode mmap bytes to strings, splitlines, and pass to parse_log_stream. CRITICAL FAN-OUT: Materialize the parsed generator into a list exactly once to safely pass to patterns.scan_redundancy, core.detect_leaks, and simulator.run_budget_simulation without itertools.tee or generator exhaustion. Merge results into a final JSON structure. Print to stdout or write to --output. Catch FileNotFoundError, PermissionError, and ValueError explicitly. sys.exit(0) on success, sys.exit(1) on failure. NO curses, NO OS-specific libs beyond stdlib os/sys/mmap/json/argparse."
+                "instructions": "CLI entrypoint with safe file streaming. Imports: `argparse`, `sys`, `os`, `mmap`, `pathlib`, `json`, `core`, `models`. Function `stream_jsonl_file(filepath: str) -> Iterable[dict]`: Use `pathlib.Path`. Check `if not p.exists(): raise FileNotFoundError`. CRITICAL WIN32 GUARD: `if os.path.getsize(filepath) == 0: return`. Open file in 'rb'. Use context managers: `with open(filepath, 'rb') as f: with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm: for line in mm: yield core.parse_log_line(line.decode('utf-8'))`. Function `main()`: Setup `argparse` with `--input`, `--cost-rate`, `--output`. Try/except block wrapping execution. Call `stream_jsonl_file`, pass generator to `core.run_audit_stream` with DI. Serialize report via `report.to_dict()` to JSON. Write to stdout or `--output` file. Catch exceptions, print to stderr, `sys.exit(1)`. On success `sys.exit(0)`. Keep under 75 lines. Dense, robust, cross-platform."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Strict unit test suite using unittest. CRITICAL: Import actual modules (core, patterns, simulator, parser). DO NOT use unittest.mock or stubs for core logic. Create synthetic in-memory lists of dicts/strings representing agentic logs. Test 1: test_parser_stream - feed list of valid/invalid/empty JSON strings, assert correct dict yield count and graceful skip of malformed lines. Test 2: test_pattern_scanner - feed events with duplicate system prompts, assert LeakSignature count, types, and severity scaling. Test 3: test_leak_detector_single_pass - feed events with monotonic context growth, assert LeakReport totals, recommendation string, and exact severity. Test 4: test_budget_simulator - feed events exceeding cap, assert SimulationResult.would_overflow is True and projected_savings > 0. Test 5: test_cli_integration - use subprocess.run to execute cli.py with a temp JSONL file, assert exit code 0 and valid JSON stdout structure. Test 6: test_edge_cases - assert correct handling of empty iterables and budget_limit=0 without crashes. All assertions must be exact (dataclass fields, counts, types). Zero network calls, zero file I/O in core tests."
+                "instructions": "Strict unit tests. Imports: `unittest`, `core`, `models`. Class `TestTokenDriftAuditor(unittest.TestCase)`. Method `test_parse_valid_line`: pass valid JSON string, assert dict keys. Method `test_parse_malformed`: pass broken JSON, missing keys, empty string; assert None returned. Method `test_single_pass_audit_empty`: pass empty list, assert report has 0 tokens, 0 cost, empty inefficiencies, 0.0 drift. Method `test_detect_prompt_duplication`: pass list of 5 dicts with identical `prompt_text` and same `session_id`, assert `InefficiencyPattern` with type 'prompt_duplication' and count >= 3. Method `test_detect_context_bloat`: pass dicts with high `prompt_tokens` accumulating > 8000 in one session, assert 'context_bloat' pattern. Method `test_cost_drift_calculation`: pass known token counts, assert `estimated_cost` matches `(total_tokens/1000)*cost_rate` exactly. Method `test_retry_storm`: pass consecutive error statuses with same prompt, assert 'retry_storm'. Method `test_report_serialization`: create dummy AuditReport, call `to_dict()`, assert output is plain dict with correct keys and JSON-serializable. ALL tests use in-memory lists of dicts passed directly to `core.run_audit_stream`. NO mocks. NO file I/O. Assert exact dataclass fields. Include `if __name__ == '__main__': unittest.main()`."
+            },
+            {
+                "filepath": "requirements.txt",
+                "instructions": "Leave empty. Project uses Python standard library exclusively to guarantee zero-install portability and avoid heavy ML dependencies."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Standard Python gitignore. Must include: __pycache__/, *.py[cod], *$py.class, .Python, venv/, .venv/, env/, .env, *.egg-info/, dist/, build/, .mypy_cache/, .pytest_cache/, *.log, .DS_Store, Thumbs.db"
+                "instructions": "Standard Python gitignore. Include exactly: `__pycache__/`, `*.py[cod]`, `*$py.class`, `.Python`, `venv/`, `.venv/`, `env/`, `.env`, `*.egg-info/`, `dist/`, `build/`, `.mypy_cache/`, `.pytest_cache/`."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Document the architecture. Explain the Agentic Gap (context window leaks in tool-chaining agents). Detail the single-pass, DI-driven design. List interface contracts. Provide usage examples (CLI flags, JSONL format expectations). Explain the testing strategy (pure functions, in-memory iterables, zero mocks). Highlight win32 mmap safety, safe list materialization for fan-out, and stdlib-only constraint. Include a section on how to extend pattern detectors."
+                "instructions": "Concise architecture documentation. Sections: 1. Overview (TokenDriftAuditor solves agentic token burn via offline single-pass log auditing). 2. Architecture (Pure core, DI, win32-safe mmap CLI, deterministic dataclasses). 3. Usage (`python cli.py --input logs.jsonl --cost-rate 0.01`). 4. Testing (`python test_main.py`). 5. Design Decisions (Single-pass avoids itertools.tee memory traps, DI enables mock-free testing, os.path.getsize prevents win32 mmap crashes, stdlib-only ensures portability). 6. Interface Contracts (Brief summary of core.py and cli.py signatures). Keep it under 150 lines. Professional tone."
             }
         ]
     },
     "files_created": [
+        "models.py",
         "core.py",
-        "patterns.py",
-        "simulator.py",
-        "parser.py",
         "cli.py",
         "test_main.py",
+        "requirements.txt",
         ".gitignore",
         "README.md"
     ],
     "blueprint": [
-        "File: core.py provides: class LeakSignature, class LeakReport, def detect_leaks",
-        "File: patterns.py provides: def compute_text_signature, def scan_redundancy",
-        "File: simulator.py provides: class SimulationResult, def run_budget_simulation",
-        "File: parser.py provides: def parse_log_stream",
-        "File: cli.py provides: def _write_output, def _build_empty_report, def _execute_audit, def main",
-        "File: test_main.py provides: class TestContextLeakAuditor",
+        "File: models.py provides: class LogEvent, class InefficiencyPattern, class AuditReport",
+        "File: core.py provides: def parse_log_line, def run_audit_stream",
+        "File: cli.py provides: def stream_jsonl_file, def main",
+        "File: test_main.py provides: class TestTokenDriftAuditor",
+        "File: requirements.txt (Static/Config)",
         "File: .gitignore (Static/Config)",
         "File: README.md (Static/Config)"
     ]
