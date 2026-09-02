@@ -1,76 +1,64 @@
 {
     "plan": {
-        "chain_of_thought": "Critique: 1. Scope: 7 files proposed, well under the 8-file limit. No scope creep. 2. Dependencies: Explicitly stdlib-only with empty requirements.txt. Zero hidden paid-API or external dependencies. 3. Interfaces & Coverage: Core logic and CLI contracts are well-defined, but the drift_score calculation lacked a deterministic formula for 'inefficiency_token_waste', and the AuditReport.to_dict() method was untested. Fixes applied: (a) Explicitly defined inefficiency_token_waste accumulation in core.py instructions to guarantee deterministic drift_score math. (b) Added test_report_serialization to test_main.py to cover the to_dict() interface contract. (c) Hardened cli.py mmap instructions with explicit context-manager cleanup and byte-decoding steps to prevent cross-platform resource leaks. All interfaces now have 1:1 test coverage, DI remains mock-free, and architecture stays strictly single-pass and offline.",
-        "project_name": "TokenDriftAuditor",
-        "vision": "SPEC ROADMAP: Problem: Agentic workflows suffer from silent token burn due to prompt duplication, unbounded context growth, and retry storms. Milestone 1: Define strict data models (LogEvent, InefficiencyPattern, AuditReport). Milestone 2: Implement pure core logic (parse_log_line, run_audit_stream) using a single-pass state machine that tracks prompt hashes, rolling token counts, cost drift, and error retries. Milestone 3: Build CLI with win32-safe mmap streaming, DI wiring, and structured JSON output. Milestone 4: Deterministic test suite using in-memory iterables, validating exact report fields, edge cases (empty logs, malformed JSON, zero-cost baselines), and CLI exit codes. Testing Strategy: Pure function injection enables 100% coverage without mocking I/O. Tests assert mathematical correctness of cost drift calculations and pattern detection thresholds.",
-        "interface_contracts": {
-            "models.py": [
-                "@dataclass class LogEvent(session_id: str, prompt_tokens: int, completion_tokens: int, prompt_text: str, status: str, timestamp: float)",
-                "@dataclass class InefficiencyPattern(pattern_type: str, session_id: str, count: int, details: str)",
-                "@dataclass class AuditReport(total_sessions: int, total_tokens: int, estimated_cost: float, inefficiencies: List[InefficiencyPattern], drift_score: float)",
-                "def to_dict(self) -> dict: # On AuditReport. Returns JSON-serializable dict."
-            ],
-            "core.py": [
-                "def parse_log_line(raw_line: str) -> Optional[Dict[str, Any]]: # Handles JSONDecodeError/KeyError, returns normalized dict or None",
-                "def run_audit_stream(events: Iterable[Dict[str, Any]], cost_per_1k: float = 0.005) -> AuditReport: # Single-pass pure function. Accepts iterable, returns deterministic report."
-            ],
-            "cli.py": [
-                "def stream_jsonl_file(filepath: str) -> Iterable[Dict[str, Any]]: # Handles file I/O, win32 mmap guard, yields parsed dicts",
-                "def main() -> None: # Argparse setup, DI wiring, JSON output, sys.exit codes"
-            ],
-            "test_main.py": [
-                "class TestTokenDriftAuditor(unittest.TestCase): # Imports core & models. Uses in-memory lists. Asserts exact dataclass states. Zero mocks."
-            ]
-        },
-        "lessons_learned": "This project avoids past mistakes by: (1) Using mmap with explicit os.path.getsize guard to prevent win32 empty-file crashes; (2) Enforcing a strict single-pass execution model in run_audit_stream that simultaneously accumulates prompt hashes, rolling token counts, cost drift, and retry states, completely avoiding itertools.tee memory traps; (3) Decoupling core logic via Dependency Injection\u2014core accepts Iterable[Dict] enabling pure in-memory unit tests without unittest.mock; (4) Hardening parsing against KeyError, TypeError, and json.JSONDecodeError with explicit fallbacks; (5) Returning strict dataclasses for deterministic test assertions instead of fragile string parsing; (6) Zero external dependencies or heavy ML libraries, relying entirely on Python stdlib for maximum portability and speed.",
-        "commit_message": "Implement single-pass offline LLM token drift and inefficiency auditor with pure DI core and win32-safe CLI.",
+        "chain_of_thought": "1. SCOPE CHECK: Exactly 8 files specified. No scope creep. Structure is flat and modular.\n2. DEPENDENCY CHECK: Strictly stdlib-only (json, dataclasses, collections, mmap, argparse, unittest, subprocess, io). Zero paid APIs or external packages. Complies fully.\n3. INTERFACE & TEST COVERAGE CHECK: Original plan had strong DI and pure functions, but missed three architectural edge cases: (a) detect_bloat accepts Iterable but BloatSegment requires indices, risking misalignment if not materialized or enumerated carefully. Fixed by instructing internal list materialization with explicit enumerate tracking. (b) mmap.readline() returns bytes, which crashes json.loads if not decoded. Fixed by adding explicit UTF-8 decoding with error replacement in CLI. (c) CLI lacked test coverage due to 'zero mock' rule. Fixed by adding subprocess-based exit code validation to test_main.py, preserving the no-mock constraint while covering the entry point. All interfaces now exactly match implementation instructions, and compression math is explicitly defined to prevent off-by-one token errors.",
+        "project_name": "ReasoningBloatPruner",
+        "vision": "SPEC ROADMAP:\n- Problem: Agent inference logs accumulate circular/repetitive reasoning steps, causing context window exhaustion and token waste.\n- Milestone 1: Implement robust JSONL parser yielding TraceEntry dataclasses, hardened against KeyError/JSONDecodeError.\n- Milestone 2: Build single-pass bloat detector using rolling word-shingle hashing and similarity thresholds to flag repetitive spans with precise index tracking.\n- Milestone 3: Implement trace compressor that collapses flagged spans into summary entries and calculates exact token savings.\n- Milestone 4: Wire CLI with win32-safe mmap streaming, explicit byte decoding, and DI pipeline.\n- Testing Strategy: Pure function unit tests using in-memory iterables. Assert exact dataclass states. Verify parser skips malformed lines, detector catches synthetic loops, compressor math matches expected savings, pipeline end-to-end flow produces valid pruned JSONL, and CLI handles exit codes via subprocess. Zero mocks.",
+        "interface_contracts": "models.py: @dataclass TraceEntry(step_id: str, content: str, tokens: int); @dataclass BloatSegment(start_idx: int, end_idx: int, redundancy_score: float); @dataclass CompressionReport(original_tokens: int, saved_tokens: int, segments_pruned: int, pruned_entries: List[TraceEntry])\nparser.py: parse_trace_lines(lines: Iterable[str]) -> Iterator[TraceEntry]\nanalyzer.py: detect_bloat(entries: Iterable[TraceEntry], window_size: int = 3, threshold: float = 0.65) -> List[BloatSegment]; compress_trace(entries: List[TraceEntry], segments: List[BloatSegment]) -> CompressionReport\npipeline.py: run_pruning_pipeline(line_source: Iterable[str], output_writer: Callable[[str], None], config: dict) -> CompressionReport\ncli.py: main() -> int\ntest_main.py: test_parser_resilience(), test_bloat_detection_accuracy(), test_compression_math(), test_pipeline_integration(), test_cli_exit_codes()",
+        "lessons_learned": "Avoids past mistakes by: (1) Using a strict single-pass rolling window for bloat detection that accumulates shingle hashes and repetition streaks simultaneously, completely eliminating itertools.tee memory traps. (2) Decoupling all core logic via Dependency Injection; parser/analyzer/pipeline accept Iterable[str]/Iterable[TraceEntry] and Callable writers, enabling pure in-memory unit tests without unittest.mock. (3) Hardening CLI file reads with explicit os.path.getsize guards before mmap initialization to prevent win32 empty-file crashes, plus explicit UTF-8 decoding to handle byte streams safely. (4) Relying exclusively on Python stdlib with zero heavy ML or external dependencies. (5) Returning strict dataclasses for deterministic test assertions instead of fragile string parsing. (6) Gracefully handling json.JSONDecodeError and KeyError in the hot loop to ensure pipeline continuity on malformed agentic logs.",
+        "commit_message": "Implement stdlib-only agent trace bloat detector and compressor with rolling shingle analysis, DI pipeline, win32-safe mmap streaming, and zero-mock test suite.",
         "files_to_generate": [
             {
                 "filepath": "models.py",
-                "instructions": "Define strict dataclasses for the audit pipeline. Use `from dataclasses import dataclass, field` and `from typing import List, Optional`. Create: `LogEvent(session_id: str, prompt_tokens: int, completion_tokens: int, prompt_text: str, status: str, timestamp: float)`, `InefficiencyPattern(pattern_type: str, session_id: str, count: int, details: str)`, and `AuditReport(total_sessions: int, total_tokens: int, estimated_cost: float, inefficiencies: List[InefficiencyPattern], drift_score: float)`. Include a `to_dict(self) -> dict` method on `AuditReport` that recursively converts nested dataclasses to dicts for JSON serialization. No I/O, no external deps. Keep it under 45 lines."
+                "instructions": "Define strict dataclasses for the application. Use @dataclass(frozen=True) where applicable. Include: TraceEntry(step_id: str, content: str, tokens: int), BloatSegment(start_idx: int, end_idx: int, redundancy_score: float), CompressionReport(original_tokens: int, saved_tokens: int, segments_pruned: int, pruned_entries: List[TraceEntry]). Add __post_init__ validation to ensure tokens >= 0, step_id is non-empty, and indices are non-negative. Import only from dataclasses, typing, and collections. No side effects."
             },
             {
-                "filepath": "core.py",
-                "instructions": "Implement pure core logic. Imports: `json`, `hashlib`, `typing`, `collections.defaultdict`, `models`. Function 1: `parse_log_line(raw_line: str) -> Optional[dict]`. Strip whitespace, skip empty. Try `json.loads`. Catch `json.JSONDecodeError`, `TypeError`. Validate required keys (`session_id`, `prompt_tokens`, `completion_tokens`, `prompt_text`, `status`). Return normalized dict or None. Function 2: `run_audit_stream(events: Iterable[dict], cost_per_1k: float = 0.005) -> models.AuditReport`. SINGLE-PASS ONLY. Initialize state trackers: `sessions = set()`, `total_tokens = 0`, `prompt_hashes = defaultdict(int)`, `session_context = defaultdict(int)`, `retry_tracker = defaultdict(lambda: {'last_hash': '', 'count': 0})`, `inefficiencies = []`, `waste_tokens = 0`. Loop once over `events`. For each: add to sessions, accumulate tokens, hash prompt_text (sha256 first 16 chars), track hash frequency, accumulate session context size, detect retry storms (status=='error' and same prompt hash consecutively). After loop: identify patterns (hash freq > 3 -> 'prompt_duplication', session context > 8000 -> 'context_bloat', retry count > 2 -> 'retry_storm'). For each detected pattern, add its associated tokens to `waste_tokens`. Calculate cost: `(total_tokens / 1000) * cost_per_1k`. Calculate `drift_score` as `(waste_tokens / total_tokens) if total_tokens > 0 else 0.0`. Return `AuditReport`. Zero I/O. Zero mocks needed. Hardened against missing keys."
+                "filepath": "parser.py",
+                "instructions": "Implement parse_trace_lines(lines: Iterable[str]) -> Iterator[TraceEntry]. Iterate over lines, strip whitespace, skip empty. Use json.loads inside a try/except block catching json.JSONDecodeError. Extract 'step_id', 'content', 'tokens' with .get() fallbacks to prevent KeyError. If required fields are missing or invalid, skip the line silently. Yield TraceEntry objects. Must be a pure function with zero file I/O. Import json, typing, and models."
+            },
+            {
+                "filepath": "analyzer.py",
+                "instructions": "Implement two pure functions. 1. detect_bloat(entries: Iterable[TraceEntry], window_size: int = 3, threshold: float = 0.65) -> List[BloatSegment]: Materialize iterable to a list internally for index tracking. Convert each entry's content to a set of lowercase word 3-grams (shingles). Maintain a rolling similarity score against the previous entry's shingle set using Jaccard similarity. Track consecutive steps where similarity >= threshold using enumerate for exact indices. When streak >= window_size, mark segment start. When streak breaks, mark segment end and append BloatSegment. Handle edge cases (empty content, division by zero). Single-pass over the materialized list. 2. compress_trace(entries: List[TraceEntry], segments: List[BloatSegment]) -> CompressionReport: Iterate entries by index. If index falls within a segment, skip original and insert a single summary TraceEntry (step_id='pruned_X', content='[Pruned N repetitive reasoning steps]', tokens=sum_of_pruned_tokens). Calculate original_tokens (sum of all input tokens), saved_tokens (original - compressed), segments_pruned. Return CompressionReport. Import models, typing, collections. Zero I/O."
+            },
+            {
+                "filepath": "pipeline.py",
+                "instructions": "Implement run_pruning_pipeline(line_source: Iterable[str], output_writer: Callable[[str], None], config: dict) -> CompressionReport. Extract window_size and threshold from config. Stream line_source through parser.parse_trace_lines. Collect entries into a list (required for index-based compression; memory-bounded by design). Pass to analyzer.detect_bloat, then analyzer.compress_trace. Iterate over report.pruned_entries, serialize each to JSON string, and pass to output_writer. Return the CompressionReport. Must use Dependency Injection for output_writer. Import typing, json, parser, analyzer, models."
             },
             {
                 "filepath": "cli.py",
-                "instructions": "CLI entrypoint with safe file streaming. Imports: `argparse`, `sys`, `os`, `mmap`, `pathlib`, `json`, `core`, `models`. Function `stream_jsonl_file(filepath: str) -> Iterable[dict]`: Use `pathlib.Path`. Check `if not p.exists(): raise FileNotFoundError`. CRITICAL WIN32 GUARD: `if os.path.getsize(filepath) == 0: return`. Open file in 'rb'. Use context managers: `with open(filepath, 'rb') as f: with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm: for line in mm: yield core.parse_log_line(line.decode('utf-8'))`. Function `main()`: Setup `argparse` with `--input`, `--cost-rate`, `--output`. Try/except block wrapping execution. Call `stream_jsonl_file`, pass generator to `core.run_audit_stream` with DI. Serialize report via `report.to_dict()` to JSON. Write to stdout or `--output` file. Catch exceptions, print to stderr, `sys.exit(1)`. On success `sys.exit(0)`. Keep under 75 lines. Dense, robust, cross-platform."
+                "instructions": "Implement main() -> int. Use argparse for --input, --output, --window, --threshold. Validate paths. CRITICAL WIN32 GUARD: Check os.path.getsize(input_path) == 0 before opening. If empty, print warning and return 0. Open file in 'rb', use mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ). Decode lines lazily via (line.decode('utf-8', errors='replace') for line in iter(mmap.readline, b'')). Pass to pipeline.run_pruning_pipeline with a writer that appends to output file. Catch FileNotFoundError, PermissionError, ValueError, and mmap.error (fallback to standard open() if mmap fails on network/edge filesystems). Print report summary. Return 0 on success, 1 on failure. Use if __name__ == '__main__': sys.exit(main()). Import sys, os, mmap, argparse, pathlib, pipeline, models."
             },
             {
                 "filepath": "test_main.py",
-                "instructions": "Strict unit tests. Imports: `unittest`, `core`, `models`. Class `TestTokenDriftAuditor(unittest.TestCase)`. Method `test_parse_valid_line`: pass valid JSON string, assert dict keys. Method `test_parse_malformed`: pass broken JSON, missing keys, empty string; assert None returned. Method `test_single_pass_audit_empty`: pass empty list, assert report has 0 tokens, 0 cost, empty inefficiencies, 0.0 drift. Method `test_detect_prompt_duplication`: pass list of 5 dicts with identical `prompt_text` and same `session_id`, assert `InefficiencyPattern` with type 'prompt_duplication' and count >= 3. Method `test_detect_context_bloat`: pass dicts with high `prompt_tokens` accumulating > 8000 in one session, assert 'context_bloat' pattern. Method `test_cost_drift_calculation`: pass known token counts, assert `estimated_cost` matches `(total_tokens/1000)*cost_rate` exactly. Method `test_retry_storm`: pass consecutive error statuses with same prompt, assert 'retry_storm'. Method `test_report_serialization`: create dummy AuditReport, call `to_dict()`, assert output is plain dict with correct keys and JSON-serializable. ALL tests use in-memory lists of dicts passed directly to `core.run_audit_stream`. NO mocks. NO file I/O. Assert exact dataclass fields. Include `if __name__ == '__main__': unittest.main()`."
-            },
-            {
-                "filepath": "requirements.txt",
-                "instructions": "Leave empty. Project uses Python standard library exclusively to guarantee zero-install portability and avoid heavy ML dependencies."
-            },
-            {
-                "filepath": ".gitignore",
-                "instructions": "Standard Python gitignore. Include exactly: `__pycache__/`, `*.py[cod]`, `*$py.class`, `.Python`, `venv/`, `.venv/`, `env/`, `.env`, `*.egg-info/`, `dist/`, `build/`, `.mypy_cache/`, `.pytest_cache/`."
+                "instructions": "Strict unit test suite using unittest. NO MOCKS. Import actual modules. 1. test_parser_resilience: Feed list containing valid JSON, malformed JSON, missing keys, empty strings. Assert iterator yields exactly the valid TraceEntries. 2. test_bloat_detection_accuracy: Create synthetic list of TraceEntries with 5 identical/repetitive contents surrounded by unique ones. Call analyzer.detect_bloat. Assert exactly one BloatSegment is returned with correct start/end indices and score >= threshold. 3. test_compression_math: Pass entries and detected segment to analyzer.compress_trace. Assert saved_tokens matches sum of pruned entries, segments_pruned==1, and pruned_entries length is reduced correctly. 4. test_pipeline_integration: Use io.StringIO as output_writer. Feed mixed valid/invalid lines. Run pipeline. Assert StringIO contains valid JSON lines, and returned CompressionReport matches expected math. 5. test_cli_exit_codes: Use subprocess.run to invoke cli.py with --help and an empty temp file. Assert exit code 0 for both. Run with unittest.main()."
             },
             {
                 "filepath": "README.md",
-                "instructions": "Concise architecture documentation. Sections: 1. Overview (TokenDriftAuditor solves agentic token burn via offline single-pass log auditing). 2. Architecture (Pure core, DI, win32-safe mmap CLI, deterministic dataclasses). 3. Usage (`python cli.py --input logs.jsonl --cost-rate 0.01`). 4. Testing (`python test_main.py`). 5. Design Decisions (Single-pass avoids itertools.tee memory traps, DI enables mock-free testing, os.path.getsize prevents win32 mmap crashes, stdlib-only ensures portability). 6. Interface Contracts (Brief summary of core.py and cli.py signatures). Keep it under 150 lines. Professional tone."
+                "instructions": "Document the architecture, problem solved (agentic reasoning bloat/token waste), usage instructions (python cli.py --input trace.jsonl --output pruned.jsonl), design decisions (single-pass rolling shingle detection, DI for testability, win32 mmap safety with byte decoding fallback), and testing strategy (pure functions, deterministic dataclass assertions, zero mocks, subprocess CLI validation). Keep it concise and professional."
+            },
+            {
+                "filepath": ".gitignore",
+                "instructions": "Standard Python gitignore: venv/, __pycache__/, *.pyc, .env, .pytest_cache/, *.egg-info/, dist/, build/, .mypy_cache/. Ensure cross-platform compatibility."
             }
         ]
     },
     "files_created": [
         "models.py",
-        "core.py",
+        "parser.py",
+        "analyzer.py",
+        "pipeline.py",
         "cli.py",
         "test_main.py",
-        "requirements.txt",
-        ".gitignore",
-        "README.md"
+        "README.md",
+        ".gitignore"
     ],
     "blueprint": [
-        "File: models.py provides: class LogEvent, class InefficiencyPattern, class AuditReport",
-        "File: core.py provides: def parse_log_line, def run_audit_stream",
-        "File: cli.py provides: def stream_jsonl_file, def main",
-        "File: test_main.py provides: class TestTokenDriftAuditor",
-        "File: requirements.txt (Static/Config)",
-        "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: models.py provides: class TraceEntry, class BloatSegment, class CompressionReport",
+        "File: parser.py provides: def parse_trace_lines",
+        "File: analyzer.py provides: def detect_bloat, def compress_trace",
+        "File: pipeline.py provides: def run_pruning_pipeline",
+        "File: cli.py provides: def parse_args, def main",
+        "File: test_main.py provides: class TestReasoningBloatPruner",
+        "File: README.md (Static/Config)",
+        "File: .gitignore (Static/Config)"
     ]
 }
