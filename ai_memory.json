@@ -1,5 +1,5 @@
 {
-    "score": 67,
+    "score": 68,
     "successful_patterns": [
         "A pure\u2011Python, zero\u2011dependency CLI that quickly flags typical AI\u2011generated HTML issues, with clear test coverage and optional JSON output for automation.",
         "A tiny, zero\u2011dependency Python utility that ingests a raw HN\u2011style feed (as plain text) and produces a clean, searchable summary of each post. By keeping everything in the standard library and providing a full test suite, the tool is instantly portable to any Windows environment without external packages, guaranteeing reproducible, enterprise\u2011grade builds."
@@ -411,6 +411,11 @@
             "date": "2026-09-04T10:01:49.441293",
             "project": "AgentCircuitBreaker",
             "model": "qwen3.6-max-preview"
+        },
+        {
+            "date": "2026-09-04T14:26:12.712207",
+            "project": "ToolSchemaFuzzer",
+            "model": "qwen3.6-max-preview"
         }
     ],
     "model_ratings": {
@@ -439,7 +444,6 @@
         "cohere/north-mini-code:free": -2
     },
     "past_projects": [
-        "FloatDriftAuditorAgent",
         "CloudDriftAuditor",
         "CloudTrailSpikeAuditor",
         "ZombieComputeAuditor",
@@ -458,10 +462,10 @@
         "ContextLeakAuditor",
         "TokenDriftAuditor",
         "ReasoningBloatPruner",
-        "AgentCircuitBreaker"
+        "AgentCircuitBreaker",
+        "ToolSchemaFuzzer"
     ],
     "lessons_learned": [
-        "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a single-pass execution model that accumulates both float and decimal sums simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates both float and decimal sums simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL billing logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates event frequencies simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`.",
         "This project avoids past mistakes by utilizing memory-mapped files (`mmap`) for low-memory processing of massive JSONL compute logs, explicitly guarding against the win32 `mmap` empty-file crash by checking `os.path.getsize` first. Crucially, it avoids the `itertools.tee` memory trap by using a strict single-pass execution model that accumulates agent costs and task yields simultaneously. Core logic is strictly decoupled via Dependency Injection, accepting `Iterable[str]` to allow pure in-memory unit testing without `unittest.mock`. Furthermore, it enforces strict resource safety by utilizing context managers for file and mmap handling, and prevents `KeyError` crashes by validating JSON schema completeness per line.",
@@ -480,7 +484,8 @@
         "Avoids past mistakes by: (1) Strictly decoupling core logic from I/O via Dependency Injection; all detectors/parsers accept Iterable[str]/Iterable[Dict], enabling pure in-memory unit tests without unittest.mock. (2) Enforcing a single-pass execution model in the leak detector that accumulates rolling context size, shingle hashes, and leak signatures simultaneously, completely avoiding itertools.tee memory traps. (3) Hardening CLI file reads with os.path.getsize guards before mmap initialization to prevent win32 empty-file crashes. (4) Using lightweight n-gram shingling and rolling counters instead of heavy ML/embeddings, keeping dependencies at zero. (5) Returning strict dataclasses (LeakReport, SimulationResult) for deterministic test assertions rather than fragile string parsing. (6) Explicitly catching json.JSONDecodeError and KeyError in the parser to gracefully skip malformed agentic log lines without crashing the pipeline.",
         "This project avoids past mistakes by: (1) Using mmap with explicit os.path.getsize guard to prevent win32 empty-file crashes; (2) Enforcing a strict single-pass execution model in run_audit_stream that simultaneously accumulates prompt hashes, rolling token counts, cost drift, and retry states, completely avoiding itertools.tee memory traps; (3) Decoupling core logic via Dependency Injection\u2014core accepts Iterable[Dict] enabling pure in-memory unit tests without unittest.mock; (4) Hardening parsing against KeyError, TypeError, and json.JSONDecodeError with explicit fallbacks; (5) Returning strict dataclasses for deterministic test assertions instead of fragile string parsing; (6) Zero external dependencies or heavy ML libraries, relying entirely on Python stdlib for maximum portability and speed.",
         "Avoids past mistakes by: (1) Using a strict single-pass rolling window for bloat detection that accumulates shingle hashes and repetition streaks simultaneously, completely eliminating itertools.tee memory traps. (2) Decoupling all core logic via Dependency Injection; parser/analyzer/pipeline accept Iterable[str]/Iterable[TraceEntry] and Callable writers, enabling pure in-memory unit tests without unittest.mock. (3) Hardening CLI file reads with explicit os.path.getsize guards before mmap initialization to prevent win32 empty-file crashes, plus explicit UTF-8 decoding to handle byte streams safely. (4) Relying exclusively on Python stdlib with zero heavy ML or external dependencies. (5) Returning strict dataclasses for deterministic test assertions instead of fragile string parsing. (6) Gracefully handling json.JSONDecodeError and KeyError in the hot loop to ensure pipeline continuity on malformed agentic logs.",
-        "Avoids past mistakes by: (1) Enforcing strict Dependency Injection; core logic accepts Iterable[str]/Iterable[LogEntry] and returns dataclasses, enabling pure in-memory unit tests without unittest.mock. (2) Using a single-pass sliding window in the circuit breaker that accumulates error counts, latency sums, and state transitions simultaneously, completely eliminating itertools.tee memory traps. (3) Hardening CLI file reads with explicit os.path.getsize guards before iteration to prevent win32 empty-file crashes. (4) Gracefully handling json.JSONDecodeError and KeyError in the parser hot-loop to ensure pipeline continuity on malformed agentic telemetry. (5) Zero external dependencies or heavy ML libraries; relies entirely on Python stdlib (json, dataclasses, typing, sys, os, argparse, collections). (6) Deterministic structured outputs ensure tests validate exact contract states rather than fragile string parsing."
+        "Avoids past mistakes by: (1) Enforcing strict Dependency Injection; core logic accepts Iterable[str]/Iterable[LogEntry] and returns dataclasses, enabling pure in-memory unit tests without unittest.mock. (2) Using a single-pass sliding window in the circuit breaker that accumulates error counts, latency sums, and state transitions simultaneously, completely eliminating itertools.tee memory traps. (3) Hardening CLI file reads with explicit os.path.getsize guards before iteration to prevent win32 empty-file crashes. (4) Gracefully handling json.JSONDecodeError and KeyError in the parser hot-loop to ensure pipeline continuity on malformed agentic telemetry. (5) Zero external dependencies or heavy ML libraries; relies entirely on Python stdlib (json, dataclasses, typing, sys, os, argparse, collections). (6) Deterministic structured outputs ensure tests validate exact contract states rather than fragile string parsing.",
+        "This project avoids past mistakes by: (1) Strictly decoupling core logic via Dependency Injection; the validator accepts a Callable parser_fn, enabling pure in-memory unit tests without unittest.mock. (2) Using a single-pass generator model in generate_variants that yields mutations sequentially, completely avoiding itertools.tee memory traps. (3) Hardening CLI file reads with explicit os.path.getsize guards before JSON loading to prevent win32 empty-file crashes. (4) Gracefully capturing all exceptions (broad Exception catch, explicitly re-raising SystemExit/KeyboardInterrupt) inside the validator harness to ensure pipeline continuity on malformed payloads or crashing user parsers. (5) Relying exclusively on Python stdlib (json, dataclasses, typing, pathlib, importlib, sys, random, time, argparse) with zero heavy ML or external dependencies. (6) Returning strict dataclasses (NormalizedSchema, FuzzVariant, ValidationReport) for deterministic test assertions instead of fragile string parsing. (7) Pre-compiling validation rules and using seeded randomization to guarantee reproducible, cross-platform fuzzing sequences."
     ],
     "planner_ratings": {
         "cohere/north-mini-code-20260617:free": {
@@ -554,9 +559,9 @@
             "test_stages_reached": 5
         },
         "qwen3.6-max-preview": {
-            "plans_created": 6,
+            "plans_created": 7,
             "critique_survivals": 0,
-            "test_stages_reached": 10
+            "test_stages_reached": 11
         },
         "qwen3-max-2026-01-23": {
             "plans_created": 0,
@@ -679,10 +684,10 @@
             "fix_successes": 1
         },
         "qwen3.6-max-preview": {
-            "files_generated": 43,
-            "lint_passes": 32,
-            "fix_attempts": 17,
-            "fix_successes": 4
+            "files_generated": 50,
+            "lint_passes": 37,
+            "fix_attempts": 19,
+            "fix_successes": 5
         },
         "qwen3.7-max-2026-06-08": {
             "files_generated": 8,
