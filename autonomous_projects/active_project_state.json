@@ -1,64 +1,91 @@
 {
     "plan": {
-        "chain_of_thought": "1. Scope Check: Verified exactly 8 files in files_to_generate. No scope creep detected. Structure aligns with GSD constraints.\n2. Dependency Check: Confirmed strict stdlib-only usage (dataclasses, typing, json, pathlib, sys, os, argparse, time, unittest, subprocess, tempfile). Zero paid APIs or external packages.\n3. Interface & Test Coverage Check: Identified minor inconsistencies in executor state management and CLI determinism. Fixed by: (a) Clarifying that adapters/executor.py maintains a lightweight session_history list passed to the pure router functions, eliminating vague 'synthetic history' logic. (b) Replacing random failure simulation in cli.py with a deterministic --simulate-failure flag to guarantee reproducible test runs. (c) Refining test_main.py CLI test to use tempfile and subprocess.run (stdlib) for isolated, mock-free validation. (d) Standardized all type hints and ensured interface contracts exactly match implementation instructions. All tests now strictly assert dataclass fields with zero mocks and zero side-effects in core.",
-        "project_name": "AgentFailoverRouter",
-        "vision": "PROBLEM: Agentic toolchains cascade into failure or waste tokens via blind retries when primary endpoints/tools degrade. No lightweight, deterministic failover router exists that preserves context state and routes based on explicit policies without external infra.\nMILESTONES:\n1. Define strict data models for call records, policies, router state, and routing decisions.\n2. Implement pure routing logic: single-pass history evaluation, threshold-based failover, and state accumulation.\n3. Implement context recovery: snapshot, restore, and deterministic diffing for state replay after failover.\n4. Build DI executor adapter: wraps target/fallback callables, injects router/recovery logic, isolates side-effects.\n5. Wire CLI: argparse, win32-safe file I/O with size guards, JSON config loading, deterministic pipeline execution.\n6. TDD Validation: test_main.py validates pure functions with in-memory iterables, asserts exact dataclass states, zero mocks.\nTESTING STRATEGY: Pure function isolation enables direct invocation with synthetic call histories and context dicts. Tests verify threshold triggers, fallback selection, context diff accuracy, and executor wiring. All assertions are deterministic and structural.",
-        "interface_contracts": "core/models.py -> @dataclass CallRecord(target: str, success: bool, latency_ms: float, error_code: str | None, timestamp: float)\n@dataclass FailoverPolicy(max_retries: int, latency_threshold_ms: float, error_rate_threshold: float, fallback_target: str)\n@dataclass RouterState(total_calls: int, total_failures: int, rolling_latencies: list[float], current_target: str)\n@dataclass RoutingDecision(route_to: str, should_failover: bool, reason: str, updated_state: RouterState)\n\ncore/router.py -> evaluate_route(history: Iterable[CallRecord], policy: FailoverPolicy, current_target: str) -> RoutingDecision\nupdate_state(state: RouterState, record: CallRecord) -> RouterState\n\ncore/recovery.py -> snapshot_context(context: dict[str, Any]) -> bytes\nrestore_context(snapshot: bytes) -> dict[str, Any]\ncompute_context_diff(base: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]\n\nadapters/executor.py -> execute_with_failover(target_runner: Callable[[dict], dict], fallback_runner: Callable[[dict], dict], context: dict[str, Any], policy: FailoverPolicy) -> tuple[dict[str, Any], CallRecord]\n\ncli.py -> main(args: list[str] | None = None) -> None\n\ntest_main.py -> test_evaluate_route_stays_on_target()\ntest_evaluate_route_triggers_failover_on_error_rate()\ntest_evaluate_route_triggers_failover_on_latency()\ntest_update_state_accumulates_correctly()\ntest_snapshot_and_restore_context_roundtrip()\ntest_compute_context_diff_detects_changes()\ntest_execute_with_failover_routes_correctly()\ntest_cli_integration_runs_without_error()",
-        "lessons_learned": "Avoids past mistakes by: (1) Enforcing strict Dependency Injection across all core modules; router/recovery accept Iterable[CallRecord]/dicts/Callables, enabling pure in-memory unit tests without unittest.mock. (2) Using a single-pass accumulation model in evaluate_route that computes error rates, rolling latency averages, and failover decisions simultaneously, eliminating itertools.tee memory traps. (3) Hardening CLI file reads with explicit Path.stat().st_size guards before JSON loading to prevent win32 empty-file crashes. (4) Gracefully handling json.JSONDecodeError, KeyError, and TypeError in the executor hot-loop to ensure pipeline continuity on malformed tool responses. (5) Returning strict dataclasses (RoutingDecision, RouterState) for deterministic test assertions instead of fragile string parsing. (6) Zero external dependencies or heavy ML libraries; relies entirely on Python stdlib for maximum portability and speed.",
-        "commit_message": "Implement deterministic agentic failover router with context recovery and pure DI core",
+        "chain_of_thought": "The original plan is well-scoped with exactly 8 files (including __init__.py), uses only stdlib, and avoids mocks by testing with real skill source strings\u2014strong design choices. However, there are three subtle gaps: (1) The interface contract for skillvault/core.py lists simulate_skill as returning dict, but the instructions say it validates output keys against the spec; this validation logic is missing from the interface description and could fail silently if omitted. (2) The hasher concatenates name, sorted inputs/outputs repr, and source_code\u2014but repr(dict) is not guaranteed stable across Python versions (e.g., key ordering in older Pythons). This breaks hash determinism. Fix: use json.dumps with sort_keys=True instead of repr. (3) The simulator\u2019s safe_exec_function disables builtins but doesn\u2019t restrict attribute access or dangerous dunder methods, creating a sandbox escape risk. Mitigation: wrap exec in a namespace that explicitly allows only the function definition and no other symbols, and validate input types before execution. Also, tests should cover invalid skill cases (e.g., multiple functions, no return annotation) to ensure robust parsing\u2014currently only valid examples are tested. Added one test case for error handling without increasing file count. No scope creep or hidden deps exist; all fixes fit within existing files.",
+        "project_name": "SkillVault",
+        "vision": "Agentic Gap: Developers struggle to manage, version, and validate reusable agent skills without heavyweight frameworks. Atomic Milestones: (1) Define SkillSpec dataclass with name, inputs, outputs, source_code. (2) Implement load_skill_from_source() that parses valid Python functions into SkillSpec. (3) Build simulate_skill(skill_spec, input_dict) that safely executes function in restricted env and validates I/O. (4) Create compute_skill_hash(skill_spec) using SHA-256 over normalized source + spec fields, using stable JSON serialization for determinism. (5) CLI: 'vault add', 'vault verify', 'vault simulate' with JSON I/O. Testing Strategy: Unit tests inject real skill source strings (e.g., 'def add(a: int, b: int) -> int: return a + b'), assert correct SkillSpec parsing, hash determinism across runs, simulation correctness, and error handling on invalid inputs. All core functions are pure; no file I/O in logic layer.",
+        "interface_contracts": {
+            "skillvault/core.py": [
+                "load_skill_from_source(source_code: str) -> SkillSpec",
+                "simulate_skill(skill_spec: SkillSpec, input_data: dict) -> dict",
+                "compute_skill_hash(skill_spec: SkillSpec) -> str"
+            ],
+            "skillvault/models.py": [
+                "SkillSpec(name: str, inputs: dict, outputs: dict, source_code: str)"
+            ],
+            "skillvault/loader.py": [
+                "parse_function_signature(source_code: str) -> tuple[str, dict, dict]"
+            ],
+            "skillvault/simulator.py": [
+                "safe_exec_function(func_code: str, func_name: str, args: dict) -> Any"
+            ],
+            "skillvault/hasher.py": [
+                "normalize_and_hash(content: str) -> str"
+            ],
+            "skillvault/cli.py": [
+                "main()"
+            ],
+            "tests/test_core.py": [
+                "test_load_skill_from_source_valid()",
+                "test_load_skill_from_source_invalid_raises()",
+                "test_compute_skill_hash_deterministic()",
+                "test_simulate_skill_correct_output()"
+            ]
+        },
+        "lessons_learned": "Novel approach: Instead of mocking filesystem or exec environments, we treat skill source as pure string input and use Python's compile/exec in a tightly scoped namespace for simulation\u2014no side effects. Hashing includes both source and parsed spec to catch semantic drift even if source bytes don\u2019t change, using json.dumps(sort_keys=True) for stable serialization instead of repr(). All core functions accept immutable inputs and return dataclasses, enabling 100% mock-free unit tests with real skill examples. Win32 safety ensured by avoiding mmap (not needed for small skill files) and using pathlib.Path.stat().st_size guards in CLI before reading. Simulator hardening: exec occurs in a namespace with no builtins and only the defined function exposed; input type validation occurs before execution via spec conformance checks.",
+        "commit_message": "Implement SkillVault: a zero-dependency CLI for managing, hashing, and simulating agentic skills with deterministic validation.",
         "files_to_generate": [
             {
-                "filepath": "core/models.py",
-                "instructions": "Define strict, immutable dataclasses for the router system. Import dataclass, field from dataclasses; Any from typing. Create: CallRecord(target: str, success: bool, latency_ms: float, error_code: str | None, timestamp: float). Create: FailoverPolicy(max_retries: int, latency_threshold_ms: float, error_rate_threshold: float, fallback_target: str). Create: RouterState(total_calls: int, total_failures: int, rolling_latencies: list[float], current_target: str). Create: RoutingDecision(route_to: str, should_failover: bool, reason: str, updated_state: RouterState). Ensure all fields have type hints. Add __post_init__ validation to FailoverPolicy to raise ValueError if thresholds are negative or max_retries < 0. Keep file dense, no external deps, pure data structures only."
+                "filepath": "skillvault/__init__.py",
+                "instructions": "Empty file to make package importable."
             },
             {
-                "filepath": "core/router.py",
-                "instructions": "Implement pure routing logic. Import Iterable from typing, and all models from core.models. Define update_state(state: RouterState, record: CallRecord) -> RouterState: returns a new RouterState with incremented total_calls, total_failures (if not success), and appends latency_ms to rolling_latencies (cap list at 50 for memory safety). Define evaluate_route(history: Iterable[CallRecord], policy: FailoverPolicy, current_target: str) -> RoutingDecision: Perform a SINGLE-PASS iteration over history. Accumulate state using update_state. Compute error_rate = total_failures / max(total_calls, 1). Compute avg_latency = sum(rolling_latencies) / max(len(rolling_latencies), 1). Determine should_failover: True if error_rate >= policy.error_rate_threshold OR avg_latency >= policy.latency_threshold_ms OR total_failures > policy.max_retries. If should_failover, route_to = policy.fallback_target, reason explains trigger. Else route_to = current_target. Return RoutingDecision with updated state. Zero I/O, zero side effects, pure function."
+                "filepath": "skillvault/models.py",
+                "instructions": "Define dataclass SkillSpec with fields: name (str), inputs (Dict[str, str] e.g. {'a': 'int'}), outputs (Dict[str, str]), source_code (str). Use @dataclass(frozen=True) for immutability. Include type hints from typing import Dict."
             },
             {
-                "filepath": "core/recovery.py",
-                "instructions": "Implement context snapshot and diffing logic. Import json from stdlib. Any from typing. Define snapshot_context(context: dict[str, Any]) -> bytes: deterministically serialize dict to JSON (sort_keys=True), encode to UTF-8, return bytes. Define restore_context(snapshot: bytes) -> dict[str, Any]: decode bytes, parse JSON, return dict. Handle json.JSONDecodeError by returning empty dict. Define compute_context_diff(base: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]: return a dict containing only keys where current differs from base or keys added in current. Use pure dict comprehension. Zero I/O, zero side effects. Ensure deterministic output for identical inputs."
+                "filepath": "skillvault/loader.py",
+                "instructions": "Implement parse_function_signature(source_code: str) -> tuple[str, dict, dict]. Use ast.parse to extract function name, args with annotations, and return annotation. Raise ValueError on invalid/multiple functions. Annotations converted to string via typing.get_origin/get_args fallback to __name__. Return ({arg: annotation_str}, {return: annotation_str})."
             },
             {
-                "filepath": "adapters/executor.py",
-                "instructions": "Implement side-effect isolation wrapper. Import Callable, Tuple, Dict, Any, List from typing. Import time. Import models and router/recovery functions. Define execute_with_failover(target_runner: Callable[[dict], dict], fallback_runner: Callable[[dict], dict], context: dict[str, Any], policy: FailoverPolicy) -> tuple[dict[str, Any], CallRecord]: Snapshot context before execution. Initialize session_history: list[CallRecord] = []. Try target_runner(context). Measure latency with time.perf_counter. On success, create success CallRecord, append to session_history, return result and record. On Exception, catch broadly (re-raise SystemExit/KeyboardInterrupt), create failure CallRecord, append to session_history. Pass session_history to evaluate_route with policy and current_target. If RoutingDecision.should_failover is True, restore context via restore_context(snapshot_context(context)), call fallback_runner, measure latency, create fallback CallRecord, and return result. Ensure all exceptions are caught gracefully, latency is measured accurately, and CallRecord matches core/models signature. This is the ONLY file allowed to invoke callables and handle runtime errors."
+                "filepath": "skillvault/hasher.py",
+                "instructions": "Implement normalize_and_hash(content: str) -> str. Normalize by stripping leading/trailing whitespace, ensuring Unix line endings, and lowercasing. Compute SHA-256 hexdigest using hashlib.sha256(). Encode as UTF-8. Return hex string. For structured data hashing (e.g., in core.py), use json.dumps(..., sort_keys=True, separators=(',', ':')) for stable serialization instead of repr()."
             },
             {
-                "filepath": "cli.py",
-                "instructions": "Implement CLI entry point. Import argparse, sys, os, json, pathlib.Path. Import core modules and adapter. Define main(args: list[str] | None = None) -> None: Parse args for --config (JSON policy file), --input (JSON context file), --simulate-failure (bool flag for deterministic demo). Load config: use Path(config).stat().st_size guard to prevent win32 empty-file crash. If size==0, print error and sys.exit(1). Load JSON safely, catch json.JSONDecodeError. Construct FailoverPolicy. Load input context similarly with size guard. Simulate runners: define dummy target_runner that raises RuntimeError('Simulated failure') if --simulate-failure is set, else returns {'status': 'ok'}. Define fallback_runner that returns {'status': 'recovered'}. Call execute_with_failover. Print structured JSON result via sys.stdout.write. Wrap in try/except for graceful CLI exit codes. Ensure win32 compatibility (no curses, no fork)."
+                "filepath": "skillvault/simulator.py",
+                "instructions": "Implement safe_exec_function(func_code: str, func_name: str, args: dict) -> Any. Compile func_code, then exec in a clean dict namespace with no builtins (globals={'__builtins__': {}}). Retrieve function by func_name. Call with **args. Catch any exception and re-raise as RuntimeError with message. Do NOT allow access to unsafe attributes or modules."
             },
             {
-                "filepath": "test_main.py",
-                "instructions": "Strict unit test suite. Import unittest, tempfile, subprocess, sys, os, json. Import ALL actual functions/classes from core.models, core.router, core.recovery, adapters.executor. DO NOT USE unittest.mock. DO NOT STUB CORE LOGIC. Define TestRouter: test_evaluate_route_stays_on_target (feed low error/latency history, assert should_failover=False), test_evaluate_route_triggers_failover_on_error_rate (feed 80% failure history, assert should_failover=True, route_to=fallback), test_evaluate_route_triggers_failover_on_latency (feed high latency history, assert trigger), test_update_state_accumulates_correctly (verify counts and rolling window cap). Define TestRecovery: test_snapshot_and_restore_context_roundtrip (assert dict equality), test_compute_context_diff_detects_changes (assert exact diff keys/values). Define TestExecutor: test_execute_with_failover_routes_correctly (pass lambda runners: one raises Exception, one returns dict; verify fallback invoked and CallRecord.success=False). Define TestCLI: test_cli_integration_runs_without_error (use tempfile.NamedTemporaryFile to create valid policy/context JSONs, run subprocess.run([sys.executable, 'cli.py', '--config', cfg, '--input', ctx, '--simulate-failure']), verify returncode==0 and valid JSON stdout). All tests must use in-memory lists/dicts. Assertions must check dataclass fields directly. Run via unittest.main()."
+                "filepath": "skillvault/core.py",
+                "instructions": "Implement three pure functions: (1) load_skill_from_source(source_code: str) -> SkillSpec: calls loader.parse_function_signature, constructs SkillSpec. (2) compute_skill_hash(skill_spec: SkillSpec) -> str: serializes name, inputs, outputs (using json.dumps with sort_keys=True), and source_code into a single string, then passes to hasher.normalize_and_hash. (3) simulate_skill(skill_spec: SkillSpec, input_data: dict) -> dict: validates input_data keys match skill_spec.inputs, calls simulator.safe_exec_function, wraps result in {'output': result}, and validates result type matches outputs spec if possible. All functions raise ValueError on contract violation."
             },
             {
-                "filepath": ".gitignore",
-                "instructions": "Standard Python gitignore. Include: __pycache__/, *.py[cod], *$py.class, .so, .egg, .egg-info/, dist/, build/, venv/, env/, .env, .DS_Store, *.log, .pytest_cache/, .mypy_cache/. Keep it minimal and cross-platform."
+                "filepath": "skillvault/cli.py",
+                "instructions": "Implement main() using argparse. Subcommands: 'add' (reads file, prints SkillSpec JSON), 'verify' (reads file, prints hash), 'simulate' (reads file + JSON input, prints output). Use pathlib.Path for file reading with .stat().st_size check to avoid empty files. On error, print message and sys.exit(1). Import core functions directly\u2014no side-effect logic here."
             },
             {
-                "filepath": "README.md",
-                "instructions": "Document architecture. Sections: Overview (solves agentic cascade failures via deterministic failover routing), Architecture (core/models, core/router, core/recovery, adapters/executor, cli), Interface Contracts (list signatures), Design Principles (Pure Functions, DI, Single-Pass, Win32 Safety, Zero Mocks), Usage (python cli.py --config policy.json --input context.json --simulate-failure), Testing (python test_main.py, explains TDD approach), Constraints Met (stdlib only, max 8 files, cross-platform). Keep it concise, technical, and aligned with GSD framework."
+                "filepath": "tests/test_core.py",
+                "instructions": "Write 4+ unit tests using unittest. Test 1: load_skill_from_source with 'def greet(name: str) -> str: return f\"Hi {name}\"' \u2192 asserts name='greet', inputs={'name':'str'}, etc. Test 2: load_skill_from_source with invalid code (e.g., two functions) \u2192 raises ValueError. Test 3: compute_skill_hash same input twice \u2192 same hash (uses json.dumps for stability). Test 4: simulate_skill with input {'name':'Alice'} \u2192 {'output':'Hi Alice'}. Use actual imports from skillvault.core\u2014NO MOCKS. Assert exact values and error conditions."
             }
         ]
     },
     "files_created": [
-        "core/models.py",
-        "core/router.py",
-        "core/recovery.py",
-        "adapters/executor.py",
-        "cli.py",
-        "test_main.py",
-        ".gitignore",
-        "README.md"
+        "skillvault/__init__.py",
+        "skillvault/models.py",
+        "skillvault/loader.py",
+        "skillvault/hasher.py",
+        "skillvault/simulator.py",
+        "skillvault/core.py",
+        "skillvault/cli.py",
+        "tests/test_core.py"
     ],
     "blueprint": [
-        "File: core/models.py provides: class CallRecord, class FailoverPolicy, class RouterState, class RoutingDecision",
-        "File: core/router.py provides: def update_state, def evaluate_route",
-        "File: core/recovery.py provides: def snapshot_context, def restore_context, def compute_context_diff",
-        "File: adapters/executor.py provides: def execute_with_failover",
-        "File: cli.py provides: def main",
-        "File: test_main.py provides: class TestRouter, class TestRecovery, class TestExecutor, class TestCLI",
-        "File: .gitignore (Static/Config)",
-        "File: README.md (Static/Config)"
+        "File: skillvault/__init__.py provides: No public classes/functions",
+        "File: skillvault/models.py provides: class SkillSpec",
+        "File: skillvault/loader.py provides: def parse_function_signature, def _annotation_to_string, def load_skill_from_source, def simulate_skill, def compute_skill_hash",
+        "File: skillvault/hasher.py provides: def normalize_and_hash, def stable_hash",
+        "File: skillvault/simulator.py provides: def safe_exec_function, def simulate_skill, def compute_skill_hash, def load_skill_from_source",
+        "File: skillvault/core.py provides: def load_skill_from_source, def compute_skill_hash, def simulate_skill",
+        "File: skillvault/cli.py provides: def _read_source_file, def _read_json_input, def add_command, def verify_command, def simulate_command, def main",
+        "File: tests/test_core.py provides: class TestCore"
     ]
 }
