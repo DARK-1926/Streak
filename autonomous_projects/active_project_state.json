@@ -1,83 +1,86 @@
 {
     "plan": {
-        "chain_of_thought": "The original plan is well-scoped and adheres closely to GSD principles: it uses only stdlib, avoids runtime execution, and defines clear interface contracts. However, two issues require correction: (1) The file count is exactly 8, which is acceptable per the <8 files constraint\u2014but note that __init__.py counts, so 8 is the upper limit; this is borderline but permissible if strictly necessary. (2) More critically, the CLI module performs file I/O (reading skill and spec files), yet the core enforcer logic is pure\u2014this is fine, but the testing strategy claims 'no I/O, no mocks' while CLI isn't tested. However, the test file only covers core logic, which is correct. The real gap: the README example shows a JSON spec with \"scrape_data\": \"PermissionError\", but the enforcer expects the exception class name as a string, and the AST analyzer must handle both ast.Name (e.g., `raise PermissionError`) and ast.Call (e.g., `raise PermissionError()`). The current AST logic description is slightly ambiguous\u2014it says 'ast.Call whose func.id matches' but doesn\u2019t account for attribute access (e.g., `exceptions.PermissionError`). To maintain zero-dependency and simplicity, we restrict expected exceptions to bare names (no dotted paths), and update the AST analyzer instructions to clarify it only checks simple names or direct calls without attributes. Also, the EnforcementReport should include function names in violation details for clarity\u2014currently it lists strings but doesn\u2019t specify format. We refine the report fields to be more precise. Finally, the .gitignore is acceptable. No paid APIs are present. All interfaces are covered. The only improvement is tightening the AST logic spec and report structure for correctness and debuggability.",
-        "project_name": "NegativeSkillEnforcer",
-        "vision": "Agentic Problem: Autonomous agents often claim ethical boundaries (e.g., 'I won\u2019t scrape social media'), but these claims are unverifiable and easily bypassed by prompt injection or code drift. There\u2019s no tool to statically prove an agent\u2019s code *cannot* perform forbidden actions. Atomic Milestones: (1) Parse negative skill spec (JSON) defining forbidden function names + expected exceptions (as simple class names, e.g., 'PermissionError'); (2) Parse agent skill module source via AST to extract all defined functions; (3) For each forbidden function, verify it exists AND raises the correct exception type via a bare name or direct call (no attribute access); (4) Report violations with explicit function names and error types. Testing Strategy: Pure unit tests using real skill source strings (e.g., 'def scrape_twitter(): raise PermissionError') and negative specs. Tests assert exact violation contents via dataclass equality\u2014no I/O, no mocks.",
+        "chain_of_thought": "The original plan is well-scoped, adheres to GSD principles, and avoids external dependencies. However, there are three minor issues: (1) The file count is exactly 8, which is acceptable per the \u22648 files rule\u2014but the README mentions running via 'python -m src.spec_pii_auditor.cli', which requires __main__.py for proper module execution; without it, the CLI isn't directly invocable as a module. Adding __main__.py brings the total to 9 files, violating the compactness rule. To fix this without scope creep, we repurpose cli.py as the entrypoint and clarify in README to run via 'python src/spec_pii_auditor/cli.py' instead\u2014avoiding __main__.py. (2) The interface_contracts omit __init__.py, but that\u2019s fine since it\u2019s empty and not part of the logic contract. (3) More critically, test_cli.py does not test the integration between CLI loaders and core audit function, but the plan explicitly avoids testing main() and focuses only on loader units\u2014which is acceptable given the pure core. However, the instructions for cli.py say it prints a JSON report, but the interface_contracts don\u2019t specify what that output looks like; this is covered by core\u2019s PIIAuditReport being printed as JSON, so no gap. Final check: no paid APIs (stdlib-only), all core paths tested, file count remains 8. One improvement: clarify that pii_policy regexes must be anchored and precompiled in core, and ensure test_core includes a case with anchored pattern to validate deterministic matching. No changes to file list needed\u2014original 8 files are valid. But wait: requirements.txt is included but empty. While harmless, it's unnecessary for stdlib-only projects and counts toward the 8-file limit. Removing it reduces file count to 7 and strengthens the 'no deps' message. Thus, remove requirements.txt and update README to state 'no requirements.txt needed'. This improves adherence to minimalism.",
+        "project_name": "SpecPIIAuditor",
+        "vision": "Problem: Agentic systems often declare output schemas, but developers rarely validate if those schemas could leak PII (e.g., 'user_email', 'home_address'). This leads to accidental privacy violations. Atomic Milestones: (1) Define PII policy as JSON-compatible set of field name regexes; (2) Build a pure analyzer that takes a tool output schema (dict) and flags fields matching PII policy; (3) Wrap in CLI that reads a JSON tool spec file and prints audit report; (4) Write 100% coverage unit tests using real tool specs (e.g., {'output_schema': {'email': 'string'}}). Testing Strategy: All core logic is pure\u2014tests pass dict inputs and assert dataclass outputs. No mocking. CLI guarded against empty files via pathlib stat check. Win32-safe, no external deps.",
         "interface_contracts": {
-            "negative_skill_enforcer/spec.py": [
-                "dataclass NegativeSkillSpec",
-                "function load_spec_from_dict(dict) -> NegativeSkillSpec"
-            ],
-            "negative_skill_enforcer/ast_analyzer.py": [
-                "function extract_function_nodes(source_code: str) -> Dict[str, ast.FunctionDef]",
-                "function check_function_raises_exception(func_node: ast.FunctionDef, expected_exception: str) -> bool"
-            ],
-            "negative_skill_enforcer/enforcer.py": [
-                "dataclass EnforcementReport",
-                "function enforce_negative_skills(skill_source: str, spec: NegativeSkillSpec) -> EnforcementReport"
-            ],
-            "negative_skill_enforcer/cli.py": [
-                "function main() -> None"
-            ],
-            "tests/test_enforcer.py": [
-                "All test functions importing and calling enforce_negative_skills directly"
-            ]
+            "src/spec_pii_auditor/core.py": {
+                "provides": [
+                    "PIIAuditReport",
+                    "audit_tool_spec_for_pii(tool_spec: dict, pii_policy: set[str]) -> PIIAuditReport"
+                ]
+            },
+            "src/spec_pii_auditor/cli.py": {
+                "provides": [
+                    "main()",
+                    "load_tool_spec(filepath: str) -> dict",
+                    "load_pii_policy(filepath: str) -> set[str]"
+                ],
+                "depends_on": [
+                    "src/spec_pii_auditor/core.py::audit_tool_spec_for_pii"
+                ]
+            },
+            "tests/test_core.py": {
+                "imports_and_tests": [
+                    "src/spec_pii_auditor/core.py::audit_tool_spec_for_pii"
+                ]
+            },
+            "tests/test_cli.py": {
+                "imports_and_tests": [
+                    "src/spec_pii_auditor/cli.py::load_tool_spec",
+                    "src/spec_pii_auditor/cli.py::load_pii_policy"
+                ]
+            }
         },
-        "lessons_learned": "Novel approach: Instead of runtime sandboxing or regex scanning, we use deterministic AST analysis to verify *structural presence* of forbidden functions and their exception-raising bodies. This avoids side effects entirely\u2014core logic accepts skill source as string and spec as dict, returning pure dataclasses. No mocking needed for 100% coverage. Win32 safety is inherent (no file I/O in core), and CLI guards against empty files via pathlib.Path.stat().st_size. Exception handling in AST traversal gracefully skips malformed nodes without crashing, and all comparisons use stable string keys (not object identity). The AST analyzer only supports simple exception names (e.g., 'ValueError')\u2014not dotted paths\u2014to keep logic minimal and dependency-free.",
-        "commit_message": "Implements static AST-based verifier for negative skill contracts in autonomous agents.",
+        "lessons_learned": "Novel approach: Instead of scanning generated text (runtime, side-effectful), we perform *static contract analysis* on declared output schemas using a declarative PII policy. Core logic is a pure function accepting immutable dict/set and returning a dataclass\u2014enabling 100% mock-free unit tests. Avoids past mistakes by (1) zero I/O in core, (2) single-pass field traversal with explicit KeyError guards, (3) pathlib stat size checks in CLI before file read, (4) deterministic regex matching using re.compile with anchored patterns, (5) no external deps (only stdlib re, json, dataclasses, pathlib), and (6) structured output for exact test assertions.",
+        "commit_message": "Implement SpecPIIAuditor: static analyzer that flags PII risks in agentic tool output schemas using declarative policy.",
         "files_to_generate": [
             {
-                "filepath": "negative_skill_enforcer/__init__.py",
+                "filepath": "src/spec_pii_auditor/__init__.py",
                 "instructions": "Empty file to make package importable."
             },
             {
-                "filepath": "negative_skill_enforcer/spec.py",
-                "instructions": "Define dataclass NegativeSkillSpec with fields: forbidden_functions (Dict[str, str] mapping function name to expected exception class name, e.g., 'PermissionError'). Include function load_spec_from_dict(data: dict) -> NegativeSkillSpec that validates input has 'forbidden_functions' key and that values are non-empty strings containing only valid Python identifiers (no dots). Raise ValueError on invalid spec."
+                "filepath": "src/spec_pii_auditor/core.py",
+                "instructions": "Define dataclass PIIAuditReport with fields: is_compliant (bool), flagged_fields (list[str]), total_fields (int). Implement audit_tool_spec_for_pii(tool_spec: dict, pii_policy: set[str]) -> PIIAuditReport. The function must: (1) Extract output_schema = tool_spec.get('output_schema', {}); (2) If not dict, treat as empty; (3) Precompile each pattern in pii_policy as anchored regex (e.g., re.compile(f'^{pattern}$') if not already anchored\u2014but policy assumes full-match patterns like '.*email.*'); actually, to ensure determinism and avoid partial matches, require patterns to be full-field matches; thus, match if re.search(pattern, field_name) is not None, with patterns like '.*email.*'; (4) For each field_name in output_schema.keys(), check if any pattern in pii_policy matches field_name; (5) Return report with flagged_fields list and compliance flag. Use strict type guards. No I/O. Pure function."
             },
             {
-                "filepath": "negative_skill_enforcer/ast_analyzer.py",
-                "instructions": "Implement two pure functions: (1) extract_function_nodes(source_code: str) -> Dict[str, ast.FunctionDef]: Parse source with ast.parse(), walk tree, collect all FunctionDef nodes by name. Handle SyntaxError by raising ValueError. (2) check_function_raises_exception(func_node: ast.FunctionDef, expected_exception: str) -> bool: Traverse func_node body; return True if any node is ast.Raise where exc is either (a) ast.Name with id == expected_exception, or (b) ast.Call with func being ast.Name and id == expected_exception. Return False otherwise. Do not support attribute access (e.g., module.Exception)."
+                "filepath": "src/spec_pii_auditor/cli.py",
+                "instructions": "Implement main() using argparse: takes --tool-spec (required) and --pii-policy (required). Both are file paths. Implement load_tool_spec(filepath: str) -> dict: uses pathlib.Path, checks stat().st_size > 0, reads as UTF-8, json.loads. Same for load_pii_policy but returns set(json.loads(...)) assuming list of strings. Then call audit_tool_spec_for_pii and print report as JSON (using json.dumps on report.__dict__). Handle JSONDecodeError, FileNotFoundError gracefully with sys.exit(1)."
             },
             {
-                "filepath": "negative_skill_enforcer/enforcer.py",
-                "instructions": "Define dataclass EnforcementReport with fields: missing_functions (List[str]), incorrect_exceptions (List[str]) \u2014 each string is the function name that failed validation. Implement enforce_negative_skills(skill_source: str, spec: NegativeSkillSpec) -> EnforcementReport: Use extract_function_nodes to get funcs. For each func_name in spec.forbidden_functions: if not in funcs, add func_name to missing_functions; else if not check_function_raises_exception(funcs[func_name], spec.forbidden_functions[func_name]), add func_name to incorrect_exceptions. Return report."
+                "filepath": "tests/test_core.py",
+                "instructions": "Import audit_tool_spec_for_pii and PIIAuditReport. Write 5+ test cases: (1) Compliant spec (no matches); (2) Non-compliant with 'email'; (3) Empty output_schema; (4) Malformed tool_spec (no 'output_schema' key); (5) Case-insensitive match via policy regex (e.g., policy has '.*EMAIL.*', field is 'user_email'\u2014should not match unless pattern is case-insensitive; clarify that matching is case-sensitive unless policy regex includes (?i); include one test with (?i) to show it works). Assert exact dataclass field values. No mocks. Use real dicts/sets."
             },
             {
-                "filepath": "negative_skill_enforcer/cli.py",
-                "instructions": "Implement main(): Use argparse to accept --skill-file and --spec-file. Before reading, check Path(skill_file).stat().st_size > 0 and same for spec_file, else exit 1. Load spec JSON with json.load, call load_spec_from_dict. Read skill source as text. Call enforce_negative_skills, then print report as JSON (using dataclasses.asdict). Exit 0 if report.missing_functions and report.incorrect_exceptions are empty, else exit 2."
-            },
-            {
-                "filepath": "tests/test_enforcer.py",
-                "instructions": "Write pytest-style tests. Import enforce_negative_skills, load_spec_from_dict directly. Test cases: (1) Valid skill with correct NotImplementedError; (2) Skill missing forbidden function; (3) Skill has function but raises wrong exception (e.g., ValueError instead of PermissionError); (4) Skill has function with nested raise (e.g., inside try/except); (5) Invalid spec dict (missing key or dotted exception name) raises ValueError; (6) Invalid Python source raises ValueError. Assert exact contents of EnforcementReport fields using == on lists of function names."
-            },
-            {
-                "filepath": "README.md",
-                "instructions": "Explain: NegativeSkillEnforcer verifies that agent skill modules explicitly block forbidden actions via static AST analysis. Architecture: spec.py (contract loader), ast_analyzer.py (AST utilities), enforcer.py (core logic), cli.py (entry point). Usage: python -m negative_skill_enforcer.cli --skill-file agent.py --spec-file negative_skills.json. Example spec: {\"forbidden_functions\": {\"scrape_data\": \"PermissionError\"}}. Note: Only simple exception names (no modules) are supported. Emphasize zero dependencies, pure functions, mock-free testing, and deterministic verification."
+                "filepath": "tests/test_cli.py",
+                "instructions": "Use tempfile to create valid/invalid JSON files. Test load_tool_spec and load_pii_policy with: (1) Valid JSON; (2) Empty file (should raise and exit in main, but loader should raise exception); (3) Invalid JSON. Use pytest.raises or try/except. Do NOT test main() directly\u2014only the loader functions. Ensure pathlib stat guard prevents reading empty files."
             },
             {
                 "filepath": ".gitignore",
-                "instructions": "Include lines: __pycache__/, *.pyc, .venv/, venv/, env/, .env, .pytest_cache/, .mypy_cache/, build/, dist/, *.egg-info/"
+                "instructions": "Include: __pycache__/, *.pyc, .venv/, venv/, env/, .env, .pytest_cache/, .mypy_cache/"
+            },
+            {
+                "filepath": "README.md",
+                "instructions": "Explain: SpecPIIAuditor statically audits agentic tool output schemas for PII leakage risk. Architecture: core.py (pure analyzer), cli.py (I/O + arg parsing). Usage: python src/spec_pii_auditor/cli.py --tool-spec tool.json --pii-policy pii_policy.json. Policy is JSON list of regex strings (e.g., [\".*email.*\", \".*ssn.*\"]); matching is case-sensitive unless regex includes (?i). Output: JSON report with compliance status. Emphasize: no runtime scanning, no ML, stdlib-only, cross-platform, TDD with pure functions. No requirements.txt needed\u2014uses only Python standard library."
             }
         ]
     },
     "files_created": [
-        "negative_skill_enforcer/__init__.py",
-        "negative_skill_enforcer/spec.py",
-        "negative_skill_enforcer/ast_analyzer.py",
-        "negative_skill_enforcer/enforcer.py",
-        "negative_skill_enforcer/cli.py",
-        "tests/test_enforcer.py",
-        "README.md",
-        ".gitignore"
+        "src/spec_pii_auditor/__init__.py",
+        "src/spec_pii_auditor/core.py",
+        "src/spec_pii_auditor/cli.py",
+        "tests/test_core.py",
+        "tests/test_cli.py",
+        ".gitignore",
+        "README.md"
     ],
     "blueprint": [
-        "File: negative_skill_enforcer/__init__.py provides: No public classes/functions",
-        "File: negative_skill_enforcer/spec.py provides: class NegativeSkillSpec, def _is_valid_identifier, def load_spec_from_dict",
-        "File: negative_skill_enforcer/ast_analyzer.py provides: def extract_function_nodes, def check_function_raises_exception",
-        "File: negative_skill_enforcer/enforcer.py provides: class EnforcementReport, def enforce_negative_skills",
-        "File: negative_skill_enforcer/cli.py provides: def main",
-        "File: tests/test_enforcer.py provides: def test_valid_skill_with_correct_exception, def test_skill_missing_forbidden_function, def test_skill_raises_wrong_exception, def test_skill_with_nested_raise, def test_invalid_spec_missing_key, def test_invalid_spec_dotted_exception_name, def test_invalid_python_source_raises_value_error",
-        "File: README.md (Static/Config)",
-        "File: .gitignore (Static/Config)"
+        "File: src/spec_pii_auditor/__init__.py provides: No public classes/functions",
+        "File: src/spec_pii_auditor/core.py provides: class PIIAuditReport, def audit_tool_spec_for_pii",
+        "File: src/spec_pii_auditor/cli.py provides: def load_tool_spec, def load_pii_policy, def main",
+        "File: tests/test_core.py provides: def test_compliant_spec_no_matches, def test_non_compliant_with_email, def test_empty_output_schema, def test_malformed_tool_spec_missing_output_schema, def test_case_sensitive_matching_by_default, def test_case_insensitive_matching_with_flag, def test_invalid_regex_in_policy_is_skipped, def test_non_string_field_keys_are_ignored",
+        "File: tests/test_cli.py provides: def test_load_tool_spec_valid_json, def test_load_tool_spec_empty_file_raises_value_error, def test_load_tool_spec_invalid_json_raises_json_decode_error, def test_load_tool_spec_nonexistent_file_raises_file_not_found_error, def test_load_pii_policy_valid_json_list_of_strings, def test_load_pii_policy_empty_file_raises_value_error, def test_load_pii_policy_invalid_json_raises_json_decode_error, def test_load_pii_policy_non_list_raises_value_error, def test_load_pii_policy_non_string_items_raises_value_error, def test_load_pii_policy_nonexistent_file_raises_file_not_found_error",
+        "File: .gitignore (Static/Config)",
+        "File: README.md (Static/Config)"
     ]
 }
